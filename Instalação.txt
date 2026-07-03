@@ -1,0 +1,6 @@
+1. Crie um banco de dados no mysql como o nome barbearia.
+2. Altere o arquivo conexao.php dentro da pasta sistema com as configurações do seu servidor.
+3. Para entrar no admin do site, basta digitar na url /sistema depois da url do site.
+ 
+login: admin@admin 
+Senha: 123
