@@ -12,9 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  deleteProfessional,
   saveProfessional,
   toggleProfessional,
 } from "@/modules/professionals/actions";
+import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 
 export default async function ProfessionalsPage() {
   const tenant = await requireTenant();
@@ -89,17 +91,25 @@ export default async function ProfessionalsPage() {
                     </p>
                   </div>
                   {canManage ? (
-                    <form action={toggleProfessional}>
-                      <input type="hidden" name="id" value={item.id} />
-                      <input
-                        type="hidden"
-                        name="active"
-                        value={String(item.active)}
+                    <div className="flex items-center gap-1">
+                      <form action={toggleProfessional}>
+                        <input type="hidden" name="id" value={item.id} />
+                        <input
+                          type="hidden"
+                          name="active"
+                          value={String(item.active)}
+                        />
+                        <Button size="sm" variant="ghost">
+                          {item.active ? "Desativar" : "Ativar"}
+                        </Button>
+                      </form>
+                      <DeleteEntityButton
+                        id={item.id}
+                        action={deleteProfessional}
+                        entityLabel="profissional"
+                        itemName={item.name}
                       />
-                      <Button size="sm" variant="ghost">
-                        {item.active ? "Desativar" : "Ativar"}
-                      </Button>
-                    </form>
+                    </div>
                   ) : null}
                 </CardContent>
               </Card>

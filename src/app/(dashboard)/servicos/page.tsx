@@ -18,7 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { saveService, toggleService } from "@/modules/services/actions";
+import {
+  deleteService,
+  saveService,
+  toggleService,
+} from "@/modules/services/actions";
+import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 
 export default async function ServicesPage() {
   const tenant = await requireTenant();
@@ -127,17 +132,25 @@ export default async function ServicesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {canManage ? (
-                          <form action={toggleService}>
-                            <input type="hidden" name="id" value={item.id} />
-                            <input
-                              type="hidden"
-                              name="active"
-                              value={String(item.active)}
+                          <div className="flex items-center justify-end gap-1">
+                            <form action={toggleService}>
+                              <input type="hidden" name="id" value={item.id} />
+                              <input
+                                type="hidden"
+                                name="active"
+                                value={String(item.active)}
+                              />
+                              <Button size="sm" variant="ghost">
+                                {item.active ? "Desativar" : "Ativar"}
+                              </Button>
+                            </form>
+                            <DeleteEntityButton
+                              id={item.id}
+                              action={deleteService}
+                              entityLabel="serviço"
+                              itemName={item.name}
                             />
-                            <Button size="sm" variant="ghost">
-                              {item.active ? "Desativar" : "Ativar"}
-                            </Button>
-                          </form>
+                          </div>
                         ) : null}
                       </TableCell>
                     </TableRow>

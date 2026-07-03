@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { professionalSchema } from "@/lib/validators/entities";
+import type { ActionState } from "@/types/domain";
 
 export async function saveProfessional(formData: FormData) {
   const parsed = professionalSchema.safeParse({
@@ -75,4 +77,48 @@ export async function toggleProfessional(formData: FormData) {
     .eq("id", String(formData.get("id")))
     .eq("barbershop_id", tenant.id);
   revalidatePath("/profissionais");
+}
+
+export async function deleteProfessional(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "catalog:manage")) {
+    return { success: false, message: "Sem permissão para excluir." };
+  }
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { success: false, message: "Profissional inválido." };
+
+  const supabase = await createSupabaseServerClient();
+  const { data: future } = await supabase
+    .from("appointments")
+    .select("id")
+    .eq("barbershop_id", tenant.id)
+    .eq("professional_id", id)
+    .in("status", ["pending", "confirmed"])
+    .gte("starts_at", new Date().toISOString())
+    .limit(1);
+  if (future?.length) {
+    return {
+      success: false,
+      message:
+        "Há agendamentos futuros com este profissional. Desative-o em vez de excluir.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("professionals")
+    .delete()
+    .eq("id", id)
+    .eq("barbershop_id", tenant.id);
+  if (error) {
+    return {
+      success: false,
+      message:
+        "Não é possível excluir: há histórico vinculado. Você pode desativar o profissional.",
+    };
+  }
+  revalidatePath("/profissionais");
+  return { success: true, message: "Profissional excluído." };
 }

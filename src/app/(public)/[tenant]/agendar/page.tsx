@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicBarbershop } from "@/modules/barbershops/queries";
+import { isPlus } from "@/lib/plans";
 import { BookingForm } from "@/components/public-site/booking-form";
 import { PublicHeader } from "@/components/public-site/public-header";
 
@@ -45,6 +46,8 @@ export default async function BookingPage({
             tenant={tenant}
             services={data.services}
             professionals={data.professionals}
+            products={data.products}
+            isPlus={isPlus(data.barbershop.plan)}
           />
         </div>
       </div>

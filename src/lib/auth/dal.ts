@@ -28,7 +28,7 @@ export const getTenantContext = cache(
     const { data, error } = await supabase
       .from("memberships")
       .select(
-        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id), barbershop:barbershops!inner(id,name,slug,timezone)",
+        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id), barbershop:barbershops!inner(id,name,slug,timezone,plan)",
       )
       .eq("status", "active")
       .eq("profiles.auth_user_id", user.id)
@@ -49,6 +49,7 @@ export const getTenantContext = cache(
       name: barbershop.name,
       slug: barbershop.slug,
       timezone: barbershop.timezone,
+      plan: barbershop.plan,
       role: data.role as MembershipRole,
       profileId: profile.id,
       profileName: profile.name,
