@@ -1,6 +1,7 @@
 -- Seed público e sem credenciais. Use apenas em desenvolvimento.
+-- A demonstração usa o plano Plus para exercitar white label e upsell de produtos.
 insert into public.barbershops (id, name, slug, status, plan)
-values ('10000000-0000-4000-8000-000000000001', 'Barbearia Aurora', 'aurora', 'active', 'starter')
+values ('10000000-0000-4000-8000-000000000001', 'Barbearia Aurora', 'aurora', 'active', 'plus')
 on conflict (id) do nothing;
 
 insert into public.tenant_settings (
@@ -51,6 +52,16 @@ from (
     ('40000000-0000-4000-8000-000000000002'::uuid, '30000000-0000-4000-8000-000000000003'::uuid)
 ) as pairs(professional_id, service_id)
 on conflict do nothing;
+
+-- Produtos publicáveis para o upsell no checkout (recurso Plus).
+insert into public.products (
+  barbershop_id, name, description, sku, cost_price, sale_price, minimum_stock, active, public_visible
+)
+values
+  ('10000000-0000-4000-8000-000000000001', 'Pomada Modeladora', 'Fixação forte com acabamento fosco.', 'AUR-POM-01', 18.00, 45.00, 5, true, true),
+  ('10000000-0000-4000-8000-000000000001', 'Óleo para Barba', 'Hidrata e alinha os fios.', 'AUR-OLE-01', 22.00, 59.00, 5, true, true),
+  ('10000000-0000-4000-8000-000000000001', 'Shampoo Detox', 'Limpeza profunda para couro cabeludo.', 'AUR-SHP-01', 20.00, 39.00, 5, true, true)
+on conflict (barbershop_id, sku) do nothing;
 
 insert into public.professional_availability (
   barbershop_id, professional_id, weekday, starts_at, ends_at, slot_interval_minutes

@@ -41,4 +41,13 @@ export const publicBookingSchema = z.object({
   clientPhone: z.string().trim().min(8).max(30),
   clientEmail: z.union([z.email(), z.literal("")]).optional(),
   notes: z.string().trim().max(500).optional(),
+  products: z
+    .array(
+      z.object({
+        productId: uuid,
+        quantity: z.coerce.number().int().min(1).max(99),
+      }),
+    )
+    .max(50)
+    .optional(),
 });

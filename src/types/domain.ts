@@ -6,6 +6,7 @@ export type TenantContext = {
   name: string;
   slug: string;
   timezone: string;
+  plan: string;
   role: MembershipRole;
   profileId: string;
   profileName: string;
@@ -34,6 +35,14 @@ export type PublicProfessional = {
   serviceIds: string[];
 };
 
+export type PublicProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  imageUrl: string | null;
+};
+
 export type PublicBarbershop = {
   barbershop: {
     id: string;
@@ -41,6 +50,7 @@ export type PublicBarbershop = {
     slug: string;
     logoUrl: string | null;
     timezone: string;
+    plan: string;
   };
   settings: {
     primaryColor: string;
@@ -57,6 +67,7 @@ export type PublicBarbershop = {
   };
   services: PublicService[];
   professionals: PublicProfessional[];
+  products: PublicProduct[];
   sections: Array<{
     key: string;
     title: string | null;

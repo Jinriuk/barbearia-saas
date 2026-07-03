@@ -9,15 +9,18 @@ import {
   LogOut,
   Scissors,
   Settings,
+  ShoppingBag,
   Store,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { signOut } from "@/modules/auth/actions";
 import type { TenantContext } from "@/types/domain";
 import { can, type Permission } from "@/lib/permissions";
+import { PlanBadge } from "@/components/dashboard/plan-badge";
+import { NotificationsBell } from "@/components/dashboard/notifications-bell";
+import { UserMenu } from "@/components/layout/user-menu";
 
 const nav: Array<{
   href: string;
@@ -35,6 +38,12 @@ const nav: Array<{
   },
   { href: "/servicos", label: "Serviços", icon: Scissors },
   { href: "/profissionais", label: "Profissionais", icon: Users },
+  {
+    href: "/produtos",
+    label: "Produtos",
+    icon: ShoppingBag,
+    permission: "catalog:manage",
+  },
   {
     href: "/estoque",
     label: "Estoque",
@@ -82,7 +91,10 @@ export function DashboardShell({
         </div>
         <div className="px-4 py-3">
           <div className="bg-muted/40 rounded-xl border p-3">
-            <p className="truncate text-sm font-medium">{tenant.name}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-medium">{tenant.name}</p>
+              <PlanBadge plan={tenant.plan} />
+            </div>
             <p className="text-muted-foreground mt-1 text-xs">/{tenant.slug}</p>
           </div>
         </div>
@@ -119,22 +131,23 @@ export function DashboardShell({
             <Store className="text-primary size-5" />
             <span className="max-w-40 truncate font-medium">{tenant.name}</span>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <Button asChild variant="outline" size="sm">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+            >
               <Link href={`/${tenant.slug}`} target="_blank">
                 Ver página pública
               </Link>
             </Button>
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium">{tenant.profileName}</p>
-              <p className="text-muted-foreground text-xs">{tenant.role}</p>
-            </div>
-            <Badge
-              variant="secondary"
-              className="size-9 justify-center rounded-full"
-            >
-              {tenant.profileName.slice(0, 1).toUpperCase()}
-            </Badge>
+            <NotificationsBell tenantId={tenant.id} />
+            <UserMenu
+              name={tenant.profileName}
+              role={tenant.role}
+              canManageSettings={can(tenant.role, "settings:manage")}
+            />
           </div>
         </header>
         <nav

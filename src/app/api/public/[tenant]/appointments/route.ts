@@ -19,6 +19,7 @@ export async function POST(
     p_client_phone: parsed.data.clientPhone,
     p_client_email: parsed.data.clientEmail || null,
     p_notes: parsed.data.notes || null,
+    p_products: parsed.data.products ?? [],
   });
   if (error) return Response.json({ error: publicErrorMessage(error) }, { status: 409 });
   return Response.json({ ok: true }, { status: 201 });
