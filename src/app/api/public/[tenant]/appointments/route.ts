@@ -1,4 +1,5 @@
 import { publicErrorMessage } from "@/lib/errors";
+import { rateLimit, requestIp } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { publicBookingSchema } from "@/lib/validators/entities";
 
@@ -7,6 +8,12 @@ export async function POST(
   context: { params: Promise<{ tenant: string }> },
 ) {
   const { tenant } = await context.params;
+  if (!rateLimit(`booking:${requestIp(request)}`, 8, 60_000)) {
+    return Response.json(
+      { error: "Muitas tentativas. Aguarde um minuto e tente de novo." },
+      { status: 429 },
+    );
+  }
   const parsed = publicBookingSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Revise os dados da reserva." }, { status: 400 });
   const supabase = await createSupabaseServerClient();

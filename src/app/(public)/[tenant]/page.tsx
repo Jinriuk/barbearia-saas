@@ -1,13 +1,15 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Clock3,
   ExternalLink,
   MapPin,
-  Scissors,
+  Sparkles,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getPublicBarbershop } from "@/modules/barbershops/queries";
+import { STOCK_PHOTOS } from "@/lib/assets";
 import { PublicHeader } from "@/components/public-site/public-header";
 import { Button } from "@/components/ui/button";
 
@@ -56,16 +58,29 @@ export default async function TenantPublicPage({
           </Button>
         </div>
         <div className="relative hidden aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-[var(--tenant-secondary)] lg:block">
+          <Image
+            src={data.settings.bannerUrl || STOCK_PHOTOS.barberChair}
+            alt={`Ambiente da ${data.barbershop.name}`}
+            fill
+            sizes="(min-width: 1024px) 40vw, 0px"
+            className="object-cover"
+            priority
+          />
           <div
-            className="absolute inset-0 opacity-90"
+            className="absolute inset-0"
             style={{
-              background: `radial-gradient(circle at 30% 20%, ${data.settings.primaryColor}, transparent 44%), linear-gradient(145deg, transparent, ${data.settings.secondaryColor})`,
+              background: `linear-gradient(160deg, ${data.settings.secondaryColor}cc 0%, transparent 45%, ${data.settings.primaryColor}55 100%)`,
             }}
           />
-          <Scissors
-            className="absolute right-12 bottom-12 size-36 rotate-[-12deg] text-[var(--tenant-primary)] opacity-80"
-            strokeWidth={0.8}
-          />
+          <div className="absolute right-6 bottom-6 left-6 rounded-2xl bg-black/45 p-4 text-white backdrop-blur-sm">
+            <p className="flex items-center gap-2 text-xs tracking-[.18em] uppercase opacity-80">
+              <Sparkles className="size-3.5" /> Reserva online
+            </p>
+            <p className="mt-1 text-sm leading-6">
+              Escolha o serviço, o profissional e o horário — sem fila e sem
+              telefone.
+            </p>
+          </div>
         </div>
       </section>
 

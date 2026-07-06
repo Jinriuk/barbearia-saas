@@ -77,6 +77,22 @@ export function getUtcDayRange(timeZone: string, now = new Date()) {
   };
 }
 
+export function formatTimeInTz(date: Date | string, timeZone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(typeof date === "string" ? new Date(date) : date);
+}
+
+export function formatShortDateInTz(date: Date | string, timeZone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
+    day: "2-digit",
+    month: "short",
+  }).format(typeof date === "string" ? new Date(date) : date);
+}
+
 export function getLocalDateInputValue(now = new Date()) {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");

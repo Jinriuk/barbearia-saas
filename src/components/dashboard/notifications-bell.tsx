@@ -23,7 +23,13 @@ type NotificationItem = {
 
 const POLL_MS = 25000;
 
-export function NotificationsBell({ tenantId }: { tenantId: string }) {
+export function NotificationsBell({
+  tenantId,
+  timezone,
+}: {
+  tenantId: string;
+  timezone: string;
+}) {
   const storageKey = `notif:lastSeen:${tenantId}`;
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [lastSeen, setLastSeen] = useState<number>(() => {
@@ -132,6 +138,7 @@ export function NotificationsBell({ tenantId }: { tenantId: string }) {
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         {new Intl.DateTimeFormat("pt-BR", {
+                          timeZone: timezone,
                           day: "2-digit",
                           month: "short",
                           hour: "2-digit",

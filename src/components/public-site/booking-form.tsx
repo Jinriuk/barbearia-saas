@@ -40,12 +40,14 @@ const currency = new Intl.NumberFormat("pt-BR", {
 
 export function BookingForm({
   tenant,
+  timezone,
   services,
   professionals,
   products,
   isPlus,
 }: {
   tenant: string;
+  timezone: string;
   services: PublicService[];
   professionals: PublicProfessional[];
   products: PublicProduct[];
@@ -171,6 +173,7 @@ export function BookingForm({
                 <SummaryRow
                   label="Data"
                   value={new Intl.DateTimeFormat("pt-BR", {
+                    timeZone: timezone,
                     weekday: "long",
                     day: "2-digit",
                     month: "long",
@@ -179,6 +182,7 @@ export function BookingForm({
                 <SummaryRow
                   label="Horário"
                   value={new Intl.DateTimeFormat("pt-BR", {
+                    timeZone: timezone,
                     hour: "2-digit",
                     minute: "2-digit",
                   }).format(slotDate)}
@@ -297,6 +301,7 @@ export function BookingForm({
                     onClick={() => setSlot(item.starts_at)}
                   >
                     {new Intl.DateTimeFormat("pt-BR", {
+                      timeZone: timezone,
                       hour: "2-digit",
                       minute: "2-digit",
                     }).format(new Date(item.starts_at))}

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can, type Permission } from "@/lib/permissions";
-import { getUtcDayRange } from "@/lib/dates";
+import { formatTimeInTz, getUtcDayRange } from "@/lib/dates";
 import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
@@ -165,10 +165,7 @@ export default async function DashboardPage() {
     {
       label: "Próximo horário",
       value: scheduled.length
-        ? new Intl.DateTimeFormat("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(new Date(scheduled[0].startsAt))
+        ? formatTimeInTz(scheduled[0].startsAt, tenant.timezone)
         : "—",
       icon: CalendarClock,
     },
@@ -225,10 +222,7 @@ export default async function DashboardPage() {
                 className="flex items-center gap-4 rounded-lg border p-3.5"
               >
                 <span className="font-mono text-sm font-semibold">
-                  {new Intl.DateTimeFormat("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }).format(new Date(item.startsAt))}
+                  {formatTimeInTz(item.startsAt, tenant.timezone)}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
