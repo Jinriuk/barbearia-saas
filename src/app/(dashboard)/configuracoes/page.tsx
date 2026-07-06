@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import QRCode from "qrcode";
 import { ExternalLink } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { isPlus, planLabel } from "@/lib/plans";
@@ -6,11 +8,21 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { AppearanceEditor } from "@/components/dashboard/appearance-editor";
+import { SharePageCard } from "@/components/dashboard/share-page-card";
 import { ContactSettingsForm } from "@/components/dashboard/contact-settings-form";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const tenant = await requireTenant();
+  const host = (await headers()).get("host");
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? (host ? `https://${host}` : "");
+  const publicUrl = `${baseUrl}/${tenant.slug}`;
+  const qrDataUrl = await QRCode.toDataURL(publicUrl, {
+    width: 640,
+    margin: 2,
+    color: { dark: "#191816", light: "#ffffff" },
+  });
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("tenant_settings")
@@ -36,6 +48,11 @@ export default async function SettingsPage() {
         }
       />
       <div className="max-w-5xl space-y-6">
+        <SharePageCard
+          publicUrl={publicUrl}
+          qrDataUrl={qrDataUrl}
+          slug={tenant.slug}
+        />
         <AppearanceEditor
           isPlus={isPlus(tenant.plan)}
           slug={tenant.slug}

@@ -3,12 +3,14 @@
   "framework": "nextjs",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://jaerticlcbsuvgmiumfl.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns"
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns",
+    "NEXT_PUBLIC_APP_URL": "https://barbearia-saas-sigma.vercel.app"
   },
   "build": {
     "env": {
       "NEXT_PUBLIC_SUPABASE_URL": "https://jaerticlcbsuvgmiumfl.supabase.co",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns"
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns",
+      "NEXT_PUBLIC_APP_URL": "https://barbearia-saas-sigma.vercel.app"
     }
   }
 }

@@ -11,6 +11,7 @@ import {
   Settings,
   ShoppingBag,
   Store,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,12 @@ const nav: Array<{
     label: "Relatórios",
     icon: ChartNoAxesCombined,
     permission: "reports:view",
+  },
+  {
+    href: "/usuarios",
+    label: "Equipe",
+    icon: UserPlus,
+    permission: "memberships:manage",
   },
   {
     href: "/configuracoes",
@@ -142,7 +149,10 @@ export function DashboardShell({
                 Ver página pública
               </Link>
             </Button>
-            <NotificationsBell tenantId={tenant.id} />
+            <NotificationsBell
+              tenantId={tenant.id}
+              timezone={tenant.timezone}
+            />
             <UserMenu
               name={tenant.profileName}
               role={tenant.role}

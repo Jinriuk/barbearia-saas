@@ -49,3 +49,19 @@ Separe Preview e Production. Nunca reutilize banco produtivo em preview.
 - [ ] seed não aplicado;
 - [ ] auditoria npm limpa;
 - [ ] RLS cruzada homologada.
+
+## Subdomínio por barbearia (white label)
+
+O proxy já suporta `SLUG.seudominio.com` apontando para a página pública do tenant.
+Para ativar:
+
+1. compre o domínio (ex.: `nexobarber.com.br`) e adicione na Vercel o domínio
+   raiz **e** o wildcard `*.nexobarber.com.br` no projeto;
+2. no DNS, crie `A/ALIAS` para o raiz e `CNAME *` → `cname.vercel-dns.com`;
+3. defina `NEXT_PUBLIC_ROOT_DOMAIN=nexobarber.com.br` e atualize
+   `NEXT_PUBLIC_APP_URL=https://nexobarber.com.br` nas variáveis do projeto;
+4. faça um redeploy.
+
+Subdomínios reservados (não viram tenant): `www`, `app`, `painel`, `admin`.
+O painel e o login continuam no domínio raiz; o QR Code gerado em
+Configurações passa a usar o novo domínio automaticamente.

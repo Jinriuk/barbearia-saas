@@ -44,6 +44,7 @@ export default async function BookingPage({
         <div className="mt-9">
           <BookingForm
             tenant={tenant}
+            timezone={data.barbershop.timezone}
             services={data.services}
             professionals={data.professionals}
             products={data.products}

@@ -19,6 +19,9 @@ export default async function LoginPage({
       message={typeof params.message === "string" ? params.message : undefined}
     >
       <form action={signIn} className="space-y-4">
+        {typeof params.next === "string" ? (
+          <input type="hidden" name="next" value={params.next} />
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <Input

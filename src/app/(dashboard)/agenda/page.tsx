@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { CalendarPlus } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
-import { getUtcDayRange } from "@/lib/dates";
+import {
+  formatShortDateInTz,
+  formatTimeInTz,
+  getUtcDayRange,
+} from "@/lib/dates";
+import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +22,7 @@ export default async function AgendaPage({
 }) {
   const { prof } = await searchParams;
   const tenant = await requireTenant();
+  const canManage = can(tenant.role, "appointments:manage");
   const supabase = await createSupabaseServerClient();
   const { start } = getUtcDayRange(tenant.timezone);
 
@@ -46,11 +54,11 @@ export default async function AgendaPage({
       <PageHeader
         eyebrow="Operação"
         title="Agenda"
-        description="Intervalos e status dos próximos atendimentos."
+        description="Confirme, conclua ou cancele os próximos atendimentos."
         action={
           <Button asChild>
             <Link href={`/${tenant.slug}/agendar`} target="_blank">
-              Novo agendamento
+              <CalendarPlus /> Novo agendamento
             </Link>
           </Button>
         }
@@ -96,7 +104,6 @@ export default async function AgendaPage({
                 const professional = Array.isArray(item.professional)
                   ? item.professional[0]
                   : item.professional;
-                const startsAt = new Date(item.starts_at);
                 return (
                   <div
                     key={item.id}
@@ -104,16 +111,10 @@ export default async function AgendaPage({
                   >
                     <div>
                       <p className="font-mono text-sm font-semibold">
-                        {new Intl.DateTimeFormat("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(startsAt)}
+                        {formatTimeInTz(item.starts_at, tenant.timezone)}
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {new Intl.DateTimeFormat("pt-BR", {
-                          day: "2-digit",
-                          month: "short",
-                        }).format(startsAt)}
+                        {formatShortDateInTz(item.starts_at, tenant.timezone)}
                       </p>
                     </div>
                     <div>
@@ -130,7 +131,15 @@ export default async function AgendaPage({
                         com {professional?.name ?? "profissional"}
                       </p>
                     </div>
-                    <AppointmentStatusBadge status={item.status} />
+                    <div className="flex flex-col items-start gap-2 sm:items-end">
+                      <AppointmentStatusBadge status={item.status} />
+                      {canManage ? (
+                        <AppointmentActions
+                          appointmentId={item.id}
+                          status={item.status}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}

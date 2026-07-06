@@ -21,10 +21,14 @@ export async function signIn(formData: FormData) {
   });
   if (!parsed.success) redirect("/login?error=Dados+de+acesso+inválidos");
 
+  const next = value(formData, "next");
+  const target =
+    next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) redirect("/login?error=E-mail+ou+senha+incorretos");
-  redirect("/dashboard");
+  redirect(target);
 }
 
 export async function signUp(formData: FormData) {
