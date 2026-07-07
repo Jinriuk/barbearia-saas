@@ -18,7 +18,7 @@ import {
 const roles: Array<{ role: MembershipRole; label: string }> = [
   { role: "owner", label: "Proprietário" },
   { role: "manager", label: "Gerente" },
-  { role: "receptionist", label: "Recepcionista" },
+  { role: "receptionist", label: "Secretária" },
   { role: "professional", label: "Profissional" },
 ];
 

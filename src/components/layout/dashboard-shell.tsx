@@ -35,16 +35,21 @@ const nav: Array<{
   { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   {
+    href: "/financeiro",
+    label: "Financeiro",
+    icon: Banknote,
+    permission: "finance:view",
+  },
+  {
     href: "/clientes",
     label: "Clientes",
     icon: Contact,
     permission: "clients:manage",
   },
   { href: "/servicos", label: "Serviços", icon: Scissors },
-  { href: "/profissionais", label: "Profissionais", icon: Users },
   {
     href: "/produtos",
-    label: "Produtos",
+    label: "Produtos e Estoque",
     icon: ShoppingBag,
     permission: "catalog:manage",
   },
@@ -54,11 +59,12 @@ const nav: Array<{
     icon: Boxes,
     permission: "inventory:manage",
   },
+  { href: "/profissionais", label: "Profissionais", icon: Users },
   {
-    href: "/financeiro",
-    label: "Financeiro",
-    icon: Banknote,
-    permission: "finance:view",
+    href: "/usuarios",
+    label: "Equipe",
+    icon: UserPlus,
+    permission: "memberships:manage",
   },
   {
     href: "/contas-a-pagar",
@@ -83,12 +89,6 @@ const nav: Array<{
     label: "Relatórios",
     icon: ChartNoAxesCombined,
     permission: "reports:view",
-  },
-  {
-    href: "/usuarios",
-    label: "Equipe",
-    icon: UserPlus,
-    permission: "memberships:manage",
   },
   {
     href: "/configuracoes",

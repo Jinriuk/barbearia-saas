@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const roleLabels: Record<string, string> = {
   owner: "Proprietário",
   manager: "Gerente",
-  receptionist: "Recepcionista",
+  receptionist: "Secretária",
   professional: "Profissional",
   client: "Cliente",
 };
@@ -154,7 +154,7 @@ export default async function TeamPage() {
               agenda, clientes, catálogo, estoque e relatórios.
             </p>
             <p>
-              <span className="text-foreground font-medium">Recepcionista</span>{" "}
+              <span className="text-foreground font-medium">Secretária</span>{" "}
               — agenda e clientes.
             </p>
             <p>

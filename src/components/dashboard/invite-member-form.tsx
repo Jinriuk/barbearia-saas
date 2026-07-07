@@ -70,7 +70,7 @@ export function InviteMemberForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="manager">Gerente</SelectItem>
-                <SelectItem value="receptionist">Recepcionista</SelectItem>
+                <SelectItem value="receptionist">Secretária</SelectItem>
                 <SelectItem value="professional">Profissional</SelectItem>
               </SelectContent>
             </Select>

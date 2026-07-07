@@ -36,7 +36,9 @@ export const appointmentSchema = z.object({
 export const publicBookingSchema = z.object({
   professionalId: uuid,
   serviceId: uuid,
-  startsAt: z.iso.datetime(),
+  // A disponibilidade devolve timestamptz do Postgres (ex.: 2026-07-08T13:00:00+00:00),
+  // que traz offset explícito. Sem { offset: true } o Zod rejeitava e a API respondia 400.
+  startsAt: z.iso.datetime({ offset: true }),
   clientName: z.string().trim().min(2).max(100),
   clientPhone: z.string().trim().min(8).max(30),
   clientEmail: z.union([z.email(), z.literal("")]).optional(),
