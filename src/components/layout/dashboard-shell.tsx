@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Banknote,
-  Boxes,
   CalendarDays,
   ChartNoAxesCombined,
   Contact,
@@ -52,12 +51,6 @@ const nav: Array<{
     label: "Produtos e Estoque",
     icon: ShoppingBag,
     permission: "catalog:manage",
-  },
-  {
-    href: "/estoque",
-    label: "Estoque",
-    icon: Boxes,
-    permission: "inventory:manage",
   },
   { href: "/profissionais", label: "Profissionais", icon: Users },
   {

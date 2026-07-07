@@ -82,8 +82,8 @@ const quickLinks: Array<{
   },
   {
     href: "/produtos",
-    label: "Produtos",
-    description: "Loja e upsell",
+    label: "Produtos e Estoque",
+    description: "Loja, saldo e upsell",
     icon: ShoppingBag,
     permission: "catalog:manage",
   },
