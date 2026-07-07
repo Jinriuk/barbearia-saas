@@ -1,34 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  CheckCircle2,
+  CalendarCheck2,
+  Check,
   Clock3,
   LoaderCircle,
+  MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
-  Sparkles,
 } from "lucide-react";
 import type {
   PublicProduct,
   PublicProfessional,
   PublicService,
 } from "@/types/domain";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getLocalDateInputValue } from "@/lib/dates";
 
 type Slot = { starts_at: string; ends_at: string };
 type Cart = Record<string, number>;
@@ -38,31 +29,76 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+const DAY_MS = 86_400_000;
+
+/** Próximos 14 dias a partir do "hoje" do fuso da barbearia. */
+function buildDayOptions(todayInTz: string) {
+  const [year, month, day] = todayInTz.split("-").map(Number);
+  const base = Date.UTC(year, month - 1, day);
+  const weekday = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "short",
+    timeZone: "UTC",
+  });
+  return Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(base + index * DAY_MS);
+    return {
+      value: date.toISOString().slice(0, 10),
+      dayNumber: date.getUTCDate(),
+      weekday:
+        index === 0
+          ? "Hoje"
+          : index === 1
+            ? "Amanhã"
+            : weekday.format(date).replace(".", ""),
+    };
+  });
+}
+
+function slotHourInTz(iso: string, timeZone: string) {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date(iso)),
+  );
+}
+
+const inputClass = "h-12 rounded-xl bg-white/60 text-base";
+
 export function BookingForm({
   tenant,
   timezone,
+  todayInTz,
   services,
   professionals,
   products,
   isPlus,
+  initialServiceId,
+  whatsappHref,
 }: {
   tenant: string;
   timezone: string;
+  todayInTz: string;
   services: PublicService[];
   professionals: PublicProfessional[];
   products: PublicProduct[];
   isPlus: boolean;
+  initialServiceId?: string;
+  whatsappHref: string | null;
 }) {
-  const [serviceId, setServiceId] = useState("");
+  const [serviceId, setServiceId] = useState(initialServiceId ?? "");
   const [professionalId, setProfessionalId] = useState("");
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slot, setSlot] = useState("");
   const [cart, setCart] = useState<Cart>({});
-  const [loading, setLoading] = useState(false);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const days = useMemo(() => buildDayOptions(todayInTz), [todayInTz]);
   const availableProfessionals = useMemo(
     () =>
       professionals.filter(
@@ -70,7 +106,6 @@ export function BookingForm({
       ),
     [professionals, serviceId],
   );
-  const today = getLocalDateInputValue();
   const showUpsell = isPlus && products.length > 0;
 
   const selectedService = services.find((item) => item.id === serviceId);
@@ -86,6 +121,87 @@ export function BookingForm({
   );
   const orderTotal = (selectedService?.price ?? 0) + productsTotal;
 
+  const timeFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat("pt-BR", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [timezone],
+  );
+
+  const slotGroups = useMemo(() => {
+    const groups: Array<{ label: string; items: Slot[] }> = [
+      { label: "Manhã", items: [] },
+      { label: "Tarde", items: [] },
+      { label: "Noite", items: [] },
+    ];
+    for (const item of slots) {
+      const hour = slotHourInTz(item.starts_at, timezone);
+      if (hour < 12) groups[0].items.push(item);
+      else if (hour < 18) groups[1].items.push(item);
+      else groups[2].items.push(item);
+    }
+    return groups.filter((group) => group.items.length > 0);
+  }, [slots, timezone]);
+
+  const requestSeq = useRef(0);
+
+  async function fetchSlots(
+    service: string,
+    professional: string,
+    day: string,
+  ) {
+    const requestId = ++requestSeq.current;
+    setLoadingSlots(true);
+    setSlot("");
+    setSlots([]);
+    setMessage("");
+    try {
+      const query = new URLSearchParams({
+        serviceId: service,
+        professionalId: professional,
+        date: day,
+      });
+      const response = await fetch(
+        `/api/public/${tenant}/availability?${query}`,
+      );
+      const result = (await response.json()) as {
+        slots?: Slot[];
+        error?: string;
+      };
+      if (requestId !== requestSeq.current) return;
+      setSlots(result.slots ?? []);
+      if (result.error) setMessage(result.error);
+    } catch {
+      if (requestId !== requestSeq.current) return;
+      setMessage("Não foi possível consultar os horários.");
+    }
+    setLoadingSlots(false);
+  }
+
+  function selectService(id: string) {
+    setServiceId(id);
+    setProfessionalId("");
+    setSlot("");
+    setSlots([]);
+  }
+
+  function selectProfessional(id: string) {
+    setProfessionalId(id);
+    if (date) void fetchSlots(serviceId, id, date);
+    else {
+      setSlot("");
+      setSlots([]);
+    }
+  }
+
+  function selectDate(value: string) {
+    setDate(value);
+    void fetchSlots(serviceId, professionalId, value);
+  }
+
   function addProduct(id: string) {
     setCart((prev) => ({ ...prev, [id]: Math.min((prev[id] ?? 0) + 1, 99) }));
   }
@@ -99,25 +215,9 @@ export function BookingForm({
     });
   }
 
-  async function loadSlots() {
-    if (!serviceId || !professionalId || !date) return;
-    setLoading(true);
-    setMessage("");
-    setSlot("");
-    const query = new URLSearchParams({ serviceId, professionalId, date });
-    const response = await fetch(`/api/public/${tenant}/availability?${query}`);
-    const result = (await response.json()) as {
-      slots?: Slot[];
-      error?: string;
-    };
-    setSlots(result.slots ?? []);
-    setMessage(result.error ?? "");
-    setLoading(false);
-  }
-
   async function submit(formData: FormData) {
     if (!slot) return;
-    setLoading(true);
+    setSubmitting(true);
     setMessage("");
     const response = await fetch(`/api/public/${tenant}/appointments`, {
       method: "POST",
@@ -137,57 +237,56 @@ export function BookingForm({
       }),
     });
     const result = (await response.json()) as { ok?: boolean; error?: string };
-    setLoading(false);
-    if (result.ok) setSuccess(true);
-    else {
+    setSubmitting(false);
+    if (result.ok) {
+      setSuccess(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
       setMessage(result.error ?? "Não foi possível reservar.");
-      await loadSlots();
+      setSlot("");
+      setSlots([]);
+      // Recarrega a disponibilidade: o horário pode ter sido tomado.
+      const query = new URLSearchParams({ serviceId, professionalId, date });
+      const refreshed = await fetch(
+        `/api/public/${tenant}/availability?${query}`,
+      );
+      const data = (await refreshed.json()) as { slots?: Slot[] };
+      setSlots(data.slots ?? []);
     }
   }
 
   if (success) {
     const slotDate = slot ? new Date(slot) : null;
     return (
-      <Card className="overflow-hidden">
-        <div className="bg-emerald-50 px-6 py-10 text-center dark:bg-emerald-950/30">
-          <CheckCircle2 className="mx-auto size-14 text-emerald-600" />
-          <h2 className="mt-5 text-2xl font-semibold tracking-tight">
-            Horário reservado com sucesso!
+      <div className="overflow-hidden rounded-3xl border border-black/10 bg-white/60">
+        <div className="px-6 pt-12 pb-8 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--tenant-primary)] text-[var(--tenant-on-primary)]">
+            <Check className="size-8" strokeWidth={2.5} />
+          </span>
+          <h2 className="mt-6 text-2xl font-semibold tracking-tight">
+            Reserva enviada!
           </h2>
-          <p className="mt-1 text-emerald-700 dark:text-emerald-400">
-            Aguardo você!
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-6 opacity-60">
+            A barbearia vai confirmar seu horário. Guarde os detalhes:
           </p>
         </div>
-        <CardContent className="space-y-4 py-6">
-          <p className="text-muted-foreground text-center text-sm">
-            Guarde os detalhes da sua reserva:
-          </p>
-          <dl className="divide-y rounded-xl border">
+        <div className="px-5 pb-6">
+          <dl className="divide-y divide-black/[.06] rounded-2xl border border-black/10 bg-white/70">
             <SummaryRow label="Serviço" value={selectedService?.name ?? "—"} />
             <SummaryRow
               label="Profissional"
               value={selectedProfessional?.name ?? "—"}
             />
             {slotDate ? (
-              <>
-                <SummaryRow
-                  label="Data"
-                  value={new Intl.DateTimeFormat("pt-BR", {
-                    timeZone: timezone,
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "long",
-                  }).format(slotDate)}
-                />
-                <SummaryRow
-                  label="Horário"
-                  value={new Intl.DateTimeFormat("pt-BR", {
-                    timeZone: timezone,
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }).format(slotDate)}
-                />
-              </>
+              <SummaryRow
+                label="Quando"
+                value={`${new Intl.DateTimeFormat("pt-BR", {
+                  timeZone: timezone,
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "long",
+                }).format(slotDate)}, ${timeFormat.format(slotDate)}`}
+              />
             ) : null}
             {cartItems.map((item) => (
               <SummaryRow
@@ -196,253 +295,404 @@ export function BookingForm({
                 value={currency.format(item.product.price * item.quantity)}
               />
             ))}
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between px-4 py-3.5">
               <dt className="text-sm font-semibold">Total</dt>
               <dd className="font-mono text-base font-semibold">
                 {currency.format(orderTotal)}
               </dd>
             </div>
           </dl>
-        </CardContent>
-      </Card>
+          {whatsappHref ? (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
+            >
+              <MessageCircle className="size-4.5" />
+              Falar com a barbearia
+            </a>
+          ) : null}
+        </div>
+      </div>
     );
   }
 
   return (
-    <form action={submit} className="space-y-5">
-      {message ? (
-        <Alert variant="destructive">
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">1. Escolha o atendimento</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Serviço</Label>
-            <Select
-              value={serviceId}
-              onValueChange={(value) => {
-                setServiceId(value);
-                setProfessionalId("");
-                setSlots([]);
-              }}
-            >
-              <SelectTrigger aria-label="Serviço">
-                <SelectValue placeholder="Escolha o serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                {services.map((service) => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name} · {currency.format(Number(service.price))}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Profissional</Label>
-            <Select
-              value={professionalId}
-              onValueChange={(value) => {
-                setProfessionalId(value);
-                setSlots([]);
-              }}
-              disabled={!serviceId}
-            >
-              <SelectTrigger aria-label="Profissional">
-                <SelectValue placeholder="Escolha quem atende" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableProfessionals.map((professional) => (
-                  <SelectItem key={professional.id} value={professional.id}>
-                    {professional.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="date">Data</Label>
-            <Input
-              id="date"
-              type="date"
-              min={today}
-              value={date}
-              onChange={(event) => {
-                setDate(event.target.value);
-                setSlots([]);
-              }}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={loadSlots}
-              disabled={loading || !date || !professionalId}
-            >
-              {loading ? <LoaderCircle className="animate-spin" /> : null} Ver
-              horários
-            </Button>
-          </div>
-          {slots.length ? (
-            <div className="sm:col-span-2">
-              <Label>Horário</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {slots.map((item) => (
-                  <Button
-                    key={item.starts_at}
-                    type="button"
-                    variant={slot === item.starts_at ? "default" : "outline"}
-                    onClick={() => setSlot(item.starts_at)}
+    <form action={submit} className="space-y-9 pb-4">
+      {/* 1. Serviço */}
+      <section>
+        <StepTitle number={1} title="Escolha o serviço" />
+        <div className="mt-4 grid gap-2.5">
+          {services.map((service) => {
+            const selected = serviceId === service.id;
+            return (
+              <button
+                key={service.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => selectService(service.id)}
+                className={cn(
+                  "flex items-center gap-4 rounded-2xl border p-4 text-left transition-all active:scale-[.99]",
+                  selected
+                    ? "border-transparent bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-lg shadow-black/10"
+                    : "border-black/10 bg-white/50 hover:border-black/25",
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{service.name}</p>
+                  <p
+                    className={cn(
+                      "mt-1 flex items-center gap-1.5 text-xs",
+                      selected ? "opacity-70" : "opacity-50",
+                    )}
                   >
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      timeZone: timezone,
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(new Date(item.starts_at))}
-                  </Button>
-                ))}
-              </div>
+                    <Clock3 className="size-3.5" />
+                    {service.durationMinutes} min
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-sm font-semibold",
+                    selected
+                      ? "text-[var(--tenant-on-secondary)]"
+                      : "text-[var(--tenant-secondary)]",
+                  )}
+                >
+                  {currency.format(Number(service.price))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 2. Profissional */}
+      {serviceId ? (
+        <section>
+          <StepTitle number={2} title="Escolha o profissional" />
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            {availableProfessionals.map((professional) => {
+              const selected = professionalId === professional.id;
+              return (
+                <button
+                  key={professional.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectProfessional(professional.id)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-full border py-2 pr-5 pl-2 transition-all active:scale-[.98]",
+                    selected
+                      ? "border-transparent bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-md shadow-black/10"
+                      : "border-black/10 bg-white/50 hover:border-black/25",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-8 place-items-center rounded-full text-sm font-semibold",
+                      selected
+                        ? "bg-[var(--tenant-on-secondary)]/15"
+                        : "bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)]",
+                    )}
+                  >
+                    {professional.name.slice(0, 1)}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {professional.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {/* 3. Data e horário */}
+      {serviceId && professionalId ? (
+        <section>
+          <StepTitle number={3} title="Escolha o dia e o horário" />
+          <div className="-mx-5 mt-4 flex snap-x gap-2 overflow-x-auto px-5 pb-1">
+            {days.map((day) => {
+              const selected = date === day.value;
+              return (
+                <button
+                  key={day.value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectDate(day.value)}
+                  className={cn(
+                    "flex w-16 shrink-0 snap-start flex-col items-center gap-0.5 rounded-2xl border py-3 transition-all active:scale-[.97]",
+                    selected
+                      ? "border-transparent bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-md shadow-black/10"
+                      : "border-black/10 bg-white/50 hover:border-black/25",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-[11px] font-medium capitalize",
+                      selected ? "opacity-75" : "opacity-50",
+                    )}
+                  >
+                    {day.weekday}
+                  </span>
+                  <span className="text-lg font-semibold">{day.dayNumber}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {loadingSlots ? (
+            <p className="mt-5 flex items-center gap-2 text-sm opacity-60">
+              <LoaderCircle className="size-4 animate-spin" />
+              Buscando horários…
+            </p>
+          ) : null}
+
+          {!loadingSlots && date && slots.length === 0 ? (
+            <p className="mt-5 rounded-2xl border border-black/10 bg-white/50 px-4 py-3.5 text-sm opacity-70">
+              Nenhum horário livre nesse dia. Tente outra data.
+            </p>
+          ) : null}
+
+          {!loadingSlots && slotGroups.length > 0 ? (
+            <div className="mt-5 space-y-5">
+              {slotGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="text-xs font-semibold tracking-wide uppercase opacity-45">
+                    {group.label}
+                  </p>
+                  <div className="mt-2.5 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                    {group.items.map((item) => {
+                      const selected = slot === item.starts_at;
+                      return (
+                        <button
+                          key={item.starts_at}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setSlot(item.starts_at)}
+                          className={cn(
+                            "h-11 rounded-xl border font-mono text-sm transition-all active:scale-[.96]",
+                            selected
+                              ? "border-transparent bg-[var(--tenant-secondary)] font-semibold text-[var(--tenant-on-secondary)] shadow-md shadow-black/10"
+                              : "border-black/10 bg-white/50 hover:border-black/25",
+                          )}
+                        >
+                          {timeFormat.format(new Date(item.starts_at))}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </section>
+      ) : null}
 
-      {showUpsell ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShoppingBag className="size-4" /> 2. Quer levar um produto?
-            </CardTitle>
-            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-              <Sparkles className="size-3.5" /> Selecionados especialmente pela
-              barbearia.
-            </p>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
+      {/* Produtos (upsell Plus) */}
+      {showUpsell && slot ? (
+        <section>
+          <StepTitle
+            number={4}
+            title="Quer levar um produto?"
+            icon={<ShoppingBag className="size-4" />}
+            optional
+          />
+          <div className="mt-4 grid gap-2.5">
             {products.map((product) => {
               const quantity = cart[product.id] ?? 0;
               return (
                 <div
                   key={product.id}
-                  className="flex items-center gap-3 rounded-xl border p-3"
+                  className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white/50 p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {product.name}
                     </p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {product.description || "Produto da casa"}
-                    </p>
-                    <p className="text-primary mt-1 font-mono text-sm">
+                    <p className="mt-0.5 font-mono text-sm font-semibold text-[var(--tenant-secondary)]">
                       {currency.format(Number(product.price))}
                     </p>
                   </div>
                   {quantity > 0 ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label={`Remover ${product.name}`}
+                    <div className="flex items-center gap-2">
+                      <QuantityButton
+                        label={`Remover ${product.name}`}
                         onClick={() => removeProduct(product.id)}
                       >
-                        <Minus />
-                      </Button>
-                      <span className="w-6 text-center font-mono text-sm">
+                        <Minus className="size-4" />
+                      </QuantityButton>
+                      <span className="w-5 text-center font-mono text-sm font-semibold">
                         {quantity}
                       </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label={`Adicionar ${product.name}`}
+                      <QuantityButton
+                        label={`Adicionar ${product.name}`}
                         onClick={() => addProduct(product.id)}
                       >
-                        <Plus />
-                      </Button>
+                        <Plus className="size-4" />
+                      </QuantityButton>
                     </div>
                   ) : (
-                    <Button
+                    <button
                       type="button"
-                      variant="secondary"
-                      size="sm"
                       onClick={() => addProduct(product.id)}
+                      className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-4 text-sm font-medium transition-colors hover:bg-black/[.04] active:scale-[.97]"
                     >
-                      <Plus /> Adicionar
-                    </Button>
+                      <Plus className="size-4" /> Adicionar
+                    </button>
                   )}
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">
-            {showUpsell ? "3." : "2."} Seus dados
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
-            <Input id="name" name="name" autoComplete="name" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">WhatsApp</Label>
-            <Input
-              id="phone"
-              name="phone"
-              inputMode="tel"
-              autoComplete="tel"
-              required
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="email">E-mail (opcional)</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="notes">Observação (opcional)</Label>
-            <Textarea id="notes" name="notes" />
-          </div>
-          {slot ? (
-            <div className="bg-muted/40 flex items-center justify-between rounded-lg border px-4 py-3 sm:col-span-2">
-              <span className="flex items-center gap-2 text-sm">
-                <Clock3 className="size-4" />
-                {selectedService?.name}
-                {cartItems.length ? ` + ${cartItems.length} produto(s)` : ""}
-              </span>
-              <span className="font-mono text-sm font-semibold">
-                {currency.format(orderTotal)}
-              </span>
+      {/* Seus dados */}
+      {slot ? (
+        <section>
+          <StepTitle number={showUpsell ? 5 : 4} title="Seus dados" />
+          <div className="mt-4 grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                name="name"
+                autoComplete="name"
+                placeholder="Seu nome"
+                required
+                className={inputClass}
+              />
             </div>
-          ) : null}
-          <Button
-            className="sm:col-span-2"
-            size="lg"
-            disabled={!slot || loading}
-          >
-            {loading ? <LoaderCircle className="animate-spin" /> : null}{" "}
-            Confirmar agendamento
-          </Button>
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="phone">WhatsApp</Label>
+              <Input
+                id="phone"
+                name="phone"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="(11) 98765-4321"
+                required
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail (opcional)</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="voce@email.com"
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observação (opcional)</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                placeholder="Alguma preferência?"
+                className="min-h-20 rounded-xl bg-white/60 text-base"
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {message ? (
+        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm text-red-700">
+          {message}
+        </p>
+      ) : null}
+
+      {/* Resumo fixo + confirmação */}
+      {serviceId ? (
+        <div className="sticky bottom-3 z-30">
+          <div className="flex items-center gap-3 rounded-2xl bg-[var(--tenant-secondary)] p-3 pl-5 text-[var(--tenant-on-secondary)] shadow-xl shadow-black/25">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs opacity-70">
+                {selectedService?.name}
+                {slot
+                  ? ` · ${timeFormat.format(new Date(slot))}`
+                  : professionalId
+                    ? " · escolha o horário"
+                    : " · escolha o profissional"}
+                {cartItems.length ? ` · ${cartItems.length} produto(s)` : ""}
+              </p>
+              <p className="font-mono text-lg font-semibold">
+                {currency.format(orderTotal)}
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={!slot || submitting}
+              className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-[var(--tenant-primary)] px-6 text-[15px] font-semibold text-[var(--tenant-on-primary)] transition-all not-disabled:hover:opacity-90 not-disabled:active:scale-[.98] disabled:opacity-40"
+            >
+              {submitting ? (
+                <LoaderCircle className="size-4.5 animate-spin" />
+              ) : (
+                <CalendarCheck2 className="size-4.5" />
+              )}
+              Confirmar
+            </button>
+          </div>
+        </div>
+      ) : null}
     </form>
+  );
+}
+
+function StepTitle({
+  number,
+  title,
+  icon,
+  optional = false,
+}: {
+  number: number;
+  title: string;
+  icon?: React.ReactNode;
+  optional?: boolean;
+}) {
+  return (
+    <h2 className="flex items-center gap-2.5 text-base font-semibold tracking-tight">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--tenant-secondary)] text-xs font-semibold text-[var(--tenant-on-secondary)]">
+        {number}
+      </span>
+      {icon}
+      {title}
+      {optional ? (
+        <span className="text-xs font-normal opacity-45">opcional</span>
+      ) : null}
+    </h2>
+  );
+}
+
+function QuantityButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="grid size-9 place-items-center rounded-full border border-black/15 transition-colors hover:bg-black/[.04] active:scale-[.95]"
+    >
+      {children}
+    </button>
   );
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <dt className="text-muted-foreground text-sm capitalize">{label}</dt>
+    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+      <dt className="text-sm opacity-55">{label}</dt>
       <dd className="text-right text-sm font-medium capitalize">{value}</dd>
     </div>
   );

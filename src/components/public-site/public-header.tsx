@@ -1,34 +1,47 @@
 import Link from "next/link";
-import { MapPin, Scissors } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { Scissors } from "lucide-react";
 import type { PublicBarbershop } from "@/types/domain";
 
-export function PublicHeader({ data }: { data: PublicBarbershop }) {
+export function PublicHeader({
+  data,
+  hideCta = false,
+}: {
+  data: PublicBarbershop;
+  hideCta?: boolean;
+}) {
   return (
-    <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6">
-      <Link
-        href={`/${data.barbershop.slug}`}
-        className="flex items-center gap-3"
-      >
-        <span className="grid size-10 place-items-center rounded-full bg-[var(--tenant-primary)] text-[var(--tenant-secondary)]">
-          <Scissors className="size-4" />
-        </span>
-        <span className="font-semibold tracking-tight">
-          {data.barbershop.name}
-        </span>
-      </Link>
-      <div className="flex items-center gap-3">
-        {data.settings.address ? (
-          <span className="hidden items-center gap-2 text-xs opacity-65 md:flex">
-            <MapPin className="size-3.5" /> {data.settings.address}
-          </span>
-        ) : null}
-        <Button
-          asChild
-          className="bg-[var(--tenant-primary)] text-[var(--tenant-secondary)] hover:opacity-90"
+    <header className="sticky top-0 z-40 border-b border-black/[.06] bg-[var(--tenant-bg)]/85 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+        <Link
+          href={`/${data.barbershop.slug}`}
+          className="flex min-w-0 items-center gap-2.5"
         >
-          <Link href={`/${data.barbershop.slug}/agendar`}>Agendar horário</Link>
-        </Button>
+          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)]">
+            {data.barbershop.logoUrl ? (
+              <Image
+                src={data.barbershop.logoUrl}
+                alt=""
+                width={36}
+                height={36}
+                className="size-full object-cover"
+              />
+            ) : (
+              <Scissors className="size-4" />
+            )}
+          </span>
+          <span className="truncate text-[15px] font-semibold tracking-tight">
+            {data.barbershop.name}
+          </span>
+        </Link>
+        {hideCta ? null : (
+          <Link
+            href={`/${data.barbershop.slug}/agendar`}
+            className="inline-flex h-10 shrink-0 items-center rounded-full bg-[var(--tenant-secondary)] px-5 text-sm font-medium text-[var(--tenant-on-secondary)] transition-opacity hover:opacity-85 active:scale-[.98]"
+          >
+            Agendar
+          </Link>
+        )}
       </div>
     </header>
   );
