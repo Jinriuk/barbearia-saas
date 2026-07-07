@@ -77,6 +77,41 @@ export function getUtcDayRange(timeZone: string, now = new Date()) {
   };
 }
 
+export function getUtcMonthRange(
+  timeZone: string,
+  yearMonth?: string,
+  now = new Date(),
+) {
+  const match = yearMonth?.match(/^(\d{4})-(\d{2})$/);
+  let year: number;
+  let month: number;
+  if (match && Number(match[2]) >= 1 && Number(match[2]) <= 12) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+  } else {
+    const local = partsInTimeZone(now, timeZone);
+    year = local.year;
+    month = local.month;
+  }
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return {
+    start: zonedMidnightToUtc(year, month, 1, timeZone),
+    end: zonedMidnightToUtc(nextYear, nextMonth, 1, timeZone),
+    year,
+    month,
+  };
+}
+
+export function getDateInTz(timeZone: string, now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 export function formatTimeInTz(date: Date | string, timeZone: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone,
