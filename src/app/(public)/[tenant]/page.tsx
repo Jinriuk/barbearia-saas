@@ -2,18 +2,26 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
+  ArrowUpRight,
+  CalendarCheck2,
   Clock3,
-  ExternalLink,
   MapPin,
-  Sparkles,
+  MessageCircle,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getPublicBarbershop } from "@/modules/barbershops/queries";
 import { STOCK_PHOTOS } from "@/lib/assets";
+import { tenantStyle } from "@/lib/colors";
+import { whatsAppHref } from "@/lib/contact";
+import { PublicFooter } from "@/components/public-site/public-footer";
 import { PublicHeader } from "@/components/public-site/public-header";
-import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
+
+const currency = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
 export default async function TenantPublicPage({
   params,
@@ -24,126 +32,166 @@ export default async function TenantPublicPage({
   const data = await getPublicBarbershop(tenant);
   if (!data) notFound();
 
-  const style = {
-    "--tenant-primary": data.settings.primaryColor,
-    "--tenant-secondary": data.settings.secondaryColor,
-    "--tenant-bg": data.settings.backgroundColor,
-  } as React.CSSProperties;
+  const whatsapp = whatsAppHref(data.settings.whatsappNumber);
 
   return (
     <main
-      style={style}
+      style={tenantStyle(data.settings)}
       className="min-h-screen bg-[var(--tenant-bg)] text-[var(--tenant-secondary)]"
     >
       <PublicHeader data={data} />
-      <section className="relative mx-auto grid min-h-[620px] max-w-7xl items-center gap-12 overflow-hidden px-5 py-16 lg:grid-cols-[1fr_.8fr]">
-        <div className="relative z-10 max-w-3xl">
-          <p className="mb-5 text-xs font-semibold tracking-[0.22em] uppercase opacity-55">
-            Agenda aberta · {data.barbershop.name}
+
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-5 pt-10 pb-14 sm:pt-16 lg:grid lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:gap-14 lg:pb-20">
+        <div>
+          <p className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.22em] uppercase opacity-60">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--tenant-primary)] opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-[var(--tenant-primary)]" />
+            </span>
+            Agenda aberta
           </p>
-          <h1 className="text-5xl leading-[.95] font-semibold tracking-[-0.055em] text-balance sm:text-7xl">
+          <h1 className="mt-5 text-[2.6rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
             {data.settings.heroTitle}
           </h1>
-          <p className="mt-7 max-w-xl text-lg leading-8 opacity-65">
+          <p className="mt-5 max-w-md text-base leading-7 opacity-70 sm:text-lg sm:leading-8">
             {data.settings.heroSubtitle}
           </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-9 bg-[var(--tenant-secondary)] text-[var(--tenant-bg)] hover:opacity-90"
-          >
-            <Link href={`/${tenant}/agendar`}>
-              Escolher meu horário <ArrowRight />
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href={`/${tenant}/agendar`}
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] px-8 text-[15px] font-medium text-[var(--tenant-on-secondary)] shadow-lg shadow-black/10 transition-all hover:opacity-90 active:scale-[.98]"
+            >
+              <CalendarCheck2 className="size-4.5" />
+              Agendar horário
             </Link>
-          </Button>
+            {whatsapp ? (
+              <a
+                href={whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-black/15 px-7 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
+              >
+                <MessageCircle className="size-4.5" />
+                WhatsApp
+              </a>
+            ) : null}
+          </div>
+
+          {data.settings.address ? (
+            <p className="mt-7 flex items-center gap-2 text-sm opacity-60">
+              <MapPin className="size-4 shrink-0" />
+              {data.settings.address}
+            </p>
+          ) : null}
         </div>
-        <div className="relative hidden aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-[var(--tenant-secondary)] lg:block">
+
+        <div className="relative mt-10 aspect-[4/3] overflow-hidden rounded-3xl bg-[var(--tenant-secondary)] sm:aspect-[16/9] lg:mt-0 lg:aspect-[4/5]">
           <Image
             src={data.settings.bannerUrl || STOCK_PHOTOS.barberChair}
             alt={`Ambiente da ${data.barbershop.name}`}
             fill
-            sizes="(min-width: 1024px) 40vw, 0px"
+            sizes="(min-width: 1024px) 42vw, 100vw"
             className="object-cover"
             priority
           />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(160deg, ${data.settings.secondaryColor}cc 0%, transparent 45%, ${data.settings.primaryColor}55 100%)`,
-            }}
-          />
-          <div className="absolute right-6 bottom-6 left-6 rounded-2xl bg-black/45 p-4 text-white backdrop-blur-sm">
-            <p className="flex items-center gap-2 text-xs tracking-[.18em] uppercase opacity-80">
-              <Sparkles className="size-3.5" /> Reserva online
-            </p>
-            <p className="mt-1 text-sm leading-6">
-              Escolha o serviço, o profissional e o horário — sem fila e sem
-              telefone.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="servicos"
-        className="bg-[var(--tenant-secondary)] px-5 py-20 text-[var(--tenant-bg)]"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-10 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs tracking-[.2em] text-[var(--tenant-primary)] uppercase">
-                Menu da casa
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+          <div className="absolute right-4 bottom-4 left-4 flex items-center gap-3 text-white">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 backdrop-blur-sm">
+              <CalendarCheck2 className="size-4.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                Reserva em menos de 1 minuto
               </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-                Serviços
-              </h2>
+              <p className="truncate text-xs opacity-75">
+                Escolha o serviço, o profissional e o horário.
+              </p>
             </div>
-            <Link href={`/${tenant}/servicos`} className="text-sm opacity-60">
-              Ver todos
-            </Link>
-          </div>
-          <div className="grid gap-px overflow-hidden rounded-3xl bg-white/10 md:grid-cols-2 lg:grid-cols-3">
-            {data.services.slice(0, 6).map((service) => (
-              <div
-                key={service.id}
-                className="bg-[var(--tenant-secondary)] p-7"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-medium">{service.name}</h3>
-                  <span className="font-mono text-sm text-[var(--tenant-primary)]">
-                    R$ {Number(service.price).toFixed(2)}
-                  </span>
-                </div>
-                <p className="mt-3 min-h-12 text-sm leading-6 opacity-55">
-                  {service.description ||
-                    "Cuidado e acabamento no tempo certo."}
-                </p>
-                <p className="mt-6 flex items-center gap-2 text-xs opacity-50">
-                  <Clock3 className="size-3.5" /> {service.durationMinutes}{" "}
-                  minutos
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      <section id="profissionais" className="mx-auto max-w-7xl px-5 py-20">
-        <p className="text-xs tracking-[.2em] uppercase opacity-50">
-          Quem cuida
+      {/* Serviços */}
+      <section id="servicos" className="mx-auto max-w-6xl px-5">
+        <div className="overflow-hidden rounded-3xl bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)]">
+          <div className="p-6 sm:p-10">
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-[var(--tenant-primary)] uppercase">
+              Menu da casa
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Serviços
+            </h2>
+
+            <ul className="mt-7 divide-y divide-current/10">
+              {data.services.map((service) => (
+                <li key={service.id}>
+                  <Link
+                    href={`/${tenant}/agendar?servico=${service.id}`}
+                    className="group flex items-center gap-4 py-5 transition-opacity hover:opacity-80"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{service.name}</p>
+                      {service.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm leading-6 opacity-55">
+                          {service.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 flex items-center gap-1.5 text-xs opacity-50">
+                        <Clock3 className="size-3.5" />
+                        {service.durationMinutes} min
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="font-mono text-sm font-semibold text-[var(--tenant-primary)]">
+                        {currency.format(Number(service.price))}
+                      </span>
+                      <span className="grid size-9 place-items-center rounded-full border border-current/15 transition-transform group-hover:translate-x-0.5">
+                        <ArrowRight className="size-4" />
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Profissionais */}
+      <section
+        id="profissionais"
+        className="mx-auto max-w-6xl px-5 py-14 sm:py-20"
+      >
+        <p className="text-[11px] font-semibold tracking-[0.22em] uppercase opacity-50">
+          Quem cuida de você
         </p>
-        <h2 className="mt-3 text-3xl font-semibold">Profissionais</h2>
-        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+          Profissionais
+        </h2>
+
+        <div className="-mx-5 mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
           {data.professionals.map((professional) => (
             <div
               key={professional.id}
-              className="rounded-3xl border border-black/10 p-6"
+              className="min-w-[78%] snap-start rounded-3xl border border-black/10 bg-white/40 p-6 sm:min-w-0"
             >
-              <div className="grid size-12 place-items-center rounded-full bg-[var(--tenant-secondary)] font-semibold text-[var(--tenant-bg)]">
-                {professional.name.slice(0, 1)}
-              </div>
-              <h3 className="mt-5 font-medium">{professional.name}</h3>
-              <p className="mt-2 text-sm leading-6 opacity-60">
+              <span className="grid size-14 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-lg font-semibold text-[var(--tenant-on-secondary)]">
+                {professional.avatarUrl ? (
+                  <Image
+                    src={professional.avatarUrl}
+                    alt={professional.name}
+                    width={56}
+                    height={56}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  professional.name.slice(0, 1)
+                )}
+              </span>
+              <h3 className="mt-5 text-lg font-medium">{professional.name}</h3>
+              <p className="mt-1.5 text-sm leading-6 opacity-60">
                 {professional.bio ||
                   "Atendimento cuidadoso, do início ao acabamento."}
               </p>
@@ -152,30 +200,26 @@ export default async function TenantPublicPage({
         </div>
       </section>
 
-      <footer className="border-t border-black/10 px-5 py-10">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 text-sm opacity-65 sm:flex-row">
-          <span>
-            © {new Date().getFullYear()} {data.barbershop.name}
-          </span>
-          <div className="flex gap-5">
-            {data.settings.address ? (
-              <span className="flex gap-2">
-                <MapPin className="size-4" />
-                {data.settings.address}
-              </span>
-            ) : null}
-            {data.settings.instagramUrl ? (
-              <a
-                href={data.settings.instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ExternalLink className="size-4" />
-              </a>
-            ) : null}
-          </div>
+      {/* CTA final */}
+      <section className="mx-auto max-w-6xl px-5 pb-14 sm:pb-20">
+        <div className="rounded-3xl bg-[var(--tenant-primary)] px-6 py-12 text-center text-[var(--tenant-on-primary)] sm:py-16">
+          <h2 className="mx-auto max-w-md text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            Seu horário te espera.
+          </h2>
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 opacity-80 sm:text-base">
+            Sem fila e sem telefone: reserve agora e chegue na hora certa.
+          </p>
+          <Link
+            href={`/${tenant}/agendar`}
+            className="mt-8 inline-flex h-13 items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] px-8 text-[15px] font-medium text-[var(--tenant-on-secondary)] shadow-lg shadow-black/15 transition-all hover:opacity-90 active:scale-[.98]"
+          >
+            Escolher meu horário
+            <ArrowUpRight className="size-4.5" />
+          </Link>
         </div>
-      </footer>
+      </section>
+
+      <PublicFooter data={data} />
     </main>
   );
 }
