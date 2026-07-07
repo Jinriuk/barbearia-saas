@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can, type Permission } from "@/lib/permissions";
-import { formatTimeInTz, getUtcDayRange } from "@/lib/dates";
+import {
+  formatTimeInTz,
+  getUtcDayRange,
+  getUtcMonthRange,
+  getUtcWeekRange,
+} from "@/lib/dates";
 import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
@@ -96,6 +101,26 @@ export default async function DashboardPage() {
   const canFinance = can(tenant.role, "finance:view");
   const supabase = await createSupabaseServerClient();
   const { start: dayStart, end: dayEnd } = getUtcDayRange(tenant.timezone);
+  const { start: weekStart } = getUtcWeekRange(tenant.timezone);
+  const { start: monthStart } = getUtcMonthRange(tenant.timezone);
+
+  // O mês é o intervalo mais antigo; buscamos as pagas do mês uma vez só e
+  // fatiamos por dia/semana em memória, evitando três consultas.
+  const incomeSince = (from: Date) =>
+    canFinance
+      ? supabase
+          .from("financial_transactions")
+          .select("amount,paid_at")
+          .eq("barbershop_id", tenant.id)
+          .eq("type", "income")
+          .eq("status", "paid")
+          .gte("paid_at", from.toISOString())
+          .lt("paid_at", dayEnd.toISOString())
+      : Promise.resolve({
+          data: [] as { amount: number; paid_at: string }[],
+        });
+
+  const rangeStart = weekStart < monthStart ? weekStart : monthStart;
 
   const [appointmentsRes, financeRes] = await Promise.all([
     supabase
@@ -107,20 +132,14 @@ export default async function DashboardPage() {
       .gte("starts_at", dayStart.toISOString())
       .lt("starts_at", dayEnd.toISOString())
       .order("starts_at"),
-    canFinance
-      ? supabase
-          .from("financial_transactions")
-          .select("amount")
-          .eq("barbershop_id", tenant.id)
-          .eq("type", "income")
-          .eq("status", "paid")
-          .gte("paid_at", dayStart.toISOString())
-          .lt("paid_at", dayEnd.toISOString())
-      : Promise.resolve({ data: [] as { amount: number }[] }),
+    incomeSince(rangeStart),
   ]);
 
   const appointmentRows = appointmentsRes.data ?? [];
-  const paidRows = (financeRes.data ?? []) as { amount: number }[];
+  const paidRows = (financeRes.data ?? []) as {
+    amount: number;
+    paid_at: string;
+  }[];
 
   const appointments = appointmentRows.map((item) => ({
     id: item.id as string,
@@ -133,25 +152,31 @@ export default async function DashboardPage() {
 
   const scheduled = appointments.filter((item) => item.status !== "canceled");
   const completed = scheduled.filter((item) => item.status === "completed");
-  const revenueToday = paidRows.reduce(
-    (total, row) => total + Number(row.amount),
-    0,
-  );
+  const sumFrom = (from: Date) =>
+    paidRows.reduce(
+      (total, row) =>
+        new Date(row.paid_at) >= from ? total + Number(row.amount) : total,
+      0,
+    );
+  const revenueToday = sumFrom(dayStart);
+  const revenueWeek = sumFrom(weekStart);
+  const revenueMonth = sumFrom(monthStart);
+
+  const revenueCards = canFinance
+    ? [
+        { label: "Recebido hoje", value: formatBRL(revenueToday) },
+        { label: "Recebido na semana", value: formatBRL(revenueWeek) },
+        { label: "Recebido no mês", value: formatBRL(revenueMonth) },
+      ]
+    : [];
 
   const metrics = [
-    canFinance
-      ? {
-          label: "Recebido hoje",
-          value: formatBRL(revenueToday),
-          icon: Wallet,
-          accent: true,
-        }
-      : {
-          label: "Atendimentos hoje",
-          value: String(scheduled.length),
-          icon: CalendarDays,
-          accent: true,
-        },
+    {
+      label: "Atendimentos hoje",
+      value: String(scheduled.length),
+      icon: CalendarDays,
+      accent: true,
+    },
     {
       label: "Clientes agendados",
       value: String(scheduled.length),
@@ -183,6 +208,26 @@ export default async function DashboardPage() {
         description="Tudo o que importa hoje, em um lugar só."
         action={<PlanBadge plan={tenant.plan} />}
       />
+
+      {revenueCards.length ? (
+        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+          {revenueCards.map((card) => (
+            <Card key={card.label} className="border-primary/40">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-muted-foreground text-sm font-medium">
+                  {card.label}
+                </CardTitle>
+                <Wallet className="text-primary size-4" />
+              </CardHeader>
+              <CardContent>
+                <p className="font-mono text-2xl font-semibold sm:text-3xl">
+                  {card.value}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
