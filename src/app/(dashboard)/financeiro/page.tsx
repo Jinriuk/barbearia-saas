@@ -13,6 +13,10 @@ import { confirmPayment, revertPayment } from "@/modules/financial/actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
+import {
+  MonthlyRevenueChart,
+  type MonthlyRevenuePoint,
+} from "@/components/dashboard/monthly-revenue-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +78,29 @@ export default async function FinanceiroPage() {
     month,
   } = getUtcMonthRange(tenant.timezone);
 
-  const [{ data: appointmentRows }, { data: monthIncomeRows }] =
+  // Últimos 6 meses para o gráfico de evolução.
+  const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tenant.timezone,
+    year: "numeric",
+    month: "2-digit",
+  });
+  const monthShortFmt = new Intl.DateTimeFormat("pt-BR", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  const chartMonths = Array.from({ length: 6 }, (_, i) => {
+    const date = new Date(Date.UTC(year, month - 6 + i, 1));
+    return {
+      key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
+      label: monthShortFmt.format(date).replace(".", ""),
+    };
+  });
+  const { start: chartStart } = getUtcMonthRange(
+    tenant.timezone,
+    chartMonths[0].key,
+  );
+
+  const [{ data: appointmentRows }, { data: monthIncomeRows }, { data: chartRows }] =
     await Promise.all([
       supabase
         .from("appointments")
@@ -95,6 +121,16 @@ export default async function FinanceiroPage() {
         .eq("type", "income")
         .eq("status", "paid")
         .gte("paid_at", monthStart.toISOString())
+        .lt("paid_at", monthEnd.toISOString()),
+      supabase
+        .from("financial_transactions")
+        .select(
+          "amount,paid_at,appointment:appointments(appointment_products(quantity,unit_price))",
+        )
+        .eq("barbershop_id", tenant.id)
+        .eq("type", "income")
+        .eq("status", "paid")
+        .gte("paid_at", chartStart.toISOString())
         .lt("paid_at", monthEnd.toISOString()),
     ]);
 
@@ -169,6 +205,30 @@ export default async function FinanceiroPage() {
       byProduct.set(key, current);
     }
   }
+
+  // ---- Série mensal (6 meses) para o gráfico ----------------------------
+  const monthBuckets = new Map<string, { service: number; product: number }>(
+    chartMonths.map((m) => [m.key, { service: 0, product: 0 }]),
+  );
+  for (const row of chartRows ?? []) {
+    if (!row.paid_at) continue;
+    const key = monthKeyFmt.format(new Date(row.paid_at));
+    const bucket = monthBuckets.get(key);
+    if (!bucket) continue;
+    const appt = first(row.appointment);
+    const productRevenue = (appt?.appointment_products ?? []).reduce(
+      (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
+      0,
+    );
+    const total = Number(row.amount);
+    bucket.product += productRevenue;
+    bucket.service += Math.max(total - productRevenue, 0);
+  }
+  const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
+    label: m.label,
+    service: monthBuckets.get(m.key)?.service ?? 0,
+    product: monthBuckets.get(m.key)?.product ?? 0,
+  }));
 
   const professionals = [...byProfessional.values()].sort(
     (a, b) => b.total - a.total,
@@ -273,6 +333,17 @@ export default async function FinanceiroPage() {
           );
         })}
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">
+            Evolução da receita (6 meses)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MonthlyRevenueChart data={chartData} />
+        </CardContent>
+      </Card>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
