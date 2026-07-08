@@ -8,16 +8,21 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   if (await getTenantContext()) redirect("/dashboard");
   const params = await searchParams;
+  const planParam =
+    typeof params.plano === "string"
+      ? params.plano
+      : (user.user_metadata?.preferred_plan as string | undefined);
+  const defaultPlan = planParam === "plus" ? "plus" : "starter";
   return (
     <AuthCard
       title="Dê nome ao seu espaço"
       description="Esse nome e endereço formarão a primeira página pública."
       error={typeof params.error === "string" ? params.error : undefined}
     >
-      <OnboardingForm />
+      <OnboardingForm defaultPlan={defaultPlan} />
     </AuthCard>
   );
 }

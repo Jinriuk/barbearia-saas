@@ -64,7 +64,12 @@ export async function signUp(formData: FormData) {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { name: parsed.data.name },
+      // preferred_plan viaja no metadata para o onboarding pré-selecionar o
+      // plano escolhido na landing, mesmo passando pela confirmação de e-mail.
+      data: {
+        name: parsed.data.name,
+        preferred_plan: value(formData, "plano") === "plus" ? "plus" : "starter",
+      },
       emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
     },
   });
@@ -102,6 +107,7 @@ export async function createBarbershop(formData: FormData) {
     slug: value(formData, "slug").toLowerCase(),
   });
   if (!parsed.success) redirect("/onboarding?error=Revise+o+nome+e+o+endereço");
+  const plan = value(formData, "plan") === "plus" ? "plus" : "starter";
 
   // Slug automático: usa o informado ou gera a partir do nome, garantindo
   // que seja único (base, base-2, base-3…).
@@ -115,6 +121,7 @@ export async function createBarbershop(formData: FormData) {
   const { error } = await supabase.rpc("create_barbershop", {
     p_name: parsed.data.name,
     p_slug: slug,
+    p_plan: plan,
   });
   if (error) redirect("/onboarding?error=Esse+endereço+não+está+disponível");
   redirect("/dashboard");

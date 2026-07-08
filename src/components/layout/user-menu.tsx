@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Settings, UserCog } from "lucide-react";
+import { CreditCard, LogOut, Settings, UserCog } from "lucide-react";
 import { signOut } from "@/modules/auth/actions";
 import {
   DropdownMenu,
@@ -56,11 +56,18 @@ export function UserMenu({
           </Link>
         </DropdownMenuItem>
         {canManageSettings ? (
-          <DropdownMenuItem asChild>
-            <Link href="/configuracoes">
-              <Settings /> Configurações
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/configuracoes">
+                <Settings /> Configurações
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/assinatura">
+                <CreditCard /> Assinatura
+              </Link>
+            </DropdownMenuItem>
+          </>
         ) : null}
         <DropdownMenuSeparator />
         <form action={signOut}>

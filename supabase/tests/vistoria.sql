@@ -15,9 +15,9 @@ values
   ('f0000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','vistoria-a@teste.dev','x', now(), '{"provider":"email"}','{"full_name":"Dono A"}', now(), now()),
   ('f0000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','vistoria-b@teste.dev','x', now(), '{"provider":"email"}','{"full_name":"Dono B"}', now(), now());
 
-insert into public.barbershops (id, owner_id, name, slug, plan) values
-  ('e0000000-0000-4000-8000-00000000000a', 'f0000000-0000-4000-8000-000000000001', 'Vistoria A', 'vistoria-a', 'standard'),
-  ('e0000000-0000-4000-8000-00000000000b', 'f0000000-0000-4000-8000-000000000002', 'Vistoria B', 'vistoria-b', 'plus');
+insert into public.barbershops (id, name, slug, plan) values
+  ('e0000000-0000-4000-8000-00000000000a', 'Vistoria A', 'vistoria-a', 'starter'),
+  ('e0000000-0000-4000-8000-00000000000b', 'Vistoria B', 'vistoria-b', 'plus');
 
 insert into public.memberships (barbershop_id, profile_id, role)
 select 'e0000000-0000-4000-8000-00000000000a', p.id, 'owner' from public.profiles p where p.auth_user_id = 'f0000000-0000-4000-8000-000000000001'
