@@ -80,14 +80,10 @@ export default async function FinanceiroPage() {
 
   const supabase = await createSupabaseServerClient();
   const { start: dayStart, end: dayEnd } = getUtcDayRange(tenant.timezone);
-  const {
-    start: monthStart,
-    end: monthEnd,
-    year,
-    month,
-  } = getUtcMonthRange(tenant.timezone);
+  const { start: monthStart, end: monthEnd, year, month } = getUtcMonthRange(
+    tenant.timezone,
+  );
 
-  // Últimos 6 meses para o gráfico de evolução.
   const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: tenant.timezone,
     year: "numeric",
@@ -109,41 +105,54 @@ export default async function FinanceiroPage() {
     chartMonths[0].key,
   );
 
-  const [{ data: appointmentRows }, { data: monthIncomeRows }, { data: chartRows }] =
-    await Promise.all([
-      supabase
-        .from("appointments")
-        .select(
-          "id,starts_at,status,client:clients(name),professional:professionals(name),service:services(name,price),appointment_products(quantity,unit_price),payments:financial_transactions(type,status)",
-        )
-        .eq("barbershop_id", tenant.id)
-        .gte("starts_at", dayStart.toISOString())
-        .lt("starts_at", dayEnd.toISOString())
-        .neq("status", "canceled")
-        .order("starts_at"),
-      supabase
-        .from("financial_transactions")
-        .select(
-          "amount,paid_at,appointment:appointments(professional:professionals(id,name),service:services(id,name),appointment_products(product_id,quantity,unit_price,product:products(name)))",
-        )
-        .eq("barbershop_id", tenant.id)
-        .eq("type", "income")
-        .eq("status", "paid")
-        .gte("paid_at", monthStart.toISOString())
-        .lt("paid_at", monthEnd.toISOString()),
-      supabase
-        .from("financial_transactions")
-        .select(
-          "amount,paid_at,appointment:appointments(appointment_products(quantity,unit_price))",
-        )
-        .eq("barbershop_id", tenant.id)
-        .eq("type", "income")
-        .eq("status", "paid")
-        .gte("paid_at", chartStart.toISOString())
-        .lt("paid_at", monthEnd.toISOString()),
-    ]);
+  const [
+    { data: appointmentRows },
+    { data: incomeRows },
+    { data: saleRows },
+    { data: chartRows },
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        "id,starts_at,status,client:clients(name),professional:professionals(name),service:services(name,price),payments:financial_transactions(category,type,status)",
+      )
+      .eq("barbershop_id", tenant.id)
+      .gte("starts_at", dayStart.toISOString())
+      .lt("starts_at", dayEnd.toISOString())
+      .neq("status", "canceled")
+      .order("starts_at"),
+    // Receita de serviço (e outros lançamentos) — produto é tratado à parte.
+    supabase
+      .from("financial_transactions")
+      .select(
+        "amount,category,appointment:appointments(professional:professionals(id,name),service:services(id,name))",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("type", "income")
+      .eq("status", "paid")
+      .neq("category", "product")
+      .gte("paid_at", monthStart.toISOString())
+      .lt("paid_at", monthEnd.toISOString()),
+    // Vendas de produto confirmadas no mês.
+    supabase
+      .from("appointment_products")
+      .select(
+        "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(professional:professionals(id,name))",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "confirmed")
+      .gte("confirmed_at", monthStart.toISOString())
+      .lt("confirmed_at", monthEnd.toISOString()),
+    supabase
+      .from("financial_transactions")
+      .select("amount,category,paid_at")
+      .eq("barbershop_id", tenant.id)
+      .eq("type", "income")
+      .eq("status", "paid")
+      .gte("paid_at", chartStart.toISOString())
+      .lt("paid_at", monthEnd.toISOString()),
+  ]);
 
-  // ---- Agregados do mês -------------------------------------------------
   const byProfessional = new Map<string, ProfessionalAgg>();
   const byService = new Map<string, ServiceAgg>();
   const byProduct = new Map<string, ProductAgg>();
@@ -153,40 +162,34 @@ export default async function FinanceiroPage() {
   let attendedCount = 0;
   let productUnits = 0;
 
-  for (const row of monthIncomeRows ?? []) {
-    const total = Number(row.amount);
+  const professionalEntry = (id: string, name: string) => {
+    const current = byProfessional.get(id) ?? {
+      name,
+      count: 0,
+      service: 0,
+      product: 0,
+      total: 0,
+    };
+    byProfessional.set(id, current);
+    return current;
+  };
+
+  for (const row of incomeRows ?? []) {
+    const amount = Number(row.amount);
     const appt = first(row.appointment);
     if (!appt) {
-      monthOtherRevenue += total;
+      monthOtherRevenue += amount;
       continue;
     }
-    const products = appt.appointment_products ?? [];
-    const productRevenue = products.reduce(
-      (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
-      0,
-    );
-    const serviceRevenue = Math.max(total - productRevenue, 0);
-
+    monthServiceRevenue += amount;
     attendedCount += 1;
-    monthServiceRevenue += serviceRevenue;
-    monthProductRevenue += productRevenue;
-
     const professional = first(appt.professional);
     if (professional) {
-      const current = byProfessional.get(professional.id) ?? {
-        name: professional.name,
-        count: 0,
-        service: 0,
-        product: 0,
-        total: 0,
-      };
-      current.count += 1;
-      current.service += serviceRevenue;
-      current.product += productRevenue;
-      current.total += total;
-      byProfessional.set(professional.id, current);
+      const entry = professionalEntry(professional.id, professional.name);
+      entry.count += 1;
+      entry.service += amount;
+      entry.total += amount;
     }
-
     const service = first(appt.service);
     if (service) {
       const current = byService.get(service.id) ?? {
@@ -195,43 +198,37 @@ export default async function FinanceiroPage() {
         revenue: 0,
       };
       current.count += 1;
-      current.revenue += serviceRevenue;
+      current.revenue += amount;
       byService.set(service.id, current);
-    }
-
-    for (const item of products) {
-      const quantity = Number(item.quantity);
-      const revenue = quantity * Number(item.unit_price);
-      productUnits += quantity;
-      const key = item.product_id as string;
-      const current = byProduct.get(key) ?? {
-        name: first(item.product)?.name ?? "Produto",
-        qty: 0,
-        revenue: 0,
-      };
-      current.qty += quantity;
-      current.revenue += revenue;
-      byProduct.set(key, current);
     }
   }
 
-  // ---- Série mensal (6 meses) para o gráfico ----------------------------
+  for (const row of saleRows ?? []) {
+    const revenue = Number(row.quantity) * Number(row.unit_price);
+    monthProductRevenue += revenue;
+    productUnits += Number(row.quantity);
+    const name = first(row.product)?.name ?? "Produto";
+    const current = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
+    current.qty += Number(row.quantity);
+    current.revenue += revenue;
+    byProduct.set(name, current);
+    const professional = first(first(row.appointment)?.professional);
+    if (professional) {
+      const entry = professionalEntry(professional.id, professional.name);
+      entry.product += revenue;
+      entry.total += revenue;
+    }
+  }
+
   const monthBuckets = new Map<string, { service: number; product: number }>(
     chartMonths.map((m) => [m.key, { service: 0, product: 0 }]),
   );
   for (const row of chartRows ?? []) {
     if (!row.paid_at) continue;
-    const key = monthKeyFmt.format(new Date(row.paid_at));
-    const bucket = monthBuckets.get(key);
+    const bucket = monthBuckets.get(monthKeyFmt.format(new Date(row.paid_at)));
     if (!bucket) continue;
-    const appt = first(row.appointment);
-    const productRevenue = (appt?.appointment_products ?? []).reduce(
-      (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
-      0,
-    );
-    const total = Number(row.amount);
-    bucket.product += productRevenue;
-    bucket.service += Math.max(total - productRevenue, 0);
+    if (row.category === "product") bucket.product += Number(row.amount);
+    else bucket.service += Number(row.amount);
   }
   const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
     label: m.label,
@@ -272,24 +269,20 @@ export default async function FinanceiroPage() {
     },
   ];
 
-  // ---- Atendimentos de hoje (confirmação de pagamento) ------------------
   const dayAppointments = (appointmentRows ?? []).map((item) => {
     const service = first(item.service);
-    const productsTotal = (item.appointment_products ?? []).reduce(
-      (total, product) =>
-        total + Number(product.quantity) * Number(product.unit_price),
-      0,
-    );
     const paid = (item.payments ?? []).some(
-      (payment) => payment.type === "income" && payment.status === "paid",
+      (payment) =>
+        payment.type === "income" &&
+        payment.status === "paid" &&
+        payment.category === "service",
     );
     return {
       id: item.id,
       clientName: first(item.client)?.name ?? "Cliente",
       professionalName: first(item.professional)?.name ?? "",
       serviceName: service?.name ?? "Serviço",
-      productCount: (item.appointment_products ?? []).length,
-      amount: Number(service?.price ?? 0) + productsTotal,
+      amount: Number(service?.price ?? 0),
       status: item.status as string,
       paid,
     };
@@ -489,7 +482,8 @@ export default async function FinanceiroPage() {
             </Table>
           ) : (
             <p className="text-muted-foreground py-6 text-center text-sm">
-              Nenhum produto vendido neste mês.
+              Nenhum produto vendido neste mês. Confirme reservas em Produtos e
+              Estoque.
             </p>
           )}
         </CardContent>
@@ -513,77 +507,71 @@ export default async function FinanceiroPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dayAppointments.map((item) => {
-                  const paid = item.paid;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <p className="font-medium">{item.clientName}</p>
-                        <AppointmentStatusBadge
-                          status={item.status}
-                          className="mt-1"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{item.serviceName}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {item.professionalName
-                            ? `com ${item.professionalName}`
-                            : ""}
-                          {item.productCount
-                            ? ` · +${item.productCount} produto(s)`
-                            : ""}
-                        </p>
-                      </TableCell>
-                      <TableCell className="font-mono font-medium">
-                        {formatBRL(item.amount)}
-                      </TableCell>
-                      <TableCell>
-                        {paid ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                              Recebido
-                            </Badge>
-                            <form action={revertPayment}>
-                              <input
-                                type="hidden"
-                                name="appointmentId"
-                                value={item.id}
-                              />
-                              <Button size="sm" variant="ghost">
-                                Estornar
-                              </Button>
-                            </form>
-                          </div>
-                        ) : (
-                          <form
-                            action={confirmPayment}
-                            className="flex flex-wrap items-center gap-2"
-                          >
+                {dayAppointments.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <p className="font-medium">{item.clientName}</p>
+                      <AppointmentStatusBadge
+                        status={item.status}
+                        className="mt-1"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm">{item.serviceName}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {item.professionalName
+                          ? `com ${item.professionalName}`
+                          : ""}
+                      </p>
+                    </TableCell>
+                    <TableCell className="font-mono font-medium">
+                      {formatBRL(item.amount)}
+                    </TableCell>
+                    <TableCell>
+                      {item.paid ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            Recebido
+                          </Badge>
+                          <form action={revertPayment}>
                             <input
                               type="hidden"
                               name="appointmentId"
                               value={item.id}
                             />
-                            <select
-                              name="paymentMethod"
-                              defaultValue="pix"
-                              aria-label="Forma de pagamento"
-                              className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
-                            >
-                              {PAYMENT_METHODS.map((method) => (
-                                <option key={method.value} value={method.value}>
-                                  {method.label}
-                                </option>
-                              ))}
-                            </select>
-                            <Button size="sm">Confirmar pagamento</Button>
+                            <Button size="sm" variant="ghost">
+                              Estornar
+                            </Button>
                           </form>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </div>
+                      ) : (
+                        <form
+                          action={confirmPayment}
+                          className="flex flex-wrap items-center gap-2"
+                        >
+                          <input
+                            type="hidden"
+                            name="appointmentId"
+                            value={item.id}
+                          />
+                          <select
+                            name="paymentMethod"
+                            defaultValue="pix"
+                            aria-label="Forma de pagamento"
+                            className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                          >
+                            {PAYMENT_METHODS.map((method) => (
+                              <option key={method.value} value={method.value}>
+                                {method.label}
+                              </option>
+                            ))}
+                          </select>
+                          <Button size="sm">Confirmar pagamento</Button>
+                        </form>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           ) : (

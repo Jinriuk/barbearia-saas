@@ -68,34 +68,46 @@ export default async function FinancialReportPage({
   );
 
   const supabase = await createSupabaseServerClient();
-  const [{ data: shopData }, { data: incomeRows }, { data: chartRows }] =
-    await Promise.all([
-      supabase
-        .from("barbershops")
-        .select("name,logo_url")
-        .eq("id", tenant.id)
-        .maybeSingle(),
-      supabase
-        .from("financial_transactions")
-        .select(
-          "amount,paid_at,payment_method,appointment:appointments(client_id,professional:professionals(id,name),service:services(id,name),appointment_products(product_id,quantity,unit_price,product:products(name)))",
-        )
-        .eq("barbershop_id", tenant.id)
-        .eq("type", "income")
-        .eq("status", "paid")
-        .gte("paid_at", start.toISOString())
-        .lt("paid_at", end.toISOString()),
-      supabase
-        .from("financial_transactions")
-        .select(
-          "amount,paid_at,appointment:appointments(appointment_products(quantity,unit_price))",
-        )
-        .eq("barbershop_id", tenant.id)
-        .eq("type", "income")
-        .eq("status", "paid")
-        .gte("paid_at", chartStart.toISOString())
-        .lt("paid_at", end.toISOString()),
-    ]);
+  const [
+    { data: shopData },
+    { data: incomeRows },
+    { data: saleRows },
+    { data: chartRows },
+  ] = await Promise.all([
+    supabase
+      .from("barbershops")
+      .select("name,logo_url")
+      .eq("id", tenant.id)
+      .maybeSingle(),
+    supabase
+      .from("financial_transactions")
+      .select(
+        "amount,payment_method,category,appointment:appointments(client_id,professional:professionals(id,name),service:services(id,name))",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("type", "income")
+      .eq("status", "paid")
+      .neq("category", "product")
+      .gte("paid_at", start.toISOString())
+      .lt("paid_at", end.toISOString()),
+    supabase
+      .from("appointment_products")
+      .select(
+        "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(client_id,professional:professionals(id,name))",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "confirmed")
+      .gte("confirmed_at", start.toISOString())
+      .lt("confirmed_at", end.toISOString()),
+    supabase
+      .from("financial_transactions")
+      .select("amount,category,paid_at")
+      .eq("barbershop_id", tenant.id)
+      .eq("type", "income")
+      .eq("status", "paid")
+      .gte("paid_at", chartStart.toISOString())
+      .lt("paid_at", end.toISOString()),
+  ]);
 
   const shopName = shopData?.name ?? tenant.name;
   const logoUrl = shopData?.logo_url ?? null;
@@ -114,6 +126,18 @@ export default async function FinancialReportPage({
   let attended = 0;
   let productUnits = 0;
 
+  const professionalEntry = (id: string, name: string) => {
+    const cur = byProfessional.get(id) ?? {
+      name,
+      count: 0,
+      service: 0,
+      product: 0,
+      total: 0,
+    };
+    byProfessional.set(id, cur);
+    return cur;
+  };
+
   for (const row of incomeRows ?? []) {
     const total = Number(row.amount);
     byMethod.set(
@@ -125,31 +149,15 @@ export default async function FinancialReportPage({
       otherRevenue += total;
       continue;
     }
-    const products = appt.appointment_products ?? [];
-    const prodRev = products.reduce(
-      (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
-      0,
-    );
-    const svcRev = Math.max(total - prodRev, 0);
     attended += 1;
-    serviceRevenue += svcRev;
-    productRevenue += prodRev;
+    serviceRevenue += total;
     if (appt.client_id) clientSet.add(appt.client_id as string);
-
     const professional = first(appt.professional);
     if (professional) {
-      const cur = byProfessional.get(professional.id) ?? {
-        name: professional.name,
-        count: 0,
-        service: 0,
-        product: 0,
-        total: 0,
-      };
+      const cur = professionalEntry(professional.id, professional.name);
       cur.count += 1;
-      cur.service += svcRev;
-      cur.product += prodRev;
+      cur.service += total;
       cur.total += total;
-      byProfessional.set(professional.id, cur);
     }
     const service = first(appt.service);
     if (service) {
@@ -159,21 +167,27 @@ export default async function FinancialReportPage({
         revenue: 0,
       };
       cur.count += 1;
-      cur.revenue += svcRev;
+      cur.revenue += total;
       byService.set(service.id, cur);
     }
-    for (const item of products) {
-      const qty = Number(item.quantity);
-      productUnits += qty;
-      const key = item.product_id as string;
-      const cur = byProduct.get(key) ?? {
-        name: first(item.product)?.name ?? "Produto",
-        qty: 0,
-        revenue: 0,
-      };
-      cur.qty += qty;
-      cur.revenue += qty * Number(item.unit_price);
-      byProduct.set(key, cur);
+  }
+
+  for (const row of saleRows ?? []) {
+    const revenue = Number(row.quantity) * Number(row.unit_price);
+    productRevenue += revenue;
+    productUnits += Number(row.quantity);
+    const appt = first(row.appointment);
+    if (appt?.client_id) clientSet.add(appt.client_id as string);
+    const name = first(row.product)?.name ?? "Produto";
+    const cur = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
+    cur.qty += Number(row.quantity);
+    cur.revenue += revenue;
+    byProduct.set(name, cur);
+    const professional = first(appt?.professional);
+    if (professional) {
+      const entry = professionalEntry(professional.id, professional.name);
+      entry.product += revenue;
+      entry.total += revenue;
     }
   }
 
@@ -184,13 +198,8 @@ export default async function FinancialReportPage({
     if (!row.paid_at) continue;
     const bucket = monthBuckets.get(monthKeyFmt.format(new Date(row.paid_at)));
     if (!bucket) continue;
-    const appt = first(row.appointment);
-    const prodRev = (appt?.appointment_products ?? []).reduce(
-      (sum, item) => sum + Number(item.quantity) * Number(item.unit_price),
-      0,
-    );
-    bucket.product += prodRev;
-    bucket.service += Math.max(Number(row.amount) - prodRev, 0);
+    if (row.category === "product") bucket.product += Number(row.amount);
+    else bucket.service += Number(row.amount);
   }
   const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
     label: m.label,
