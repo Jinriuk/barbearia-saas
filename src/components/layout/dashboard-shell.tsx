@@ -23,6 +23,7 @@ import { can, type Permission } from "@/lib/permissions";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NavLink } from "@/components/layout/nav-link";
 
 const nav: Array<{
   href: string;
@@ -120,17 +121,10 @@ export function DashboardShell({
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           {visibleNav.map((item) => (
-            <Button
-              key={item.href}
-              asChild
-              variant="ghost"
-              className="w-full justify-start"
-            >
-              <Link href={item.href}>
-                <item.icon className="size-4" />
-                {item.label}
-              </Link>
-            </Button>
+            <NavLink key={item.href} href={item.href}>
+              <item.icon className="size-4 shrink-0" />
+              {item.label}
+            </NavLink>
           ))}
         </nav>
         <div className="p-4">
@@ -178,18 +172,10 @@ export function DashboardShell({
           className="bg-background flex gap-1 overflow-x-auto border-b px-3 py-2 lg:hidden"
         >
           {visibleNav.map((item) => (
-            <Button
-              key={item.href}
-              asChild
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-            >
-              <Link href={item.href}>
-                <item.icon className="size-4" />
-                {item.label}
-              </Link>
-            </Button>
+            <NavLink key={item.href} href={item.href} size="sm">
+              <item.icon className="size-4 shrink-0" />
+              {item.label}
+            </NavLink>
           ))}
         </nav>
         <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-8">
