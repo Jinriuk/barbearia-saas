@@ -23,15 +23,27 @@ type ServiceInput = {
   description: string | null;
   price: number;
   duration_minutes: number;
+  category: string | null;
+  image_url: string | null;
+  active: boolean;
+  professionalIds: string[];
 };
 
 /**
  * Formulário de serviço em painel lateral, usado tanto para criar quanto para
- * editar. A action saveService já trata os dois casos pela presença do id.
+ * editar. A action saveService trata os dois casos pela presença do id e
+ * sincroniza categoria, imagem, visibilidade e os profissionais que executam.
  */
-export function ServiceFormSheet({ service }: { service?: ServiceInput }) {
+export function ServiceFormSheet({
+  service,
+  professionals = [],
+}: {
+  service?: ServiceInput;
+  professionals?: Array<{ id: string; name: string }>;
+}) {
   const [open, setOpen] = useState(false);
   const editing = Boolean(service);
+  const assigned = new Set(service?.professionalIds ?? []);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -103,6 +115,26 @@ export function ServiceFormSheet({ service }: { service?: ServiceInput }) {
             </div>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="service-category">Categoria</Label>
+            <Input
+              id="service-category"
+              name="category"
+              placeholder="Ex.: Cabelo, Barba, Combo"
+              defaultValue={service?.category ?? ""}
+              maxLength={60}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="service-image">Imagem (URL)</Label>
+            <Input
+              id="service-image"
+              name="imageUrl"
+              type="url"
+              placeholder="https://…"
+              defaultValue={service?.image_url ?? ""}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="service-description">Descrição</Label>
             <Textarea
               id="service-description"
@@ -111,6 +143,41 @@ export function ServiceFormSheet({ service }: { service?: ServiceInput }) {
               defaultValue={service?.description ?? ""}
             />
           </div>
+
+          {professionals.length ? (
+            <div className="space-y-2">
+              <input type="hidden" name="hasProfessionals" value="1" />
+              <Label>Profissionais que executam</Label>
+              <div className="grid max-h-40 gap-1.5 overflow-y-auto rounded-lg border p-3">
+                {professionals.map((professional) => (
+                  <label
+                    key={professional.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      name="professionalIds"
+                      value={professional.id}
+                      defaultChecked={!editing || assigned.has(professional.id)}
+                      className="size-4 rounded border"
+                    />
+                    {professional.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="active"
+              defaultChecked={service?.active ?? true}
+              className="size-4 rounded border"
+            />
+            Visível no catálogo e na página pública
+          </label>
+
           <SheetFooter className="mt-auto px-0">
             <Button type="submit" className="w-full">
               {editing ? "Salvar alterações" : "Adicionar serviço"}

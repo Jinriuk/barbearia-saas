@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { CheckCircle2, UserPlus } from "lucide-react";
 import { createProfessionalWithAccess } from "@/modules/professionals/actions";
 import type { ActionState } from "@/types/domain";
@@ -21,6 +21,8 @@ export function ProfessionalForm({
     createProfessionalWithAccess,
     initialState,
   );
+  const [role, setRole] = useState("professional");
+  const isProfessional = role === "professional";
 
   return (
     <Card>
@@ -61,11 +63,29 @@ export function ProfessionalForm({
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input id="phone" name="phone" inputMode="tel" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input id="phone" name="phone" inputMode="tel" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Função</Label>
+              <select
+                id="role"
+                name="role"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              >
+                <option value="professional">Profissional</option>
+                <option value="receptionist">Secretária</option>
+                <option value="manager">Gerente</option>
+              </select>
+            </div>
           </div>
 
+          {isProfessional ? (
+          <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="commissionRate">Comissão (%)</Label>
@@ -124,13 +144,20 @@ export function ProfessionalForm({
             />
             Disponível para novos agendamentos
           </label>
+          </>
+          ) : null}
 
           <Button disabled={pending} className="w-full">
-            {pending ? "Criando acesso…" : "Criar profissional e acesso"}
+            {pending
+              ? "Criando acesso…"
+              : isProfessional
+                ? "Criar profissional e acesso"
+                : "Criar acesso"}
           </Button>
           <p className="text-muted-foreground text-xs">
-            O profissional entra em <strong>/login</strong> com o e-mail e a
-            senha definidos e vê apenas a própria agenda.
+            {isProfessional
+              ? "O profissional entra em /login com o e-mail e a senha definidos e vê apenas a própria agenda."
+              : "O membro entra em /login com o e-mail e a senha definidos, conforme as permissões do papel."}
           </p>
         </form>
       </CardContent>

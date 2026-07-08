@@ -8,6 +8,10 @@ export const serviceSchema = z.object({
   description: z.string().trim().max(500).optional(),
   price: z.coerce.number().min(0).max(999999),
   durationMinutes: z.coerce.number().int().min(5).max(720),
+  category: z.string().trim().max(60).optional(),
+  imageUrl: z.union([z.url(), z.literal("")]).optional(),
+  active: z.coerce.boolean().optional(),
+  professionalIds: z.array(uuid).max(200).optional(),
 });
 
 export const professionalSchema = z.object({

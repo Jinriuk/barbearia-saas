@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -16,17 +17,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { archiveClient, saveClient } from "@/modules/clients/actions";
+import {
+  archiveClient,
+  restoreClient,
+  saveClient,
+} from "@/modules/clients/actions";
 import { ArchiveClientButton } from "@/components/dashboard/archive-client-button";
+import { RestoreClientButton } from "@/components/dashboard/restore-client-button";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ arquivados?: string }>;
+}) {
   const tenant = await requireTenant();
+  const { arquivados } = await searchParams;
+  const showArchived = arquivados === "1";
   const supabase = await createSupabaseServerClient();
   const { data: clientData } = await supabase
     .from("clients")
     .select("id,name,phone,email,active,created_at")
     .eq("barbershop_id", tenant.id)
-    .eq("active", true)
+    .eq("active", !showArchived)
     .order("name");
   const data = clientData ?? [];
   return (
@@ -66,8 +78,26 @@ export default async function ClientsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Base de clientes</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              {showArchived ? "Clientes arquivados" : "Base de clientes"}
+            </CardTitle>
+            <div className="bg-muted inline-flex rounded-lg p-0.5 text-sm">
+              <Button
+                asChild
+                size="sm"
+                variant={showArchived ? "ghost" : "secondary"}
+              >
+                <Link href="/clientes">Ativos</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant={showArchived ? "secondary" : "ghost"}
+              >
+                <Link href="/clientes?arquivados=1">Arquivados</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {data.length ? (
@@ -90,11 +120,19 @@ export default async function ClientsPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-right">
-                        <ArchiveClientButton
-                          id={item.id}
-                          action={archiveClient}
-                          itemName={item.name}
-                        />
+                        {showArchived ? (
+                          <RestoreClientButton
+                            id={item.id}
+                            action={restoreClient}
+                            itemName={item.name}
+                          />
+                        ) : (
+                          <ArchiveClientButton
+                            id={item.id}
+                            action={archiveClient}
+                            itemName={item.name}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -102,8 +140,16 @@ export default async function ClientsPage() {
               </Table>
             ) : (
               <EmptyState
-                title="Nenhum cliente cadastrado"
-                description="Novos agendamentos públicos também criam clientes automaticamente."
+                title={
+                  showArchived
+                    ? "Nenhum cliente arquivado"
+                    : "Nenhum cliente cadastrado"
+                }
+                description={
+                  showArchived
+                    ? "Clientes que você arquivar aparecem aqui para restaurar."
+                    : "Novos agendamentos públicos também criam clientes automaticamente."
+                }
               />
             )}
           </CardContent>

@@ -212,6 +212,12 @@ export default async function FinancialReportPage({
   const products = [...byProduct.values()].sort((a, b) => b.revenue - a.revenue);
   const methods = [...byMethod.entries()].sort((a, b) => b[1] - a[1]);
   const grandTotal = serviceRevenue + productRevenue + otherRevenue;
+  const serviceShare =
+    grandTotal > 0 ? Math.round((serviceRevenue / grandTotal) * 100) : 0;
+  const productShare =
+    grandTotal > 0 ? Math.round((productRevenue / grandTotal) * 100) : 0;
+  const topProfessional = professionals[0] ?? null;
+  const ticketMedio = attended > 0 ? serviceRevenue / attended : 0;
   const generatedAt = new Intl.DateTimeFormat("pt-BR", {
     timeZone: tenant.timezone,
     dateStyle: "long",
@@ -324,6 +330,34 @@ export default async function FinancialReportPage({
         ])}
         empty="Sem recebimentos."
       />
+
+      <section className="mt-7 break-inside-avoid">
+        <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-500 uppercase">
+          Observações finais
+        </h2>
+        {grandTotal > 0 ? (
+          <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
+            <li>
+              Ticket médio por atendimento: {formatBRL(ticketMedio)} ({attended}{" "}
+              atendimento{attended === 1 ? "" : "s"}).
+            </li>
+            <li>
+              Serviços responderam por {serviceShare}% da receita e produtos por{" "}
+              {productShare}% no período.
+            </li>
+            {topProfessional ? (
+              <li>
+                Maior receita por profissional: {topProfessional.name} (
+                {formatBRL(topProfessional.total)}).
+              </li>
+            ) : null}
+          </ul>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            Sem receita registrada no período analisado.
+          </p>
+        )}
+      </section>
 
       <footer className="mt-10 border-t pt-4 text-center text-xs text-neutral-400">
         {shopName} · Relatório gerado automaticamente pelo painel · {generatedAt}

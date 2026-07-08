@@ -219,39 +219,54 @@ export function BookingForm({
     if (!slot) return;
     setSubmitting(true);
     setMessage("");
-    const response = await fetch(`/api/public/${tenant}/appointments`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        serviceId,
-        professionalId,
-        startsAt: slot,
-        clientName: formData.get("name"),
-        clientPhone: formData.get("phone"),
-        clientEmail: formData.get("email"),
-        notes: formData.get("notes"),
-        products: cartItems.map((item) => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-        })),
-      }),
-    });
-    const result = (await response.json()) as { ok?: boolean; error?: string };
-    setSubmitting(false);
-    if (result.ok) {
-      setSuccess(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      setMessage(result.error ?? "Não foi possível reservar.");
+    try {
+      const response = await fetch(`/api/public/${tenant}/appointments`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          serviceId,
+          professionalId,
+          startsAt: slot,
+          clientName: formData.get("name"),
+          clientPhone: formData.get("phone"),
+          clientEmail: formData.get("email"),
+          notes: formData.get("notes"),
+          products: cartItems.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+      // Resposta pode não ser JSON (502/erro de proxy) — não deixa quebrar.
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (response.ok && result?.ok) {
+        setSuccess(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      setMessage(result?.error ?? "Não foi possível reservar. Tente de novo.");
       setSlot("");
       setSlots([]);
       // Recarrega a disponibilidade: o horário pode ter sido tomado.
-      const query = new URLSearchParams({ serviceId, professionalId, date });
-      const refreshed = await fetch(
-        `/api/public/${tenant}/availability?${query}`,
-      );
-      const data = (await refreshed.json()) as { slots?: Slot[] };
-      setSlots(data.slots ?? []);
+      try {
+        const query = new URLSearchParams({ serviceId, professionalId, date });
+        const refreshed = await fetch(
+          `/api/public/${tenant}/availability?${query}`,
+        );
+        const data = (await refreshed.json()) as { slots?: Slot[] };
+        setSlots(data.slots ?? []);
+      } catch {
+        // Falha ao atualizar horários não deve travar o formulário.
+      }
+    } catch {
+      // Falha de rede (ERR_NETWORK_CHANGED, ERR_NAME_NOT_RESOLVED, offline):
+      // mantém o horário selecionado para reenvio rápido.
+      setMessage("Falha de conexão. Verifique sua internet e tente de novo.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
