@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
 import { isPlus } from "@/lib/plans";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/types/domain";
@@ -80,6 +81,9 @@ export async function saveAppearanceSettings(
     return { success: false, message: "Revise as cores e os textos." };
   }
   const tenant = await requireTenant();
+  if (!can(tenant.role, "settings:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
   if (!isPlus(tenant.plan)) {
     return {
       success: false,
@@ -129,6 +133,9 @@ export async function saveContactSettings(
     return { success: false, message: "Revise os dados de contato." };
   }
   const tenant = await requireTenant();
+  if (!can(tenant.role, "settings:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("tenant_settings")
@@ -155,6 +162,9 @@ export async function uploadLogo(
   formData: FormData,
 ): Promise<ActionState> {
   const tenant = await requireTenant();
+  if (!can(tenant.role, "settings:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
   if (!isPlus(tenant.plan)) {
     return { success: false, message: "Disponível no plano Plus." };
   }
@@ -185,6 +195,9 @@ export async function uploadBackgroundImage(
   formData: FormData,
 ): Promise<ActionState> {
   const tenant = await requireTenant();
+  if (!can(tenant.role, "settings:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
   if (!isPlus(tenant.plan)) {
     return { success: false, message: "Disponível no plano Plus." };
   }

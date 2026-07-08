@@ -17,6 +17,7 @@ export async function saveService(formData: FormData) {
   });
   if (!parsed.success) return;
   const tenant = await requireTenant();
+  if (!can(tenant.role, "catalog:manage")) return;
   const supabase = await createSupabaseServerClient();
   const payload = {
     barbershop_id: tenant.id,
@@ -61,6 +62,7 @@ export async function saveService(formData: FormData) {
 
 export async function toggleService(formData: FormData) {
   const tenant = await requireTenant();
+  if (!can(tenant.role, "catalog:manage")) return;
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active")) === "true";
   const supabase = await createSupabaseServerClient();

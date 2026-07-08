@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "*.supabase.co" },
     ],
+    // As artes de capa padrão são SVGs locais (/public/stock). O combo abaixo
+    // é o recomendado pela doc do Next para servir SVG pelo otimizador com
+    // segurança (sem scripts, sandbox).
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   async headers() {
     return [

@@ -58,6 +58,8 @@ export async function registerMovement(
       message: "Não foi possível registrar. Tente de novo.",
     };
   }
-  revalidatePath("/estoque");
+  // A página viva de estoque é /produtos (unificada); /estoque só redireciona.
+  revalidatePath("/produtos");
+  revalidatePath("/dashboard");
   return { success: true, message: "Movimentação registrada." };
 }

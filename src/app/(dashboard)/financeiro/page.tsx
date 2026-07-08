@@ -12,11 +12,7 @@ import {
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { getUtcDayRange, getUtcMonthRange } from "@/lib/dates";
-import {
-  formatBRL,
-  PAYMENT_METHODS,
-  paymentMethodLabel,
-} from "@/lib/financial";
+import { formatBRL, PAYMENT_METHODS } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { confirmPayment, revertPayment } from "@/modules/financial/actions";
 import { PageHeader } from "@/components/layout/page-header";
