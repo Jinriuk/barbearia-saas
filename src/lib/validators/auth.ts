@@ -15,13 +15,19 @@ export const resetPasswordSchema = z.object({
 
 export const barbershopSchema = z.object({
   name: z.string().trim().min(2).max(100),
+  // O slug é opcional: quando vazio, é gerado a partir do nome no servidor.
   slug: z
-    .string()
-    .trim()
-    .min(3)
-    .max(63)
-    .regex(
-      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      "Use letras minúsculas, números e hífen.",
-    ),
+    .union([
+      z
+        .string()
+        .trim()
+        .min(3)
+        .max(63)
+        .regex(
+          /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+          "Use letras minúsculas, números e hífen.",
+        ),
+      z.literal(""),
+    ])
+    .optional(),
 });
