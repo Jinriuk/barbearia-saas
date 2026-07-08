@@ -75,11 +75,14 @@ export async function registerEmployeePayment(
   if (!can(tenant.role, "finance:view")) {
     return { success: false, message: "Apenas o proprietário pode registrar." };
   }
+  // formData.get() devolve null para campo ausente, e z.string().optional()
+  // aceita undefined mas rejeita null — sem o "?? undefined" a action
+  // recusava pagamentos válidos quando o campo notes não existia no form.
   const parsed = paymentSchema.safeParse({
     professionalId: formData.get("professionalId"),
     amount: formData.get("amount"),
-    reference: formData.get("reference"),
-    notes: formData.get("notes"),
+    reference: formData.get("reference") ?? undefined,
+    notes: formData.get("notes") ?? undefined,
   });
   if (!parsed.success) {
     return { success: false, message: "Informe um valor válido." };
