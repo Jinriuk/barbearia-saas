@@ -1,6 +1,8 @@
 import {
   AlertTriangle,
   Boxes,
+  Eye,
+  EyeOff,
   Package,
   ShoppingBag,
   Sparkles,
@@ -322,7 +324,7 @@ export default async function ProductsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {canCatalog ? (
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-end gap-0.5">
                                 <ProductFormSheet product={product} />
                                 <form action={toggleProductVisible}>
                                   <input
@@ -336,13 +338,21 @@ export default async function ProductsPage() {
                                     value={String(product.public_visible)}
                                   />
                                   <Button
-                                    size="sm"
+                                    size="icon-sm"
                                     variant="ghost"
+                                    className={
+                                      product.public_visible
+                                        ? "text-primary"
+                                        : "text-muted-foreground"
+                                    }
+                                    title={
+                                      product.public_visible
+                                        ? "Tirar do checkout do agendamento"
+                                        : "Oferecer no checkout do agendamento"
+                                    }
                                     aria-label="Alternar checkout"
                                   >
-                                    {product.public_visible
-                                      ? "Tirar do checkout"
-                                      : "No checkout"}
+                                    <ShoppingBag className="size-4" />
                                   </Button>
                                 </form>
                                 <form action={toggleProductActive}>
@@ -356,8 +366,26 @@ export default async function ProductsPage() {
                                     name="active"
                                     value={String(product.active)}
                                   />
-                                  <Button size="sm" variant="ghost">
-                                    {product.active ? "Ocultar" : "Exibir"}
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    title={
+                                      product.active
+                                        ? "Ocultar produto"
+                                        : "Exibir produto"
+                                    }
+                                    aria-label={
+                                      product.active
+                                        ? "Ocultar produto"
+                                        : "Exibir produto"
+                                    }
+                                  >
+                                    {product.active ? (
+                                      <Eye className="size-4" />
+                                    ) : (
+                                      <EyeOff className="size-4" />
+                                    )}
                                   </Button>
                                 </form>
                                 <DeleteEntityButton

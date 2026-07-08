@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -90,8 +91,22 @@ export default async function ServicesPage() {
                               name="active"
                               value={String(item.active)}
                             />
-                            <Button size="sm" variant="ghost">
-                              {item.active ? "Ocultar" : "Exibir"}
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-foreground"
+                              title={
+                                item.active ? "Ocultar serviço" : "Exibir serviço"
+                              }
+                              aria-label={
+                                item.active ? "Ocultar serviço" : "Exibir serviço"
+                              }
+                            >
+                              {item.active ? (
+                                <Eye className="size-4" />
+                              ) : (
+                                <EyeOff className="size-4" />
+                              )}
                             </Button>
                           </form>
                           <DeleteEntityButton
