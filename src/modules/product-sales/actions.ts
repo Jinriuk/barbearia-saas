@@ -32,7 +32,13 @@ export async function confirmProductSale(
     p_appointment_product_id: parsed.data,
   });
   if (error) {
-    return { success: false, message: "Não foi possível confirmar a venda." };
+    return {
+      success: false,
+      message:
+        error.message === "INSUFFICIENT_STOCK"
+          ? "Estoque insuficiente para confirmar. Registre uma entrada em Produtos e Estoque."
+          : "Não foi possível confirmar a venda.",
+    };
   }
   revalidate();
   return { success: true, message: "Venda confirmada e estoque atualizado." };
