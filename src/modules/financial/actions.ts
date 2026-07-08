@@ -30,9 +30,7 @@ export async function confirmPayment(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: appointment } = await supabase
     .from("appointments")
-    .select(
-      "id,service:services(name,price),client:clients(name),appointment_products(quantity,unit_price)",
-    )
+    .select("id,service:services(name,price),client:clients(name)")
     .eq("id", appointmentId)
     .eq("barbershop_id", tenant.id)
     .single();
@@ -40,11 +38,9 @@ export async function confirmPayment(formData: FormData) {
 
   const service = first(appointment.service);
   const client = first(appointment.client);
-  const productsTotal = (appointment.appointment_products ?? []).reduce(
-    (total, item) => total + Number(item.quantity) * Number(item.unit_price),
-    0,
-  );
-  const amount = Number(service?.price ?? 0) + productsTotal;
+  // A receita do serviço é independente das vendas de produto (confirmadas à
+  // parte, com baixa no estoque).
+  const amount = Number(service?.price ?? 0);
   if (amount <= 0) return;
 
   const description = `${service?.name ?? "Atendimento"} — ${client?.name ?? "Cliente"}`;
@@ -55,6 +51,7 @@ export async function confirmPayment(formData: FormData) {
     .eq("barbershop_id", tenant.id)
     .eq("appointment_id", appointmentId)
     .eq("type", "income")
+    .eq("category", "service")
     .maybeSingle();
 
   if (existing) {
@@ -94,11 +91,13 @@ export async function revertPayment(formData: FormData) {
   if (!appointmentId) return;
 
   const supabase = await createSupabaseServerClient();
+  // Estorna apenas a receita do serviço; vendas de produto são independentes.
   await supabase
     .from("financial_transactions")
     .delete()
     .eq("barbershop_id", tenant.id)
     .eq("appointment_id", appointmentId)
-    .eq("type", "income");
+    .eq("type", "income")
+    .eq("category", "service");
   revalidate();
 }

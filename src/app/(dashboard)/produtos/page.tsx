@@ -1,4 +1,11 @@
-import { AlertTriangle, Boxes, Package, Sparkles, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  Boxes,
+  Package,
+  ShoppingBag,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { isPlus } from "@/lib/plans";
@@ -16,6 +23,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { ProductFormSheet } from "@/components/dashboard/product-form-sheet";
 import { InventoryMovementForm } from "@/components/dashboard/inventory-movement-form";
+import { ReservationActions } from "@/components/dashboard/reservation-actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +36,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+function first<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
 
 const IN_TYPES = new Set(["purchase", "adjustment_in", "return"]);
 
@@ -42,7 +55,11 @@ export default async function ProductsPage() {
   const plus = isPlus(tenant.plan);
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: productData }, { data: movementData }] = await Promise.all([
+  const [
+    { data: productData },
+    { data: movementData },
+    { data: reservationData },
+  ] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -56,10 +73,31 @@ export default async function ProductsPage() {
       .eq("barbershop_id", tenant.id)
       .order("created_at", { ascending: false })
       .limit(400),
+    // Reservas pendentes (produtos escolhidos no agendamento, ainda não vendidos).
+    supabase
+      .from("appointment_products")
+      .select(
+        "id,product_id,quantity,unit_price,created_at,product:products(name),appointment:appointments(starts_at,client:clients(name),professional:professionals(name))",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
 
   const products = productData ?? [];
   const movements = movementData ?? [];
+  const reservations = reservationData ?? [];
+
+  const reservedByProduct = new Map<string, number>();
+  for (const reservation of reservations) {
+    reservedByProduct.set(
+      reservation.product_id,
+      (reservedByProduct.get(reservation.product_id) ?? 0) +
+        Number(reservation.quantity),
+    );
+  }
+  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
 
   const stockByProduct = new Map<string, number>();
   for (const movement of movements) {
@@ -151,6 +189,70 @@ export default async function ProductsPage() {
         ))}
       </div>
 
+      {reservations.length ? (
+        <Card className="mb-6 border-amber-300 dark:border-amber-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShoppingBag className="size-4" /> Reservas de produtos pendentes
+              <Badge variant="secondary">{reservations.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="text-right">Qtd.</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reservations.map((reservation) => {
+                    const appt = first(reservation.appointment);
+                    const clientName = first(appt?.client)?.name ?? "Cliente";
+                    const professionalName =
+                      first(appt?.professional)?.name ?? "—";
+                    const total =
+                      Number(reservation.quantity) *
+                      Number(reservation.unit_price);
+                    return (
+                      <TableRow key={reservation.id}>
+                        <TableCell className="font-medium">
+                          {clientName}
+                        </TableCell>
+                        <TableCell>
+                          {first(reservation.product)?.name ?? "Produto"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {reservation.quantity}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatBRL(total)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {professionalName}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <ReservationActions id={reservation.id} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-muted-foreground mt-3 text-xs">
+              Confirmar dá baixa no estoque e lança a receita no financeiro.
+              Cancelar apenas remove a reserva.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {!products.length ? (
         <EmptyState
           title="Nenhum produto ainda"
@@ -179,9 +281,7 @@ export default async function ProductsPage() {
                   <TableBody>
                     {products.map((product) => {
                       const stock = stockOf(product.id);
-                      // Reservas ainda não têm tabela dedicada — exibimos 0 e
-                      // disponível = estoque até a fase de reservas/vendas.
-                      const reserved = 0;
+                      const reserved = reservedOf(product.id);
                       const available = stock - reserved;
                       const low =
                         product.active &&
