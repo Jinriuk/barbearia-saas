@@ -44,7 +44,7 @@ const features = [
     icon: UsersRound,
     title: "Equipe com papéis",
     description:
-      "Gerente, recepcionista e profissional: cada pessoa vê apenas o que precisa para trabalhar.",
+      "Gerente, secretária e profissional: cada pessoa vê apenas o que precisa para trabalhar.",
   },
   {
     icon: ShieldCheck,

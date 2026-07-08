@@ -3,7 +3,6 @@ import { requireTenant } from "@/lib/auth/dal";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { saveClient, toggleClient } from "@/modules/clients/actions";
+import { archiveClient, saveClient } from "@/modules/clients/actions";
+import { ArchiveClientButton } from "@/components/dashboard/archive-client-button";
 
 export default async function ClientsPage() {
   const tenant = await requireTenant();
@@ -26,6 +26,7 @@ export default async function ClientsPage() {
     .from("clients")
     .select("id,name,phone,email,active,created_at")
     .eq("barbershop_id", tenant.id)
+    .eq("active", true)
     .order("name");
   const data = clientData ?? [];
   return (
@@ -75,7 +76,6 @@ export default async function ClientsPage() {
                   <TableRow>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Contato</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -89,23 +89,12 @@ export default async function ClientsPage() {
                           {item.email || "Sem e-mail"}
                         </p>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={item.active ? "default" : "secondary"}>
-                          {item.active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-right">
-                        <form action={toggleClient}>
-                          <input type="hidden" name="id" value={item.id} />
-                          <input
-                            type="hidden"
-                            name="active"
-                            value={String(item.active)}
-                          />
-                          <Button variant="ghost" size="sm">
-                            {item.active ? "Desativar" : "Ativar"}
-                          </Button>
-                        </form>
+                        <ArchiveClientButton
+                          id={item.id}
+                          action={archiveClient}
+                          itemName={item.name}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

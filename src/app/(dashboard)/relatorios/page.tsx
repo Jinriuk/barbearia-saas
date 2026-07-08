@@ -1,4 +1,11 @@
-import { CalendarCheck, CalendarClock, TrendingUp, Wallet } from "lucide-react";
+import Link from "next/link";
+import {
+  CalendarCheck,
+  CalendarClock,
+  FileText,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { getUtcDayRange } from "@/lib/dates";
@@ -6,6 +13,7 @@ import { formatBRL, paymentMethodLabel } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function yearMonthInTz(date: Date, timeZone: string) {
@@ -105,6 +113,15 @@ export default async function ReportsPage() {
         eyebrow="Relatórios"
         title="Relatórios"
         description="Saldo do dia, do mês e total, com a origem dos recebimentos."
+        action={
+          can(tenant.role, "finance:view") ? (
+            <Button asChild variant="outline">
+              <Link href="/relatorio-financeiro" target="_blank">
+                <FileText className="size-4" /> Gerar PDF
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (

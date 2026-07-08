@@ -77,6 +77,39 @@ export function getUtcDayRange(timeZone: string, now = new Date()) {
   };
 }
 
+export function getUtcWeekRange(timeZone: string, now = new Date()) {
+  const local = partsInTimeZone(now, timeZone);
+  const dow = new Date(
+    Date.UTC(local.year, local.month - 1, local.day),
+  ).getUTCDay();
+  // Semana começa na segunda-feira (dow 1). Domingo (0) recua 6 dias.
+  const offsetToMonday = (dow + 6) % 7;
+  const startDate = new Date(
+    Date.UTC(local.year, local.month - 1, local.day - offsetToMonday),
+  );
+  const endDate = new Date(
+    Date.UTC(
+      startDate.getUTCFullYear(),
+      startDate.getUTCMonth(),
+      startDate.getUTCDate() + 7,
+    ),
+  );
+  return {
+    start: zonedMidnightToUtc(
+      startDate.getUTCFullYear(),
+      startDate.getUTCMonth() + 1,
+      startDate.getUTCDate(),
+      timeZone,
+    ),
+    end: zonedMidnightToUtc(
+      endDate.getUTCFullYear(),
+      endDate.getUTCMonth() + 1,
+      endDate.getUTCDate(),
+      timeZone,
+    ),
+  };
+}
+
 export function getUtcMonthRange(
   timeZone: string,
   yearMonth?: string,

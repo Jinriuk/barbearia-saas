@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireTenant } from "@/lib/auth/dal";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clientSchema } from "@/lib/validators/entities";
+import type { ActionState } from "@/types/domain";
 
 export async function saveClient(formData: FormData) {
   const parsed = clientSchema.safeParse({
@@ -36,13 +37,26 @@ export async function saveClient(formData: FormData) {
   revalidatePath("/clientes");
 }
 
-export async function toggleClient(formData: FormData) {
+/**
+ * Exclusão lógica: arquiva o cliente (active = false) mantendo o histórico.
+ * Substitui o antigo toggle "Ativar/Desativar".
+ */
+export async function archiveClient(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { success: false, message: "Cliente inválido." };
   const tenant = await requireTenant();
   const supabase = await createSupabaseServerClient();
-  await supabase
+  const { error } = await supabase
     .from("clients")
-    .update({ active: String(formData.get("active")) !== "true" })
-    .eq("id", String(formData.get("id")))
+    .update({ active: false })
+    .eq("id", id)
     .eq("barbershop_id", tenant.id);
+  if (error) {
+    return { success: false, message: "Não foi possível arquivar o cliente." };
+  }
   revalidatePath("/clientes");
+  return { success: true, message: "Cliente arquivado." };
 }

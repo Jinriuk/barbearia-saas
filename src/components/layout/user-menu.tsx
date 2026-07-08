@@ -15,7 +15,7 @@ import {
 const roleLabels: Record<string, string> = {
   owner: "Proprietário",
   manager: "Gerente",
-  receptionist: "Recepção",
+  receptionist: "Secretária",
   professional: "Profissional",
   client: "Cliente",
 };

@@ -15,7 +15,15 @@ export async function POST(
     );
   }
   const parsed = publicBookingSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Revise os dados da reserva." }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json(
+      {
+        error: "Revise os dados da reserva.",
+        fields: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 },
+    );
+  }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("create_public_appointment", {
     p_slug: tenant,
