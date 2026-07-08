@@ -2,8 +2,14 @@ import "server-only";
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { accessState } from "@/lib/billing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { MembershipRole, TenantContext } from "@/types/domain";
+import type {
+  MembershipRole,
+  SubscriptionInfo,
+  SubscriptionStatus,
+  TenantContext,
+} from "@/types/domain";
 
 export const getSessionUser = cache(async () => {
   const supabase = await createSupabaseServerClient();
@@ -44,6 +50,24 @@ export const getTenantContext = cache(
       : data.barbershop;
     if (!profile || !barbershop) return null;
 
+    // Assinatura da barbearia. Defensivo de propósito: erro ou linha ausente
+    // (base legada, migration ainda não aplicada) vira null e não bloqueia.
+    let subscription: SubscriptionInfo | null = null;
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("status, plan, price_cents, trial_ends_at, current_period_end")
+      .eq("barbershop_id", barbershop.id)
+      .maybeSingle();
+    if (sub) {
+      subscription = {
+        status: sub.status as SubscriptionStatus,
+        plan: sub.plan,
+        priceCents: sub.price_cents,
+        trialEndsAt: sub.trial_ends_at,
+        currentPeriodEnd: sub.current_period_end,
+      };
+    }
+
     return {
       id: barbershop.id,
       name: barbershop.name,
@@ -53,13 +77,22 @@ export const getTenantContext = cache(
       role: data.role as MembershipRole,
       profileId: profile.id,
       profileName: profile.name,
+      subscription,
     };
   },
 );
 
-export const requireTenant = cache(async () => {
-  await requireUser();
-  const tenant = await getTenantContext();
-  if (!tenant) redirect("/onboarding");
-  return tenant;
-});
+export const requireTenant = cache(
+  async (opts?: { allowLocked?: boolean }) => {
+    await requireUser();
+    const tenant = await getTenantContext();
+    if (!tenant) redirect("/onboarding");
+    // Assinatura vencida além da tolerância bloqueia o painel inteiro,
+    // exceto as telas de regularização (que passam allowLocked).
+    if (!opts?.allowLocked) {
+      const state = accessState(tenant.subscription);
+      if (state === "locked" || state === "gone") redirect("/assinatura");
+    }
+    return tenant;
+  },
+);

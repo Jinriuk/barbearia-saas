@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "crons": [{ "path": "/api/cron/billing", "schedule": "0 12 * * *" }],
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://jaerticlcbsuvgmiumfl.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns",

@@ -1,6 +1,21 @@
 export type MembershipRole =
   "owner" | "manager" | "receptionist" | "professional" | "client";
 
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "suspended"
+  | "canceled";
+
+export type SubscriptionInfo = {
+  status: SubscriptionStatus;
+  plan: string;
+  priceCents: number;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+};
+
 export type TenantContext = {
   id: string;
   name: string;
@@ -10,6 +25,7 @@ export type TenantContext = {
   role: MembershipRole;
   profileId: string;
   profileName: string;
+  subscription: SubscriptionInfo | null;
 };
 
 export type ActionState = {

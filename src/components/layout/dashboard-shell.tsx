@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Banknote,
   CalendarDays,
+  CircleAlert,
   Contact,
   HandCoins,
   LayoutDashboard,
@@ -10,6 +11,7 @@ import {
   Scissors,
   Settings,
   ShoppingBag,
+  Sparkles,
   Store,
   Users,
 } from "lucide-react";
@@ -17,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { signOut } from "@/modules/auth/actions";
 import type { TenantContext } from "@/types/domain";
+import { accessState, daysLeft } from "@/lib/billing";
 import { can, type Permission } from "@/lib/permissions";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
@@ -159,6 +162,7 @@ export function DashboardShell({
             </NavLink>
           ))}
         </nav>
+        <SubscriptionBanner tenant={tenant} />
         <main className="mx-auto max-w-[1500px] p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8">
           {children}
         </main>
@@ -172,4 +176,42 @@ export function DashboardShell({
       />
     </div>
   );
+}
+
+/**
+ * Faixa de status da assinatura, visível só para o proprietário: dias
+ * restantes do teste grátis ou mensalidade em aberto. Estados bloqueados não
+ * chegam aqui — o requireTenant() das páginas redireciona para /assinatura.
+ */
+function SubscriptionBanner({ tenant }: { tenant: TenantContext }) {
+  if (tenant.role !== "owner" || !tenant.subscription) return null;
+  const state = accessState(tenant.subscription);
+
+  if (tenant.subscription.status === "trialing" && state === "ok") {
+    const days = daysLeft(tenant.subscription.trialEndsAt) ?? 0;
+    return (
+      <Link
+        href="/assinatura"
+        className="bg-primary/10 text-primary hover:bg-primary/15 flex items-center justify-center gap-2 border-b px-4 py-2 text-sm font-medium transition-colors"
+      >
+        <Sparkles className="size-4" />
+        Teste grátis: {days === 1 ? "último dia" : `${days} dias restantes`} ·
+        conhecer os planos
+      </Link>
+    );
+  }
+
+  if (state === "warn") {
+    return (
+      <Link
+        href="/assinatura"
+        className="flex items-center justify-center gap-2 border-b bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-200/70 dark:bg-amber-950/50 dark:text-amber-200"
+      >
+        <CircleAlert className="size-4" />
+        Mensalidade em aberto — regularize para não perder o acesso
+      </Link>
+    );
+  }
+
+  return null;
 }

@@ -565,7 +565,7 @@ export default function HomePage() {
                 variant="outline"
                 className="mt-8 w-full rounded-full border-white/15 bg-white/5 hover:bg-white/10"
               >
-                <Link href="/cadastro">Criar conta grátis</Link>
+                <Link href="/cadastro?plano=starter">Criar conta grátis</Link>
               </Button>
             </div>
           </Reveal>
@@ -602,7 +602,7 @@ export default function HomePage() {
                 asChild
                 className="btn-shine mt-8 w-full rounded-full bg-amber-500 text-stone-950 hover:bg-amber-400"
               >
-                <Link href="/cadastro">
+                <Link href="/cadastro?plano=plus">
                   Começar pelo Plus <ArrowUpRight />
                 </Link>
               </Button>

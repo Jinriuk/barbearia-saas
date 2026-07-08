@@ -18,6 +18,11 @@ export default async function SignupPage({
       error={typeof params.error === "string" ? params.error : undefined}
     >
       <form action={signUp} className="space-y-4">
+        <input
+          type="hidden"
+          name="plano"
+          value={typeof params.plano === "string" ? params.plano : "starter"}
+        />
         <div className="space-y-2">
           <Label htmlFor="name">Seu nome</Label>
           <Input id="name" name="name" autoComplete="name" required />
