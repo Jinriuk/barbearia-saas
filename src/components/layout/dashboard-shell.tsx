@@ -7,7 +7,6 @@ import {
   HandCoins,
   LayoutDashboard,
   LogOut,
-  Percent,
   ReceiptText,
   Scissors,
   Settings,
@@ -73,9 +72,9 @@ const nav: Array<{
   },
   {
     href: "/comissoes",
-    label: "Comissões",
-    icon: Percent,
-    permission: "reports:view",
+    label: "Pagamento de Funcionários",
+    icon: HandCoins,
+    permission: "finance:view",
   },
   {
     href: "/relatorios",

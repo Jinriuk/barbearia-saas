@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { Percent } from "lucide-react";
+import { Coins, HandCoins } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
-import { getUtcMonthRange } from "@/lib/dates";
+import { getUtcMonthRange, formatShortDateInTz } from "@/lib/dates";
 import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  EmployeePayCard,
+  type EmployeePaySettings,
+} from "@/components/dashboard/employee-pay-card";
 import {
   Table,
   TableBody,
@@ -42,7 +46,7 @@ const monthNames = [
   "Dezembro",
 ];
 
-export default async function CommissionsPage({
+export default async function EmployeePaymentsPage({
   searchParams,
 }: {
   searchParams: Promise<{ mes?: string }>;
@@ -50,17 +54,17 @@ export default async function CommissionsPage({
   const { mes } = await searchParams;
   const tenant = await requireTenant();
 
-  if (!can(tenant.role, "reports:view")) {
+  if (!can(tenant.role, "finance:view")) {
     return (
       <>
         <PageHeader
           eyebrow="Financeiro"
-          title="Comissões"
-          description="Comissões da equipe por período."
+          title="Pagamento de Funcionários"
+          description="Salários, comissões e histórico de pagamentos da equipe."
         />
         <EmptyState
           title="Acesso restrito"
-          description="Comissões são visíveis para proprietário e gerente."
+          description="Apenas o proprietário acessa os pagamentos da equipe."
         />
       </>
     );
@@ -70,56 +74,86 @@ export default async function CommissionsPage({
   const previous =
     month === 1 ? monthKey(year - 1, 12) : monthKey(year, month - 1);
   const next = month === 12 ? monthKey(year + 1, 1) : monthKey(year, month + 1);
+  const reference = `${monthNames[month - 1]}/${year}`;
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("appointments")
-    .select(
-      "id,starts_at,professional:professionals(id,name),service:services(name,price,commission_rate)",
-    )
-    .eq("barbershop_id", tenant.id)
-    .eq("status", "completed")
-    .gte("starts_at", start.toISOString())
-    .lt("starts_at", end.toISOString())
-    .limit(2000);
+  const [
+    { data: professionalData },
+    { data: appointmentData },
+    { data: settingsData },
+    { data: paymentData },
+  ] = await Promise.all([
+    supabase
+      .from("professionals")
+      .select("id,name")
+      .eq("barbershop_id", tenant.id)
+      .eq("active", true)
+      .order("name"),
+    supabase
+      .from("appointments")
+      .select(
+        "id,professional_id,service:services(price,commission_rate)",
+      )
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "completed")
+      .gte("starts_at", start.toISOString())
+      .lt("starts_at", end.toISOString())
+      .limit(3000),
+    supabase
+      .from("employee_pay_settings")
+      .select("professional_id,model,base_salary,payment_period,payment_day")
+      .eq("barbershop_id", tenant.id),
+    supabase
+      .from("employee_payments")
+      .select("id,professional_id,amount,reference,paid_at")
+      .eq("barbershop_id", tenant.id)
+      .gte("paid_at", start.toISOString())
+      .lt("paid_at", end.toISOString())
+      .order("paid_at", { ascending: false }),
+  ]);
 
-  const rows = (data ?? []).flatMap((item) => {
-    const professional = first(item.professional);
-    const service = first(item.service);
-    if (!professional || !service) return [];
-    const price = Number(service.price);
-    const rate = Number(service.commission_rate);
-    return [
+  const professionals = professionalData ?? [];
+  const settingsByPro = new Map<string, EmployeePaySettings>(
+    (settingsData ?? []).map((row) => [
+      row.professional_id as string,
       {
-        professionalId: professional.id,
-        professionalName: professional.name,
-        price,
-        commission: (price * rate) / 100,
+        model: row.model as EmployeePaySettings["model"],
+        base_salary: Number(row.base_salary),
+        payment_period:
+          row.payment_period as EmployeePaySettings["payment_period"],
+        payment_day: row.payment_day as number | null,
       },
-    ];
-  });
-
-  const byProfessional = new Map<
-    string,
-    { name: string; services: number; revenue: number; commission: number }
-  >();
-  for (const row of rows) {
-    const entry = byProfessional.get(row.professionalId) ?? {
-      name: row.professionalName,
-      services: 0,
-      revenue: 0,
-      commission: 0,
-    };
-    entry.services += 1;
-    entry.revenue += row.price;
-    entry.commission += row.commission;
-    byProfessional.set(row.professionalId, entry);
-  }
-  const summary = [...byProfessional.values()].sort(
-    (a, b) => b.commission - a.commission,
+    ]),
   );
-  const totalCommission = summary.reduce(
-    (total, entry) => total + entry.commission,
+
+  const commissionByPro = new Map<string, number>();
+  for (const item of appointmentData ?? []) {
+    const service = first(item.service);
+    if (!service || !item.professional_id) continue;
+    const commission =
+      (Number(service.price) * Number(service.commission_rate)) / 100;
+    commissionByPro.set(
+      item.professional_id,
+      (commissionByPro.get(item.professional_id) ?? 0) + commission,
+    );
+  }
+
+  const payments = paymentData ?? [];
+  const paidByPro = new Map<string, number>();
+  for (const payment of payments) {
+    paidByPro.set(
+      payment.professional_id,
+      (paidByPro.get(payment.professional_id) ?? 0) + Number(payment.amount),
+    );
+  }
+  const professionalNames = new Map(professionals.map((p) => [p.id, p.name]));
+
+  const totalCommission = [...commissionByPro.values()].reduce(
+    (total, value) => total + value,
+    0,
+  );
+  const totalPaid = payments.reduce(
+    (total, payment) => total + Number(payment.amount),
     0,
   );
 
@@ -127,8 +161,8 @@ export default async function CommissionsPage({
     <>
       <PageHeader
         eyebrow="Financeiro"
-        title="Comissões"
-        description="Calculadas sobre os atendimentos concluídos, usando o percentual de cada serviço."
+        title="Pagamento de Funcionários"
+        description="Configure salário, período e comissão de cada profissional e registre os pagamentos."
         action={
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
@@ -143,13 +177,14 @@ export default async function CommissionsPage({
           </div>
         }
       />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-muted-foreground text-sm font-medium">
-              Total de comissões no mês
+              Comissões calculadas no mês
             </CardTitle>
-            <Percent className="text-primary size-4" />
+            <Coins className="text-primary size-4" />
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold">
@@ -158,53 +193,82 @@ export default async function CommissionsPage({
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-muted-foreground text-sm font-medium">
-              Atendimentos concluídos
+              Total pago no mês
             </CardTitle>
+            <HandCoins className="text-primary size-4" />
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-2xl font-semibold">{rows.length}</p>
+            <p className="font-mono text-2xl font-semibold">
+              {formatBRL(totalPaid)}
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {professionals.length ? (
+        <div className="mt-6 space-y-5">
+          {professionals.map((professional) => (
+            <EmployeePayCard
+              key={professional.id}
+              professionalId={professional.id}
+              name={professional.name}
+              monthCommission={commissionByPro.get(professional.id) ?? 0}
+              monthlyPaid={paidByPro.get(professional.id) ?? 0}
+              settings={settingsByPro.get(professional.id) ?? null}
+              suggestedReference={reference}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6">
+          <EmptyState
+            title="Nenhum profissional ativo"
+            description="Cadastre profissionais para configurar e registrar pagamentos."
+          />
+        </div>
+      )}
+
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-base">Por profissional</CardTitle>
+          <CardTitle className="text-base">Histórico do mês</CardTitle>
         </CardHeader>
         <CardContent>
-          {summary.length ? (
+          {payments.length ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Profissional</TableHead>
-                  <TableHead className="text-right">Atendimentos</TableHead>
-                  <TableHead className="text-right">Faturamento</TableHead>
-                  <TableHead className="text-right">Comissão</TableHead>
+                  <TableHead>Referência</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {summary.map((entry) => (
-                  <TableRow key={entry.name}>
-                    <TableCell className="font-medium">{entry.name}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      {entry.services}
+                {payments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell className="font-medium">
+                      {professionalNames.get(payment.professional_id) ??
+                        "Profissional"}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatBRL(entry.revenue)}
+                    <TableCell className="text-muted-foreground">
+                      {payment.reference || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatShortDateInTz(payment.paid_at, tenant.timezone)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
-                      {formatBRL(entry.commission)}
+                      {formatBRL(Number(payment.amount))}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
-            <EmptyState
-              title="Sem atendimentos concluídos neste mês"
-              description="Conclua os atendimentos na Agenda para gerar comissões. O percentual é definido em cada serviço."
-            />
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              Nenhum pagamento registrado neste mês.
+            </p>
           )}
         </CardContent>
       </Card>

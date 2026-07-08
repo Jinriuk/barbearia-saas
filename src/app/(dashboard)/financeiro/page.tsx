@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { Package, Scissors, TrendingUp, Users, Wallet } from "lucide-react";
+import {
+  ChartNoAxesCombined,
+  HandCoins,
+  Package,
+  Scissors,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { getUtcDayRange, getUtcMonthRange } from "@/lib/dates";
@@ -293,9 +301,21 @@ export default async function FinanceiroPage() {
         title="Financeiro"
         description={`Receitas de ${monthLabel.format(new Date(Date.UTC(year, month - 1, 1)))} — serviços concluídos e vendas entram automaticamente.`}
         action={
-          <Badge variant="outline" className="font-mono">
-            Total do mês {formatBRL(monthTotal)}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="font-mono">
+              Total do mês {formatBRL(monthTotal)}
+            </Badge>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/comissoes">
+                <HandCoins className="size-4" /> Pagamento de Funcionários
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/relatorios">
+                <ChartNoAxesCombined className="size-4" /> Relatórios
+              </Link>
+            </Button>
+          </div>
         }
       />
 
