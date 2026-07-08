@@ -36,15 +36,29 @@ type TenantColorSettings = {
   primaryColor: string;
   secondaryColor: string;
   backgroundColor: string;
+  backgroundType?: "color" | "image";
+  backgroundImageUrl?: string | null;
 };
 
 /** Variáveis CSS do tema do tenant, com os pares de contraste já resolvidos. */
 export function tenantStyle(settings: TenantColorSettings) {
-  return {
+  const base: Record<string, string> = {
     "--tenant-primary": settings.primaryColor,
     "--tenant-secondary": settings.secondaryColor,
     "--tenant-bg": settings.backgroundColor,
     "--tenant-on-primary": readableTextColor(settings.primaryColor),
     "--tenant-on-secondary": readableTextColor(settings.secondaryColor),
-  } as React.CSSProperties;
+  };
+
+  // Fundo por imagem: aplica a foto com um overlay na cor de fundo (82%) para
+  // manter a legibilidade dos textos sobre a imagem.
+  if (settings.backgroundType === "image" && settings.backgroundImageUrl) {
+    const overlay = withAlpha(settings.backgroundColor, 0.82);
+    base.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url("${settings.backgroundImageUrl}")`;
+    base.backgroundSize = "cover";
+    base.backgroundPosition = "center";
+    base.backgroundAttachment = "fixed";
+  }
+
+  return base as React.CSSProperties;
 }

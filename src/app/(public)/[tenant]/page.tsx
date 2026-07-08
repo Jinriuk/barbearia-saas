@@ -51,10 +51,10 @@ export default async function TenantPublicPage({
             </span>
             Agenda aberta
           </p>
-          <h1 className="mt-5 text-[2.6rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
+          <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 mt-5 text-[2.6rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance duration-700 sm:text-6xl lg:text-7xl">
             {data.settings.heroTitle}
           </h1>
-          <p className="mt-5 max-w-md text-base leading-7 opacity-70 sm:text-lg sm:leading-8">
+          <p className="motion-safe:animate-in motion-safe:fade-in mt-5 max-w-md text-base leading-7 opacity-70 duration-1000 sm:text-lg sm:leading-8">
             {data.settings.heroSubtitle}
           </p>
 
@@ -175,7 +175,7 @@ export default async function TenantPublicPage({
           {data.professionals.map((professional) => (
             <div
               key={professional.id}
-              className="min-w-[78%] snap-start rounded-3xl border border-black/10 bg-white/40 p-6 sm:min-w-0"
+              className="min-w-[78%] snap-start rounded-3xl border border-black/10 bg-white/40 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/20 hover:shadow-lg hover:shadow-black/5 sm:min-w-0"
             >
               <span className="grid size-14 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-lg font-semibold text-[var(--tenant-on-secondary)]">
                 {professional.avatarUrl ? (
