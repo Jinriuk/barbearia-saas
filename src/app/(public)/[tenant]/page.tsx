@@ -19,13 +19,14 @@ import {
   getPublicBarbershop,
   tenantPageMetadata,
 } from "@/modules/barbershops/queries";
-import { STOCK_PHOTOS } from "@/lib/assets";
+import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
 import { tenantStyle, withAlpha } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
 import { PublicFooter } from "@/components/public-site/public-footer";
 import { PublicHeader } from "@/components/public-site/public-header";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
+import { SmartImage } from "@/components/public-site/smart-image";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,9 @@ export default async function TenantPublicPage({
 
   const whatsapp = whatsAppHref(data.settings.whatsappNumber);
   const primary = data.settings.primaryColor;
-  const heroImage = data.settings.bannerUrl || STOCK_PHOTOS.barberChair;
+  // Banner enviado pelo dono > foto real padrão; a arte SVG fica de fallback.
+  const heroImage = data.settings.bannerUrl || REAL_PHOTOS.interior;
+  const ambienceImage = data.settings.bannerUrl || REAL_PHOTOS.razorShave;
 
   return (
     <main
@@ -142,8 +145,9 @@ export default async function TenantPublicPage({
           {/* Imagem com ken-burns + chips flutuantes */}
           <Parallax speed={0.05} className="relative mt-4 lg:mt-0">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-black/25 sm:aspect-[16/10] lg:aspect-[4/5]">
-              <Image
+              <SmartImage
                 src={heroImage}
+                fallbackSrc={STOCK_PHOTOS.barberChair}
                 alt={`Ambiente da ${data.barbershop.name}`}
                 fill
                 sizes="(min-width: 1024px) 42vw, 100vw"
@@ -387,8 +391,9 @@ export default async function TenantPublicPage({
           className="absolute inset-x-0 -top-[30%] -bottom-[30%]"
         >
           <div className="relative h-full w-full">
-            <Image
-              src={data.settings.bannerUrl || STOCK_PHOTOS.beardTrim}
+            <SmartImage
+              src={ambienceImage}
+              fallbackSrc={STOCK_PHOTOS.beardTrim}
               alt=""
               fill
               sizes="100vw"

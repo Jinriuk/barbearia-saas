@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -15,9 +14,10 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
-import { STOCK_PHOTOS } from "@/lib/assets";
+import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
+import { SmartImage } from "@/components/public-site/smart-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -254,9 +254,10 @@ export default function HomePage() {
           <div className="relative hidden sm:block">
             <Parallax speed={0.06}>
               <div className="animate-float-slow relative aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/60">
-                <Image
-                  src={STOCK_PHOTOS.barberCut}
-                  alt="Arte de barbearia com tesouras douradas"
+                <SmartImage
+                  src={REAL_PHOTOS.barberCut}
+                  fallbackSrc={STOCK_PHOTOS.barberCut}
+                  alt="Barbeiro finalizando um corte na barbearia"
                   fill
                   sizes="(min-width: 1024px) 40vw, 90vw"
                   className="animate-kenburns object-cover"
@@ -380,6 +381,49 @@ export default function HomePage() {
                   {item.description}
                 </p>
               </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Galeria de fotos ===== */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              src: REAL_PHOTOS.interior,
+              fallback: STOCK_PHOTOS.barberChair,
+              alt: "Interior clássico de barbearia com cadeiras e espelhos",
+              caption: "O clima da sua casa",
+            },
+            {
+              src: REAL_PHOTOS.beardTrim,
+              fallback: STOCK_PHOTOS.beardTrim,
+              alt: "Barba sendo aparada com precisão",
+              caption: "Precisão no detalhe",
+            },
+            {
+              src: REAL_PHOTOS.clippers,
+              fallback: STOCK_PHOTOS.barberCut,
+              alt: "Corte com máquina em fundo escuro",
+              caption: "Rotina sem fila",
+            },
+          ].map((photo, index) => (
+            <Reveal key={photo.caption} delay={index * 110}>
+              <figure className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-white/10 sm:aspect-[3/4]">
+                <SmartImage
+                  src={photo.src}
+                  fallbackSrc={photo.fallback}
+                  alt={photo.alt}
+                  fill
+                  sizes="(min-width: 640px) 30vw, 90vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <figcaption className="absolute bottom-4 left-5 text-sm font-medium text-white/90">
+                  {photo.caption}
+                </figcaption>
+              </figure>
             </Reveal>
           ))}
         </div>

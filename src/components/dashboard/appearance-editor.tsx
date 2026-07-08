@@ -17,6 +17,7 @@ import {
   uploadBackgroundImage,
   uploadLogo,
 } from "@/modules/settings/actions";
+import { REAL_PHOTOS } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,6 +31,11 @@ import { Textarea } from "@/components/ui/textarea";
 const initialState: ActionState = { success: false, message: "" };
 
 const DEFAULT_BACKGROUNDS = [
+  // Fotos reais (Unsplash). No fundo da página elas recebem um overlay de
+  // 82% na cor de fundo — se o CDN falhar, a cor segura a legibilidade.
+  { label: "Foto — Interior", url: REAL_PHOTOS.interior },
+  { label: "Foto — Navalha", url: REAL_PHOTOS.razorShave },
+  { label: "Foto — Corte", url: REAL_PHOTOS.barberCut },
   { label: "Navalha", url: "/backgrounds/navalha.svg" },
   { label: "Meia-noite", url: "/backgrounds/meia-noite.svg" },
   { label: "Linhas", url: "/backgrounds/linhas.svg" },
