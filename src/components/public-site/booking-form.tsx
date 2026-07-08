@@ -181,11 +181,28 @@ export function BookingForm({
     setLoadingSlots(false);
   }
 
+  /**
+   * Leva o cliente até o próximo passo assim que ele escolhe — no celular o
+   * passo seguinte nasce abaixo da dobra e, sem isso, muita gente para no
+   * meio sem perceber que o fluxo continuou.
+   */
+  function scrollToStep(id: string) {
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+    });
+  }
+
   function selectService(id: string) {
     setServiceId(id);
     setProfessionalId("");
     setSlot("");
     setSlots([]);
+    scrollToStep("passo-profissional");
   }
 
   function selectProfessional(id: string) {
@@ -195,11 +212,17 @@ export function BookingForm({
       setSlot("");
       setSlots([]);
     }
+    scrollToStep("passo-horario");
   }
 
   function selectDate(value: string) {
     setDate(value);
     void fetchSlots(serviceId, professionalId, value);
+  }
+
+  function selectSlot(value: string) {
+    setSlot(value);
+    scrollToStep(showUpsell ? "passo-extra" : "passo-dados");
   }
 
   function addProduct(id: string) {
@@ -384,7 +407,7 @@ export function BookingForm({
 
       {/* 2. Profissional */}
       {serviceId ? (
-        <section>
+        <section id="passo-profissional" className="scroll-mt-24">
           <StepTitle number={2} title="Escolha o profissional" />
           <div className="mt-4 flex flex-wrap gap-2.5">
             {availableProfessionals.map((professional) => {
@@ -424,7 +447,7 @@ export function BookingForm({
 
       {/* 3. Data e horário */}
       {serviceId && professionalId ? (
-        <section>
+        <section id="passo-horario" className="scroll-mt-24">
           <StepTitle number={3} title="Escolha o dia e o horário" />
           <div className="-mx-5 mt-4 flex snap-x gap-2 overflow-x-auto px-5 pb-1">
             {days.map((day) => {
@@ -484,7 +507,7 @@ export function BookingForm({
                           key={item.starts_at}
                           type="button"
                           aria-pressed={selected}
-                          onClick={() => setSlot(item.starts_at)}
+                          onClick={() => selectSlot(item.starts_at)}
                           className={cn(
                             "h-11 rounded-xl border font-mono text-sm transition-all active:scale-[.96]",
                             selected
@@ -506,7 +529,7 @@ export function BookingForm({
 
       {/* Produtos (upsell Plus) */}
       {showUpsell && slot ? (
-        <section>
+        <section id="passo-extra" className="scroll-mt-24">
           <StepTitle
             number={4}
             title="Quer levar um produto?"
@@ -565,7 +588,7 @@ export function BookingForm({
 
       {/* Seus dados */}
       {slot ? (
-        <section>
+        <section id="passo-dados" className="scroll-mt-24">
           <StepTitle number={showUpsell ? 5 : 4} title="Seus dados" />
           <div className="mt-4 grid gap-4">
             <div className="space-y-2">

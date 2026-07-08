@@ -61,7 +61,7 @@ export default async function TenantPublicPage({
   return (
     <main
       style={tenantStyle(data.settings)}
-      className="min-h-screen overflow-x-clip bg-[var(--tenant-bg)] text-[var(--tenant-secondary)]"
+      className="min-h-screen overflow-x-clip bg-[var(--tenant-bg)] pb-24 text-[var(--tenant-secondary)] lg:pb-0"
     >
       <PublicHeader data={data} />
 
@@ -446,6 +446,17 @@ export default async function TenantPublicPage({
       </section>
 
       <PublicFooter data={data} />
+
+      {/* CTA fixo no polegar (só celular): agendar sempre a um toque. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 px-4 pt-2 pb-[max(env(safe-area-inset-bottom),1rem)] lg:hidden">
+        <Link
+          href={`/${tenant}/agendar`}
+          className="btn-shine flex h-13 w-full items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] text-[15px] font-medium text-[var(--tenant-on-secondary)] shadow-2xl shadow-black/30 transition-transform active:scale-[.98]"
+        >
+          <CalendarCheck2 className="size-4.5" />
+          Agendar horário
+        </Link>
+      </div>
     </main>
   );
 }
