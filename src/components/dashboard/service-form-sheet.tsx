@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { saveService } from "@/modules/services/actions";
+import type { ActionState } from "@/types/domain";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +44,16 @@ export function ServiceFormSheet({
   professionals?: Array<{ id: string; name: string }>;
 }) {
   const [open, setOpen] = useState(false);
+  // Fecha o painel apenas quando a action confirma o salvamento; em erro de
+  // validação/banco o painel permanece aberto com a mensagem visível.
+  const [state, formAction, pending] = useActionState(
+    async (prev: ActionState, formData: FormData) => {
+      const result = await saveService(prev, formData);
+      if (result.success) setOpen(false);
+      return result;
+    },
+    { success: false, message: "" } satisfies ActionState,
+  );
   const editing = Boolean(service);
   const assigned = new Set(service?.professionalIds ?? []);
 
@@ -71,11 +83,12 @@ export function ServiceFormSheet({
             agendamentos já feitos.
           </SheetDescription>
         </SheetHeader>
-        <form
-          action={saveService}
-          onSubmit={() => setOpen(false)}
-          className="flex flex-1 flex-col gap-4 p-4"
-        >
+        <form action={formAction} className="flex flex-1 flex-col gap-4 p-4">
+          {state.message && !state.success ? (
+            <Alert variant="destructive">
+              <AlertDescription>{state.message}</AlertDescription>
+            </Alert>
+          ) : null}
           {service ? (
             <input type="hidden" name="id" value={service.id} />
           ) : null}
@@ -179,7 +192,7 @@ export function ServiceFormSheet({
           </label>
 
           <SheetFooter className="mt-auto px-0">
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={pending}>
               {editing ? "Salvar alterações" : "Adicionar serviço"}
             </Button>
           </SheetFooter>

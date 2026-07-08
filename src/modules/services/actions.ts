@@ -7,7 +7,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { serviceSchema } from "@/lib/validators/entities";
 import type { ActionState } from "@/types/domain";
 
-export async function saveService(formData: FormData) {
+export async function saveService(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const parsed = serviceSchema.safeParse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
@@ -19,9 +22,13 @@ export async function saveService(formData: FormData) {
     active: formData.get("active") === "on",
     professionalIds: formData.getAll("professionalIds").map(String),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    return { success: false, message: "Revise os campos do serviço." };
+  }
   const tenant = await requireTenant();
-  if (!can(tenant.role, "catalog:manage")) return;
+  if (!can(tenant.role, "catalog:manage")) {
+    return { success: false, message: "Sem permissão para salvar serviços." };
+  }
   const supabase = await createSupabaseServerClient();
   const payload = {
     barbershop_id: tenant.id,
@@ -36,11 +43,14 @@ export async function saveService(formData: FormData) {
 
   let serviceId = parsed.data.id ?? null;
   if (serviceId) {
-    await supabase
+    const { error } = await supabase
       .from("services")
       .update(payload)
       .eq("id", serviceId)
       .eq("barbershop_id", tenant.id);
+    if (error) {
+      return { success: false, message: "Não foi possível salvar o serviço." };
+    }
   } else {
     const { data: service } = await supabase
       .from("services")
@@ -49,7 +59,9 @@ export async function saveService(formData: FormData) {
       .single();
     serviceId = service?.id ?? null;
   }
-  if (!serviceId) return;
+  if (!serviceId) {
+    return { success: false, message: "Não foi possível salvar o serviço." };
+  }
 
   const professionalIds = parsed.data.professionalIds ?? [];
   if (formData.get("hasProfessionals") === "1") {
@@ -89,6 +101,7 @@ export async function saveService(formData: FormData) {
   }
   revalidatePath("/servicos");
   revalidatePath("/profissionais");
+  return { success: true, message: "Serviço salvo." };
 }
 
 export async function toggleService(formData: FormData) {

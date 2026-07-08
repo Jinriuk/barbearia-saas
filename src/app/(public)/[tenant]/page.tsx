@@ -324,7 +324,10 @@ export default async function TenantPublicPage({
 
       {/* ===== Produtos (Plus) ===== */}
       {data.products.length ? (
-        <section className="mx-auto max-w-6xl px-5 pb-16 sm:pb-24">
+        <section
+          id="produtos"
+          className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-16 sm:pb-24"
+        >
           <Reveal>
             <div className="flex items-end justify-between gap-4">
               <div>

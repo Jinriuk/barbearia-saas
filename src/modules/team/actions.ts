@@ -50,7 +50,7 @@ export async function inviteMember(
         "Não foi possível convidar. Tente novamente.",
     };
   }
-  revalidatePath("/usuarios");
+  revalidatePath("/profissionais");
   return { success: true, message: "Membro adicionado à equipe." };
 }
 
@@ -71,7 +71,7 @@ export async function changeMemberRole(formData: FormData) {
     .eq("id", membershipId)
     .eq("barbershop_id", tenant.id)
     .neq("role", "owner");
-  revalidatePath("/usuarios");
+  revalidatePath("/profissionais");
 }
 
 export async function removeMember(formData: FormData) {
@@ -88,5 +88,5 @@ export async function removeMember(formData: FormData) {
     .eq("id", membershipId)
     .eq("barbershop_id", tenant.id)
     .neq("role", "owner");
-  revalidatePath("/usuarios");
+  revalidatePath("/profissionais");
 }

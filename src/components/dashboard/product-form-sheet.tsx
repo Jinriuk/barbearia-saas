@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { saveProduct } from "@/modules/products/actions";
+import type { ActionState } from "@/types/domain";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,8 +32,20 @@ type ProductInput = {
  * Formulário de produto em painel lateral, para criar e editar. A action
  * saveProduct trata os dois casos pela presença do id.
  */
+const initialState: ActionState = { success: false, message: "" };
+
 export function ProductFormSheet({ product }: { product?: ProductInput }) {
   const [open, setOpen] = useState(false);
+  // Fecha o painel apenas quando a action confirma o salvamento; em erro de
+  // validação/banco o painel permanece aberto com a mensagem visível.
+  const [state, formAction, pending] = useActionState(
+    async (prev: ActionState, formData: FormData) => {
+      const result = await saveProduct(prev, formData);
+      if (result.success) setOpen(false);
+      return result;
+    },
+    initialState,
+  );
   const editing = Boolean(product);
 
   return (
@@ -60,11 +74,12 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
             saída.
           </SheetDescription>
         </SheetHeader>
-        <form
-          action={saveProduct}
-          onSubmit={() => setOpen(false)}
-          className="flex flex-1 flex-col gap-4 p-4"
-        >
+        <form action={formAction} className="flex flex-1 flex-col gap-4 p-4">
+          {state.message && !state.success ? (
+            <Alert variant="destructive">
+              <AlertDescription>{state.message}</AlertDescription>
+            </Alert>
+          ) : null}
           {product ? (
             <input type="hidden" name="id" value={product.id} />
           ) : null}
@@ -121,7 +136,7 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
             Oferecer no checkout do agendamento (Plus)
           </label>
           <SheetFooter className="mt-auto px-0">
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={pending}>
               {editing ? "Salvar alterações" : "Adicionar produto"}
             </Button>
           </SheetFooter>

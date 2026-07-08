@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Trash2, UserRound } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
@@ -239,8 +240,11 @@ export default async function ProfessionalsPage() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">O que cada papel pode</CardTitle>
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/permissoes">Ver matriz completa</Link>
+          </Button>
         </CardHeader>
         <CardContent className="text-muted-foreground grid gap-3 text-sm sm:grid-cols-3">
           <p>

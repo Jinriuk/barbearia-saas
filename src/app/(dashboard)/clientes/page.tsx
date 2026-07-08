@@ -6,9 +6,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -17,11 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  archiveClient,
-  restoreClient,
-  saveClient,
-} from "@/modules/clients/actions";
+import { archiveClient, restoreClient } from "@/modules/clients/actions";
+import { ClientForm } from "@/components/dashboard/client-form";
 import { ArchiveClientButton } from "@/components/dashboard/archive-client-button";
 import { RestoreClientButton } from "@/components/dashboard/restore-client-button";
 
@@ -56,25 +50,7 @@ export default async function ClientsPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveClient} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" name="name" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input id="phone" name="phone" inputMode="tel" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" name="email" type="email" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Observações internas</Label>
-                <Textarea id="notes" name="notes" rows={3} />
-              </div>
-              <Button className="w-full">Adicionar cliente</Button>
-            </form>
+            <ClientForm />
           </CardContent>
         </Card>
         <Card>
