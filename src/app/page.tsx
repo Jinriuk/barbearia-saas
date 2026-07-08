@@ -217,11 +217,11 @@ export default function HomePage() {
               página de agendamento deslumbrante com a cara da sua marca. Tudo
               em um lugar — sem planilha, sem caderninho.
             </p>
-            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-wrap gap-3 delay-200 duration-1000">
+            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
                 asChild
                 size="lg"
-                className="btn-shine h-13 rounded-full bg-amber-500 px-8 text-[15px] text-stone-950 shadow-xl shadow-amber-500/20 hover:bg-amber-400"
+                className="btn-shine h-13 w-full rounded-full bg-amber-500 px-8 text-[15px] text-stone-950 shadow-xl shadow-amber-500/20 hover:bg-amber-400 sm:w-auto"
               >
                 <Link href="/cadastro">
                   Criar minha barbearia <ArrowRight />
@@ -231,7 +231,7 @@ export default function HomePage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-13 rounded-full border-white/15 bg-white/5 px-7 text-[15px] hover:bg-white/10"
+                className="h-13 w-full rounded-full border-white/15 bg-white/5 px-7 text-[15px] hover:bg-white/10 sm:w-auto"
               >
                 <Link href="/aurora">Ver página de demonstração</Link>
               </Button>
