@@ -292,13 +292,17 @@ export default async function FinanceiroPage() {
         title="Financeiro"
         description={`Receitas de ${monthLabel.format(new Date(Date.UTC(year, month - 1, 1)))} — serviços concluídos e vendas entram automaticamente.`}
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="font-mono">
+          <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <Badge
+              variant="outline"
+              className="col-span-2 justify-center py-1.5 font-mono sm:col-auto sm:py-0.5"
+            >
               Total do mês {formatBRL(monthTotal)}
             </Badge>
             <Button asChild variant="outline" size="sm">
               <Link href="/comissoes">
-                <HandCoins className="size-4" /> Pagamento de Funcionários
+                <HandCoins className="size-4" />
+                <span className="truncate">Pagamento de Funcionários</span>
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
@@ -306,7 +310,12 @@ export default async function FinanceiroPage() {
                 <ChartNoAxesCombined className="size-4" /> Relatórios
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="col-span-2 sm:col-auto"
+            >
               <Link href="/relatorio-financeiro" target="_blank">
                 <FileText className="size-4" /> Gerar PDF
               </Link>
@@ -422,6 +431,31 @@ export default async function FinanceiroPage() {
           </CardHeader>
           <CardContent>
             {professionals.length ? (
+              <>
+              {/* Celular: cards resumidos no lugar da tabela larga. */}
+              <div className="space-y-3 sm:hidden">
+                {professionals.map((item) => (
+                  <div key={item.name} className="rounded-xl border p-4">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="min-w-0 truncate font-medium">
+                        {item.name}
+                      </p>
+                      <p className="shrink-0 font-mono font-semibold">
+                        {formatBRL(item.total)}
+                      </p>
+                    </div>
+                    <p className="text-muted-foreground mt-1.5 text-xs">
+                      {item.count} atend. · Serviços {formatBRL(item.service)} ·
+                      Produtos {formatBRL(item.product)}
+                    </p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      Ticket médio{" "}
+                      {formatBRL(item.count ? item.total / item.count : 0)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -456,6 +490,8 @@ export default async function FinanceiroPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              </>
             ) : (
               <p className="text-muted-foreground py-6 text-center text-sm">
                 Sem receitas neste mês ainda.
@@ -548,6 +584,78 @@ export default async function FinanceiroPage() {
         </CardHeader>
         <CardContent>
           {dayAppointments.length ? (
+            <>
+            {/* Celular: um card por atendimento, com o pagamento em destaque
+                — é a ação mais usada no balcão pelo telefone. */}
+            <div className="space-y-3 sm:hidden">
+              {dayAppointments.map((item) => (
+                <div key={item.id} className="rounded-xl border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{item.clientName}</p>
+                      <p className="text-muted-foreground truncate text-xs">
+                        {item.serviceName}
+                        {item.professionalName
+                          ? ` · ${item.professionalName}`
+                          : ""}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-mono font-semibold">
+                      {formatBRL(item.amount)}
+                    </p>
+                  </div>
+                  <div className="mt-2">
+                    <AppointmentStatusBadge status={item.status} />
+                  </div>
+                  <div className="mt-3 border-t pt-3">
+                    {item.paid ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          Recebido
+                        </Badge>
+                        <form action={revertPayment}>
+                          <input
+                            type="hidden"
+                            name="appointmentId"
+                            value={item.id}
+                          />
+                          <Button size="sm" variant="ghost">
+                            Estornar
+                          </Button>
+                        </form>
+                      </div>
+                    ) : (
+                      <form
+                        action={confirmPayment}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="appointmentId"
+                          value={item.id}
+                        />
+                        <select
+                          name="paymentMethod"
+                          defaultValue="pix"
+                          aria-label="Forma de pagamento"
+                          className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
+                        >
+                          {PAYMENT_METHODS.map((method) => (
+                            <option key={method.value} value={method.value}>
+                              {method.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Button size="sm" className="h-10 shrink-0">
+                          Confirmar
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -625,6 +733,8 @@ export default async function FinanceiroPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           ) : (
             <EmptyState
               title="Nenhum atendimento hoje"

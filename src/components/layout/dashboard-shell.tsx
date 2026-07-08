@@ -22,6 +22,7 @@ import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { UserMenu } from "@/components/layout/user-menu";
 import { NavLink } from "@/components/layout/nav-link";
+import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 
 const nav: Array<{
   href: string;
@@ -158,10 +159,17 @@ export function DashboardShell({
             </NavLink>
           ))}
         </nav>
-        <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-8">
+        <main className="mx-auto max-w-[1500px] p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8">
           {children}
         </main>
       </div>
+      <MobileTabBar
+        items={visibleNav.slice(0, 5).map((item) => ({
+          href: item.href,
+          label: item.label,
+          icon: <item.icon className="size-5" />,
+        }))}
+      />
     </div>
   );
 }
