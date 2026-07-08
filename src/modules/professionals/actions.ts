@@ -202,6 +202,7 @@ export async function setProfessionalAvailability(formData: FormData) {
 
 export async function toggleProfessional(formData: FormData) {
   const tenant = await requireTenant();
+  if (!can(tenant.role, "catalog:manage")) return;
   const supabase = await createSupabaseServerClient();
   await supabase
     .from("professionals")

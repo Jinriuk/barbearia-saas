@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clientSchema } from "@/lib/validators/entities";
 import type { ActionState } from "@/types/domain";
@@ -16,6 +17,7 @@ export async function saveClient(formData: FormData) {
   });
   if (!parsed.success) return;
   const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) return;
   const supabase = await createSupabaseServerClient();
   const payload = {
     barbershop_id: tenant.id,
@@ -48,6 +50,9 @@ export async function archiveClient(
   const id = String(formData.get("id") ?? "");
   if (!id) return { success: false, message: "Cliente inválido." };
   const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) {
+    return { success: false, message: "Sem permissão para arquivar clientes." };
+  }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("clients")

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="bg2" cx="0.7" cy="0.25" r="1.1">
+      <stop offset="0" stop-color="#2b2318"/>
+      <stop offset="1" stop-color="#141009"/>
+    </radialGradient>
+  </defs>
+  <rect width="1400" height="1050" fill="url(#bg2)"/>
+  <!-- tesoura estilizada -->
+  <g stroke="#d8b98a" stroke-opacity="0.22" stroke-width="10" fill="none" stroke-linecap="round">
+    <line x1="420" y1="330" x2="900" y2="760"/>
+    <line x1="900" y1="330" x2="420" y2="760"/>
+    <circle cx="380" cy="790" r="58"/>
+    <circle cx="940" cy="790" r="58"/>
+  </g>
+  <g stroke="#b8893e" stroke-opacity="0.28" stroke-width="3" fill="none">
+    <path d="M120 950 C 400 900, 1000 900, 1280 950"/>
+    <path d="M120 990 C 400 940, 1000 940, 1280 990"/>
+  </g>
+</svg>

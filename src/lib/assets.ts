@@ -1,10 +1,8 @@
-// Fotos de contexto (Unsplash, licença livre para uso comercial) usadas como
-// padrão até a barbearia enviar as próprias imagens.
+// Artes de capa locais usadas como padrão até a barbearia enviar as próprias
+// imagens. Locais de propósito: as antigas vinham do Unsplash e quebravam a
+// página quando o CDN externo falhava (etapa 14.2).
 export const STOCK_PHOTOS = {
-  barberChair:
-    "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1400&q=80",
-  barberCut:
-    "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=80",
-  beardTrim:
-    "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1400&q=80",
+  barberChair: "/stock/hero-1.svg",
+  barberCut: "/stock/hero-2.svg",
+  beardTrim: "/stock/hero-3.svg",
 } as const;

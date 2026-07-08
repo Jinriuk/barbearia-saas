@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1712"/>
+      <stop offset="1" stop-color="#0c0a07"/>
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="1050" fill="url(#bg3)"/>
+  <!-- navalha estilizada -->
+  <g stroke="#d8b98a" stroke-opacity="0.2" fill="none" stroke-width="8" stroke-linecap="round">
+    <path d="M320 720 L820 300 q40 -34 76 0 q34 36 0 74 L420 810"/>
+    <path d="M420 810 l-90 60 q-40 24 -60 -8 q-18 -32 20 -56 z" fill="#d8b98a" fill-opacity="0.1"/>
+  </g>
+  <g fill="#b8893e" fill-opacity="0.16">
+    <rect x="1020" y="620" width="230" height="14" rx="7"/>
+    <rect x="1060" y="670" width="190" height="14" rx="7"/>
+    <rect x="1100" y="720" width="150" height="14" rx="7"/>
+  </g>
+</svg>
