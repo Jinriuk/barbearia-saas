@@ -24,18 +24,25 @@ export default async function SettingsPage() {
     color: { dark: "#191816", light: "#ffffff" },
   });
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("tenant_settings")
-    .select("*")
-    .eq("barbershop_id", tenant.id)
-    .single();
+  const [{ data }, { data: shop }] = await Promise.all([
+    supabase
+      .from("tenant_settings")
+      .select("*")
+      .eq("barbershop_id", tenant.id)
+      .single(),
+    supabase
+      .from("barbershops")
+      .select("logo_url")
+      .eq("id", tenant.id)
+      .maybeSingle(),
+  ]);
 
   return (
     <>
       <PageHeader
         eyebrow="White label"
-        title="Configurações"
-        description={`Sua barbearia está no plano ${planLabel(tenant.plan)}. Ajuste a identidade e as informações da página pública.`}
+        title="Identidade Visual"
+        description={`Sua barbearia está no plano ${planLabel(tenant.plan)}. Ajuste a logo, as cores, o fundo e as informações da página pública.`}
         action={
           <div className="flex items-center gap-3">
             <PlanBadge plan={tenant.plan} />
@@ -54,6 +61,7 @@ export default async function SettingsPage() {
           slug={tenant.slug}
         />
         <AppearanceEditor
+          key={`${shop?.logo_url ?? ""}|${data?.background_type ?? "color"}|${data?.background_image_url ?? ""}`}
           isPlus={isPlus(tenant.plan)}
           slug={tenant.slug}
           initial={{
@@ -63,6 +71,9 @@ export default async function SettingsPage() {
             primaryColor: data?.primary_color ?? "#b8893e",
             secondaryColor: data?.secondary_color ?? "#171717",
             backgroundColor: data?.background_color ?? "#faf8f4",
+            backgroundType: (data?.background_type as "color" | "image") ?? "color",
+            backgroundImageUrl: data?.background_image_url ?? "",
+            logoUrl: shop?.logo_url ?? "",
           }}
         />
         <ContactSettingsForm

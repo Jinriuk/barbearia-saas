@@ -84,7 +84,7 @@ const nav: Array<{
   },
   {
     href: "/configuracoes",
-    label: "Configurações",
+    label: "Identidade Visual",
     icon: Settings,
     permission: "settings:manage",
   },

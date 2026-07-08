@@ -56,6 +56,8 @@ export type PublicBarbershop = {
     primaryColor: string;
     secondaryColor: string;
     backgroundColor: string;
+    backgroundType: "color" | "image";
+    backgroundImageUrl: string | null;
     fontFamily: string;
     heroTitle: string;
     heroSubtitle: string;
