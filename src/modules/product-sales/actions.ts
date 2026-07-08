@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/types/domain";
 
@@ -19,7 +20,10 @@ export async function confirmProductSale(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireTenant();
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "appointments:manage")) {
+    return { success: false, message: "Sem permissão para confirmar vendas." };
+  }
   const parsed = idSchema.safeParse(formData.get("id"));
   if (!parsed.success) return { success: false, message: "Reserva inválida." };
 
@@ -28,7 +32,13 @@ export async function confirmProductSale(
     p_appointment_product_id: parsed.data,
   });
   if (error) {
-    return { success: false, message: "Não foi possível confirmar a venda." };
+    return {
+      success: false,
+      message:
+        error.message === "INSUFFICIENT_STOCK"
+          ? "Estoque insuficiente para confirmar. Registre uma entrada em Produtos e Estoque."
+          : "Não foi possível confirmar a venda.",
+    };
   }
   revalidate();
   return { success: true, message: "Venda confirmada e estoque atualizado." };
@@ -39,7 +49,10 @@ export async function cancelProductSale(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireTenant();
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "appointments:manage")) {
+    return { success: false, message: "Sem permissão para cancelar reservas." };
+  }
   const parsed = idSchema.safeParse(formData.get("id"));
   if (!parsed.success) return { success: false, message: "Reserva inválida." };
 

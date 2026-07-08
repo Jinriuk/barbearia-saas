@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Check, Minus, ShieldCheck } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can, type Permission } from "@/lib/permissions";
@@ -35,7 +36,8 @@ const capabilities: Array<{ permission: Permission; label: string }> = [
 ];
 
 export default async function PermissionsPage() {
-  await requireTenant();
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "memberships:manage")) notFound();
 
   return (
     <>
@@ -45,7 +47,7 @@ export default async function PermissionsPage() {
         description="O que cada papel pode fazer. As regras valem na interface, no servidor e no banco de dados."
         action={
           <Button asChild variant="outline">
-            <Link href="/usuarios">Gerenciar equipe</Link>
+            <Link href="/profissionais">Gerenciar equipe</Link>
           </Button>
         }
       />

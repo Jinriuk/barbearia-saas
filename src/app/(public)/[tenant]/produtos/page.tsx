@@ -5,5 +5,5 @@ export default async function Page({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant } = await params;
-  redirect(`/${tenant}`);
+  redirect(`/${tenant}#produtos`);
 }

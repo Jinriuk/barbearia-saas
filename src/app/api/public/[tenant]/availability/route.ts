@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rateLimit, requestIp } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const querySchema = z.object({
@@ -12,6 +13,12 @@ export async function GET(
   context: { params: Promise<{ tenant: string }> },
 ) {
   const { tenant } = await context.params;
+  if (!rateLimit(`availability:${requestIp(request)}`, 30, 60_000)) {
+    return Response.json(
+      { error: "Muitas consultas. Aguarde um instante e tente de novo." },
+      { status: 429 },
+    );
+  }
   const url = new URL(request.url);
   const parsed = querySchema.safeParse(Object.fromEntries(url.searchParams));
   if (!parsed.success) return Response.json({ error: "Seleção inválida." }, { status: 400 });

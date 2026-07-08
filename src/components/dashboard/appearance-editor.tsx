@@ -360,8 +360,10 @@ export function AppearanceEditor({
                     Faça upgrade para o Plus e deixe a área do cliente com a cara
                     da sua barbearia.
                   </p>
-                  <Button type="button" variant="secondary">
-                    Conhecer o Plus <ArrowRight />
+                  <Button asChild type="button" variant="secondary">
+                    <a href="/#planos" target="_blank" rel="noreferrer">
+                      Conhecer o Plus <ArrowRight />
+                    </a>
                   </Button>
                 </div>
               )}

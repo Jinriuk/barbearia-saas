@@ -20,9 +20,14 @@ function revalidate() {
   revalidatePath("/produtos");
 }
 
-export async function saveProduct(formData: FormData) {
+export async function saveProduct(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const tenant = await requireTenant();
-  if (!can(tenant.role, "catalog:manage")) return;
+  if (!can(tenant.role, "catalog:manage")) {
+    return { success: false, message: "Sem permissão para salvar produtos." };
+  }
 
   const parsed = productSchema.safeParse({
     id: formData.get("id") || undefined,
@@ -32,7 +37,9 @@ export async function saveProduct(formData: FormData) {
     costPrice: formData.get("costPrice") || 0,
     publicVisible: formData.get("publicVisible") === "on",
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    return { success: false, message: "Revise os campos do produto." };
+  }
 
   const supabase = await createSupabaseServerClient();
   const payload = {
@@ -43,16 +50,21 @@ export async function saveProduct(formData: FormData) {
     cost_price: parsed.data.costPrice ?? 0,
     public_visible: parsed.data.publicVisible ?? false,
   };
-  if (parsed.data.id) {
-    await supabase
-      .from("products")
-      .update(payload)
-      .eq("id", parsed.data.id)
-      .eq("barbershop_id", tenant.id);
-  } else {
-    await supabase.from("products").insert(payload);
+  const { error } = parsed.data.id
+    ? await supabase
+        .from("products")
+        .update(payload)
+        .eq("id", parsed.data.id)
+        .eq("barbershop_id", tenant.id)
+    : await supabase.from("products").insert(payload);
+  if (error) {
+    return {
+      success: false,
+      message: "Não foi possível salvar o produto. Tente novamente.",
+    };
   }
   revalidate();
+  return { success: true, message: "Produto salvo." };
 }
 
 export async function toggleProductActive(formData: FormData) {

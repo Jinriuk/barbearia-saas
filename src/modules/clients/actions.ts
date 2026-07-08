@@ -7,7 +7,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { clientSchema } from "@/lib/validators/entities";
 import type { ActionState } from "@/types/domain";
 
-export async function saveClient(formData: FormData) {
+export async function saveClient(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const parsed = clientSchema.safeParse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
@@ -15,9 +18,13 @@ export async function saveClient(formData: FormData) {
     email: formData.get("email"),
     notes: formData.get("notes"),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    return { success: false, message: "Revise o nome e o telefone." };
+  }
   const tenant = await requireTenant();
-  if (!can(tenant.role, "clients:manage")) return;
+  if (!can(tenant.role, "clients:manage")) {
+    return { success: false, message: "Sem permissão para salvar clientes." };
+  }
   const supabase = await createSupabaseServerClient();
   const payload = {
     barbershop_id: tenant.id,
@@ -27,16 +34,21 @@ export async function saveClient(formData: FormData) {
     email: parsed.data.email || null,
     notes: parsed.data.notes || null,
   };
-  if (parsed.data.id) {
-    await supabase
-      .from("clients")
-      .update(payload)
-      .eq("id", parsed.data.id)
-      .eq("barbershop_id", tenant.id);
-  } else {
-    await supabase.from("clients").insert(payload);
+  const { error } = parsed.data.id
+    ? await supabase
+        .from("clients")
+        .update(payload)
+        .eq("id", parsed.data.id)
+        .eq("barbershop_id", tenant.id)
+    : await supabase.from("clients").insert(payload);
+  if (error) {
+    return {
+      success: false,
+      message: "Não foi possível salvar o cliente. Tente novamente.",
+    };
   }
   revalidatePath("/clientes");
+  return { success: true, message: "Cliente adicionado." };
 }
 
 /**
