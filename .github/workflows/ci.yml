@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  qualidade:
+    name: Lint, tipos, testes e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      # Valores públicos por design (mesmos do vercel.json); expostos ao
+      # navegador em produção. A suíte é read-only: o único teste de escrita
+      # exige E2E_ALLOW_WRITES=1, que não é definido aqui.
+      NEXT_PUBLIC_SUPABASE_URL: https://jaerticlcbsuvgmiumfl.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_YBosX9JE2VuTmyHAIq3vtw_VX0Gkhns
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e

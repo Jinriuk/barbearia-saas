@@ -9,7 +9,10 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { notFound } from "next/navigation";
-import { getPublicBarbershop } from "@/modules/barbershops/queries";
+import {
+  getPublicBarbershop,
+  tenantPageMetadata,
+} from "@/modules/barbershops/queries";
 import { STOCK_PHOTOS } from "@/lib/assets";
 import { tenantStyle } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
@@ -17,6 +20,14 @@ import { PublicFooter } from "@/components/public-site/public-footer";
 import { PublicHeader } from "@/components/public-site/public-header";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
+  return tenantPageMetadata(params);
+}
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
