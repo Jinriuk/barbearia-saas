@@ -2,16 +2,22 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
+  ArrowUpRight,
+  Banknote,
   CalendarCheck,
-  Link2,
+  Check,
   Palette,
   QrCode,
+  Quote,
   Scissors,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   UsersRound,
 } from "lucide-react";
 import { STOCK_PHOTOS } from "@/lib/assets";
+import { Reveal } from "@/components/public-site/reveal";
+import { Parallax } from "@/components/public-site/parallax";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,16 +35,16 @@ const features = [
       "Seu cliente escolhe serviço, profissional e horário na sua página — sem baixar aplicativo.",
   },
   {
-    icon: QrCode,
-    title: "QR Code no balcão",
+    icon: Banknote,
+    title: "Financeiro integrado",
     description:
-      "Gere o QR Code da sua página em um clique e coloque no balcão, no espelho ou no cartão.",
+      "Atendimento concluído e venda confirmada viram receita na hora: dia, semana e mês sempre em dia.",
   },
   {
     icon: Palette,
     title: "Sua marca, sua página",
     description:
-      "Cores, textos e contato personalizados. No plano Plus, white label completo com upsell de produtos.",
+      "Logo, cores, fundos e textos personalizados. Temas prontos e coleção de artes exclusivas no plano Plus.",
   },
   {
     icon: UsersRound,
@@ -56,217 +62,577 @@ const features = [
 
 const steps = [
   {
-    step: "1",
+    step: "01",
     title: "Crie sua conta",
     description: "Cadastro gratuito, nome da barbearia e endereço da página.",
   },
   {
-    step: "2",
+    step: "02",
     title: "Monte o catálogo",
     description: "Serviços, preços, profissionais e horários de atendimento.",
   },
   {
-    step: "3",
+    step: "03",
     title: "Divulgue o link",
     description:
       "QR Code no balcão e link no Instagram. As reservas caem direto na sua agenda.",
   },
 ];
 
+const themes = [
+  {
+    name: "Dourado clássico",
+    bg: "#faf8f4",
+    ink: "#171717",
+    accent: "#b8893e",
+  },
+  {
+    name: "Meia-noite",
+    bg: "#101318",
+    ink: "#f4f1ea",
+    accent: "#d9a441",
+  },
+  {
+    name: "Esmeralda",
+    bg: "#f2f7f4",
+    ink: "#10231c",
+    accent: "#2f9e77",
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      "Antes era WhatsApp o dia inteiro. Agora o cliente marca sozinho e a cadeira não fica vazia.",
+    name: "Rafael",
+    role: "Dono de barbearia, 2 cadeiras",
+  },
+  {
+    quote:
+      "O financeiro se preenche sozinho quando concluo o atendimento. Fim do caderninho.",
+    name: "Diego",
+    role: "Barbeiro e gestor",
+  },
+  {
+    quote:
+      "Coloquei o QR Code no espelho. Metade dos clientes já remarca antes de sair da cadeira.",
+    name: "Marcos",
+    role: "Barbearia de bairro, 4 profissionais",
+  },
+];
+
+const marqueeItems = [
+  "Agenda online",
+  "Financeiro integrado",
+  "Página personalizável",
+  "QR Code no balcão",
+  "Estoque e produtos",
+  "Equipe com papéis",
+  "Relatório em PDF",
+];
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#11110f] text-stone-50">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <Link
-          href="/"
-          className="flex items-center gap-3 font-semibold tracking-tight"
-        >
-          <span className="grid size-9 place-items-center rounded-full bg-amber-500 text-stone-950">
-            <Scissors className="size-4" />
-          </span>
-          NexoBarber
-        </Link>
-        <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            className="text-stone-200 hover:text-stone-950"
+    <main className="min-h-screen overflow-x-clip bg-[#0c0b09] text-stone-50">
+      {/* ===== Header ===== */}
+      <header className="sticky top-0 z-50 border-b border-white/[.06] bg-[#0c0b09]/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-3 font-semibold tracking-tight"
           >
-            <Link href="/login">Entrar</Link>
-          </Button>
-          <Button
-            asChild
-            className="bg-amber-500 text-stone-950 hover:bg-amber-400"
-          >
-            <Link href="/cadastro">Começar agora</Link>
-          </Button>
+            <span className="grid size-9 place-items-center rounded-full bg-amber-500 text-stone-950 shadow-lg shadow-amber-500/25">
+              <Scissors className="size-4" />
+            </span>
+            NexoBarber
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm text-stone-400 md:flex">
+            <a href="#recursos" className="transition-colors hover:text-stone-100">
+              Recursos
+            </a>
+            <a
+              href="#como-funciona"
+              className="transition-colors hover:text-stone-100"
+            >
+              Como funciona
+            </a>
+            <a href="#planos" className="transition-colors hover:text-stone-100">
+              Planos
+            </a>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant="ghost"
+              className="text-stone-200 hover:text-stone-950"
+            >
+              <Link href="/login">Entrar</Link>
+            </Button>
+            <Button
+              asChild
+              className="btn-shine bg-amber-500 text-stone-950 hover:bg-amber-400"
+            >
+              <Link href="/cadastro">Começar agora</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.1fr_.9fr] lg:py-28">
-        <div className="max-w-3xl">
-          <Badge className="mb-6 border-amber-500/30 bg-amber-500/10 text-amber-300">
-            Operação simples. Agenda sem conflito.
-          </Badge>
-          <h1 className="text-5xl font-semibold tracking-[-0.05em] text-balance sm:text-7xl">
-            Sua barbearia com ritmo, contexto e controle.
-          </h1>
-          <p className="mt-7 max-w-2xl text-lg leading-8 text-stone-400">
-            Agenda, clientes, equipe e página pública em uma plataforma segura,
-            feita para crescer com cada unidade — sem transformar seu balcão em
-            uma planilha.
-          </p>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="bg-amber-500 text-stone-950 hover:bg-amber-400"
-            >
-              <Link href="/cadastro">
-                Criar minha barbearia <ArrowRight />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/15 bg-white/5"
-            >
-              <Link href="/aurora">Ver página de demonstração</Link>
-            </Button>
-          </div>
+      {/* ===== Hero ===== */}
+      <section className="relative">
+        {/* Glows decorativos */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+        >
+          <div className="animate-orb absolute -top-40 -left-40 size-[34rem] rounded-full bg-amber-500/[.14] blur-[130px]" />
+          <div className="animate-orb-late absolute top-24 -right-48 size-[38rem] rounded-full bg-indigo-500/[.1] blur-[140px]" />
+          <div
+            className="absolute inset-0 opacity-[.35]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)",
+              backgroundSize: "72px 72px",
+              maskImage:
+                "radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%)",
+            }}
+          />
         </div>
 
-        <div className="relative">
-          <div className="relative hidden aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/10 sm:block">
-            <Image
-              src={STOCK_PHOTOS.barberCut}
-              alt="Barbeiro finalizando um corte na cadeira da barbearia"
-              fill
-              sizes="(min-width: 1024px) 40vw, 90vw"
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#11110f] via-transparent to-transparent" />
-          </div>
-          <div className="rounded-[2rem] border border-white/10 bg-[#191916]/95 p-6 shadow-2xl backdrop-blur sm:absolute sm:right-0 sm:-bottom-8 sm:w-[85%]">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-stone-500">Hoje na agenda</p>
-                <p className="mt-1 text-3xl font-semibold tracking-tight">
-                  12 horários
-                </p>
-              </div>
-              <CalendarCheck className="size-6 text-amber-400" />
+        <div className="relative mx-auto grid max-w-7xl gap-16 px-6 pt-20 pb-24 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pt-28 lg:pb-36">
+          <div className="max-w-3xl">
+            <Badge className="motion-safe:animate-in motion-safe:fade-in mb-7 border-amber-500/30 bg-amber-500/10 text-amber-300 duration-700">
+              <Sparkles className="size-3" />
+              Plataforma completa para barbearias
+            </Badge>
+            <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-5xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-7xl">
+              A barbearia que trabalha{" "}
+              <span className="animate-gradient-pan bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 bg-clip-text text-transparent">
+                no seu ritmo
+              </span>
+              .
+            </h1>
+            <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-stone-400 delay-150 duration-1000">
+              Agenda sem conflito, financeiro que se preenche sozinho e uma
+              página de agendamento deslumbrante com a cara da sua marca. Tudo
+              em um lugar — sem planilha, sem caderninho.
+            </p>
+            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-wrap gap-3 delay-200 duration-1000">
+              <Button
+                asChild
+                size="lg"
+                className="btn-shine h-13 rounded-full bg-amber-500 px-8 text-[15px] text-stone-950 shadow-xl shadow-amber-500/20 hover:bg-amber-400"
+              >
+                <Link href="/cadastro">
+                  Criar minha barbearia <ArrowRight />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-13 rounded-full border-white/15 bg-white/5 px-7 text-[15px] hover:bg-white/10"
+              >
+                <Link href="/aurora">Ver página de demonstração</Link>
+              </Button>
             </div>
-            <div className="mt-6 space-y-3">
+            <div className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-500">
               {[
-                ["09:00", "Lucas Martins", "Corte assinatura"],
-                ["10:15", "João Alves", "Corte + barba"],
-                ["11:30", "André Lima", "Barba clássica"],
-              ].map(([time, client, service]) => (
-                <div
-                  key={time}
-                  className="flex items-center gap-4 rounded-2xl bg-white/[0.04] p-3.5"
-                >
-                  <span className="font-mono text-sm text-amber-300">
-                    {time}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium">{client}</p>
-                    <p className="text-xs text-stone-500">{service}</p>
-                  </div>
-                  <span className="ml-auto size-2 rounded-full bg-emerald-400" />
-                </div>
+                "Grátis para começar",
+                "Sem app para o cliente",
+                "Pronto em minutos",
+              ].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <Check className="size-4 text-amber-400" />
+                  {item}
+                </span>
               ))}
             </div>
           </div>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-6 pt-16 pb-20 sm:pt-24">
-        <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
-          Como funciona
-        </p>
-        <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-          Do cadastro à primeira reserva em minutos.
-        </h2>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {steps.map((item) => (
-            <div
-              key={item.step}
-              className="rounded-3xl border border-white/10 bg-white/[0.03] p-7"
-            >
-              <span className="grid size-9 place-items-center rounded-full bg-amber-500/15 font-mono text-sm font-semibold text-amber-300">
-                {item.step}
-              </span>
-              <h3 className="mt-5 font-medium">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-500">
-                {item.description}
+          {/* Mockup flutuante */}
+          <div className="relative hidden sm:block">
+            <Parallax speed={0.06}>
+              <div className="animate-float-slow relative aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/60">
+                <Image
+                  src={STOCK_PHOTOS.barberCut}
+                  alt="Arte de barbearia com tesouras douradas"
+                  fill
+                  sizes="(min-width: 1024px) 40vw, 90vw"
+                  className="animate-kenburns object-cover"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0b09] via-transparent to-transparent" />
+              </div>
+            </Parallax>
+            <div className="animate-float absolute right-0 -bottom-10 w-[86%] rounded-[2rem] border border-white/10 bg-[#171612]/95 p-6 shadow-2xl backdrop-blur">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-stone-500">Hoje na agenda</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-tight">
+                    12 horários
+                  </p>
+                </div>
+                <CalendarCheck className="size-6 text-amber-400" />
+              </div>
+              <div className="mt-5 space-y-2.5">
+                {[
+                  ["09:00", "Lucas Martins", "Corte assinatura"],
+                  ["10:15", "João Alves", "Corte + barba"],
+                  ["11:30", "André Lima", "Barba clássica"],
+                ].map(([time, client, service]) => (
+                  <div
+                    key={time}
+                    className="flex items-center gap-4 rounded-2xl bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.07]"
+                  >
+                    <span className="font-mono text-sm text-amber-300">
+                      {time}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium">{client}</p>
+                      <p className="text-xs text-stone-500">{service}</p>
+                    </div>
+                    <span className="ml-auto size-2 rounded-full bg-emerald-400" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="animate-float absolute -top-6 -left-8 rounded-2xl border border-white/10 bg-[#171612]/95 px-5 py-4 shadow-xl backdrop-blur [animation-delay:1.4s]">
+              <p className="text-xs text-stone-500">Recebido no mês</p>
+              <p className="mt-0.5 font-mono text-xl font-semibold text-emerald-400">
+                R$ 8.940
               </p>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden">
-        <div className="relative mx-auto grid max-w-7xl gap-4 px-6 py-6 sm:grid-cols-2">
-          {[
-            [STOCK_PHOTOS.barberChair, "Cliente sendo atendido na barbearia"],
-            [STOCK_PHOTOS.beardTrim, "Acabamento de barba com navalha"],
-          ].map(([src, alt]) => (
-            <div
-              key={src}
-              className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]"
-            >
-              <Image
-                src={src}
-                alt={alt}
-                fill
-                sizes="(min-width: 640px) 45vw, 90vw"
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-4 px-6 py-20 md:grid-cols-3">
-        {features.map((feature) => (
-          <div
-            key={feature.title}
-            className="rounded-3xl border border-white/10 p-6"
-          >
-            <feature.icon className="size-5 text-amber-400" />
-            <h2 className="mt-5 font-medium">{feature.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-500">
-              {feature.description}
-            </p>
           </div>
-        ))}
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="rounded-[2.5rem] border border-amber-500/25 bg-gradient-to-br from-amber-500/15 to-transparent px-8 py-14 text-center sm:px-16">
-          <Link2 className="mx-auto size-6 text-amber-400" />
-          <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Um link seu, um QR Code no balcão, e a agenda trabalha por você.
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-stone-400">
-            Comece grátis. Configure em minutos e receba reservas ainda hoje.
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-8 bg-amber-500 text-stone-950 hover:bg-amber-400"
-          >
-            <Link href="/cadastro">
-              Criar minha barbearia <ArrowRight />
-            </Link>
-          </Button>
         </div>
       </section>
 
+      {/* ===== Marquee ===== */}
+      <div className="relative border-y border-white/[.06] bg-white/[.02] py-4">
+        <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10">
+            {[...marqueeItems, ...marqueeItems].map((item, index) => (
+              <span
+                key={`${item}-${index}`}
+                className="flex shrink-0 items-center gap-3 text-sm font-medium tracking-wide text-stone-400 uppercase"
+              >
+                <Scissors className="size-3.5 text-amber-500/70" />
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Recursos ===== */}
+      <section id="recursos" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24">
+        <Reveal>
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+            Recursos
+          </p>
+          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Tudo o que o balcão precisa, nada do que atrapalha.
+          </h2>
+        </Reveal>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature, index) => (
+            <Reveal key={feature.title} delay={(index % 3) * 90}>
+              <div className="group h-full rounded-3xl border border-white/10 bg-white/[.02] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-white/[.04] hover:shadow-xl hover:shadow-amber-500/[.06]">
+                <span className="grid size-11 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 transition-transform duration-300 group-hover:scale-110">
+                  <feature.icon className="size-5" />
+                </span>
+                <h3 className="mt-5 font-medium">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-500">
+                  {feature.description}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Como funciona ===== */}
+      <section
+        id="como-funciona"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 pb-24"
+      >
+        <Reveal>
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+            Como funciona
+          </p>
+          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Do cadastro à primeira reserva em minutos.
+          </h2>
+        </Reveal>
+        <div className="relative mt-12 grid gap-4 md:grid-cols-3">
+          <div
+            aria-hidden
+            className="absolute top-14 right-[16%] left-[16%] hidden border-t border-dashed border-white/15 md:block"
+          />
+          {steps.map((item, index) => (
+            <Reveal key={item.step} delay={index * 120}>
+              <div className="relative h-full rounded-3xl border border-white/10 bg-[#12110e] p-7">
+                <span className="font-mono text-5xl font-semibold text-amber-500/25">
+                  {item.step}
+                </span>
+                <h3 className="mt-4 font-medium">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-500">
+                  {item.description}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Showcase white-label ===== */}
+      <section className="relative overflow-hidden border-y border-white/[.06] bg-white/[.02] py-24">
+        <div
+          aria-hidden
+          className="animate-orb pointer-events-none absolute top-1/2 left-1/2 size-[40rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/[.06] blur-[140px]"
+        />
+        <div className="relative mx-auto max-w-7xl px-6">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+              Página do cliente
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+              A página de agendamento com a cara da sua barbearia.
+            </h2>
+            <p className="mt-4 text-stone-400">
+              Escolha um tema pronto ou monte o seu: logo, cores, fundos de uma
+              coleção exclusiva e textos. O preview atualiza em tempo real — e o
+              resultado impressiona no celular do cliente.
+            </p>
+          </Reveal>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {themes.map((theme, index) => (
+              <Reveal key={theme.name} delay={index * 120}>
+                <div
+                  className="group overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/40 transition-all duration-300 hover:-translate-y-1.5 hover:rotate-[.4deg] hover:shadow-amber-500/10"
+                  style={{ background: theme.bg, color: theme.ink }}
+                >
+                  <div
+                    className="flex items-center justify-between border-b px-5 py-3.5"
+                    style={{ borderColor: `${theme.ink}14` }}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <span
+                        className="grid size-6 place-items-center rounded-full"
+                        style={{ background: theme.accent, color: theme.bg }}
+                      >
+                        <Scissors className="size-3" />
+                      </span>
+                      Sua barbearia
+                    </span>
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-medium"
+                      style={{ background: theme.ink, color: theme.bg }}
+                    >
+                      Agendar
+                    </span>
+                  </div>
+                  <div className="px-5 pt-6 pb-7">
+                    <p
+                      className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.2em] uppercase"
+                      style={{ color: theme.accent }}
+                    >
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ background: theme.accent }}
+                      />
+                      Agenda aberta
+                    </p>
+                    <p className="mt-3 text-2xl leading-tight font-semibold tracking-tight">
+                      Seu estilo,
+                      <br />
+                      no seu tempo.
+                    </p>
+                    <p className="mt-2 text-xs opacity-60">
+                      Escolha o serviço e reserve seu horário.
+                    </p>
+                    <div className="mt-5 flex items-center gap-2">
+                      <span
+                        className="rounded-full px-4 py-2 text-xs font-medium transition-transform duration-300 group-hover:scale-105"
+                        style={{ background: theme.ink, color: theme.bg }}
+                      >
+                        Escolher horário
+                      </span>
+                      <span
+                        className="rounded-full border px-4 py-2 text-xs font-medium"
+                        style={{ borderColor: `${theme.ink}22` }}
+                      >
+                        WhatsApp
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className="border-t px-5 py-3 text-center text-[11px] font-medium"
+                    style={{
+                      borderColor: `${theme.ink}14`,
+                      color: theme.accent,
+                    }}
+                  >
+                    Tema {theme.name}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Planos ===== */}
+      <section id="planos" className="mx-auto max-w-5xl scroll-mt-20 px-6 py-24">
+        <Reveal className="text-center">
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+            Planos
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Comece grátis. Evolua quando fizer sentido.
+          </h2>
+        </Reveal>
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+          <Reveal>
+            <div className="h-full rounded-[2rem] border border-white/10 bg-white/[.02] p-8">
+              <h3 className="text-lg font-semibold">Padrão</h3>
+              <p className="mt-1 text-sm text-stone-500">
+                Para colocar a agenda no ar hoje.
+              </p>
+              <p className="mt-5 text-4xl font-semibold tracking-tight">
+                Grátis
+              </p>
+              <ul className="mt-7 space-y-3 text-sm text-stone-400">
+                {[
+                  "Agenda online sem conflito",
+                  "Página pública com QR Code",
+                  "Clientes, serviços e equipe",
+                  "Financeiro com receitas automáticas",
+                  "Relatório financeiro em PDF",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 size-4 shrink-0 text-amber-400" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                asChild
+                variant="outline"
+                className="mt-8 w-full rounded-full border-white/15 bg-white/5 hover:bg-white/10"
+              >
+                <Link href="/cadastro">Criar conta grátis</Link>
+              </Button>
+            </div>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="relative h-full rounded-[2rem] border border-amber-500/40 bg-gradient-to-b from-amber-500/[.1] to-transparent p-8 shadow-2xl shadow-amber-500/10">
+              <Badge className="absolute -top-3 left-8 border-transparent bg-amber-500 text-stone-950">
+                <Sparkles className="size-3" /> Mais completo
+              </Badge>
+              <h3 className="text-lg font-semibold">Plus</h3>
+              <p className="mt-1 text-sm text-stone-500">
+                Para marcas que querem impressionar.
+              </p>
+              <p className="mt-5 text-4xl font-semibold tracking-tight">
+                Plus
+                <span className="ml-2 align-middle text-sm font-normal text-stone-500">
+                  fale com a gente
+                </span>
+              </p>
+              <ul className="mt-7 space-y-3 text-sm text-stone-300">
+                {[
+                  "Tudo do Padrão",
+                  "White label completo: logo, cores e fundos",
+                  "Coleção de artes e temas prontos",
+                  "Upsell de produtos no agendamento",
+                  "Reservas de produtos com baixa de estoque",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 size-4 shrink-0 text-amber-400" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                asChild
+                className="btn-shine mt-8 w-full rounded-full bg-amber-500 text-stone-950 hover:bg-amber-400"
+              >
+                <Link href="/cadastro">
+                  Começar pelo Plus <ArrowUpRight />
+                </Link>
+              </Button>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===== Depoimentos ===== */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <Reveal>
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+            Quem usa, recomenda
+          </p>
+          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Feito para o dia a dia real do balcão.
+          </h2>
+        </Reveal>
+        <div className="mt-12 grid gap-4 md:grid-cols-3">
+          {testimonials.map((item, index) => (
+            <Reveal key={item.name} delay={index * 100}>
+              <figure className="h-full rounded-3xl border border-white/10 bg-white/[.02] p-7">
+                <Quote className="size-5 text-amber-500/60" />
+                <blockquote className="mt-4 text-[15px] leading-7 text-stone-300">
+                  “{item.quote}”
+                </blockquote>
+                <figcaption className="mt-5 text-sm">
+                  <span className="font-medium text-stone-200">
+                    {item.name}
+                  </span>
+                  <span className="text-stone-500"> · {item.role}</span>
+                </figcaption>
+              </figure>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== CTA final ===== */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-amber-500/25 px-8 py-16 text-center sm:px-16">
+            <div
+              aria-hidden
+              className="animate-gradient-pan absolute inset-0 bg-gradient-to-br from-amber-500/[.16] via-transparent to-amber-500/[.08]"
+            />
+            <div
+              aria-hidden
+              className="animate-orb pointer-events-none absolute -top-24 left-1/2 size-96 -translate-x-1/2 rounded-full bg-amber-500/15 blur-[100px]"
+            />
+            <div className="relative">
+              <QrCode className="mx-auto size-7 text-amber-400" />
+              <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
+                Um link seu, um QR Code no balcão, e a agenda trabalha por você.
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-stone-400">
+                Comece grátis. Configure em minutos e receba reservas ainda
+                hoje.
+              </p>
+              <Button
+                asChild
+                size="lg"
+                className="btn-shine mt-9 h-13 rounded-full bg-amber-500 px-9 text-[15px] text-stone-950 shadow-xl shadow-amber-500/25 hover:bg-amber-400"
+              >
+                <Link href="/cadastro">
+                  Criar minha barbearia <ArrowRight />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ===== Footer ===== */}
       <footer className="border-t border-white/10 px-6 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-stone-500 sm:flex-row">
           <span className="flex items-center gap-2">
@@ -276,13 +642,16 @@ export default function HomePage() {
             NexoBarber © {new Date().getFullYear()}
           </span>
           <div className="flex gap-6">
-            <Link href="/login" className="hover:text-stone-300">
+            <Link href="/login" className="transition-colors hover:text-stone-300">
               Entrar
             </Link>
-            <Link href="/cadastro" className="hover:text-stone-300">
+            <Link
+              href="/cadastro"
+              className="transition-colors hover:text-stone-300"
+            >
               Criar conta
             </Link>
-            <Link href="/aurora" className="hover:text-stone-300">
+            <Link href="/aurora" className="transition-colors hover:text-stone-300">
               Demonstração
             </Link>
           </div>

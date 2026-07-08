@@ -134,4 +134,147 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* ===== Vitrine pública: movimento e acabamento ===== */
+
+  /* Revelação no scroll (ativada pelo componente <Reveal/>). */
+  .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+  .reveal.reveal-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-float {
+    animation: nb-float 7s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: nb-float 11s ease-in-out infinite;
+  }
+  .animate-kenburns {
+    animation: nb-kenburns 24s ease-in-out infinite alternate;
+  }
+  .animate-orb {
+    animation: nb-orb 18s ease-in-out infinite alternate;
+  }
+  .animate-orb-late {
+    animation: nb-orb 22s ease-in-out 2s infinite alternate-reverse;
+  }
+  .animate-marquee {
+    animation: nb-marquee 36s linear infinite;
+  }
+  .animate-scroll-cue {
+    animation: nb-scroll-cue 2.1s ease-in-out infinite;
+  }
+  .animate-gradient-pan {
+    background-size: 200% 200%;
+    animation: nb-gradient-pan 9s ease infinite;
+  }
+
+  /* Brilho que atravessa o botão no hover. */
+  .btn-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-130%) skewX(-18deg);
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.35),
+      transparent 70%
+    );
+    transition: transform 0.7s ease;
+    pointer-events: none;
+  }
+  .btn-shine:hover::after {
+    transform: translateX(130%) skewX(-18deg);
+  }
+
+  /* Texto vazado (marca d'água editorial do hero). */
+  .text-outline {
+    -webkit-text-stroke: 1.5px currentColor;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+@keyframes nb-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes nb-kenburns {
+  from {
+    transform: scale(1.03);
+  }
+  to {
+    transform: scale(1.13) translateY(-1.5%);
+  }
+}
+@keyframes nb-orb {
+  from {
+    transform: translate3d(-4%, -3%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 7%, 0) scale(1.18);
+  }
+}
+@keyframes nb-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes nb-scroll-cue {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  55% {
+    transform: translateY(9px);
+    opacity: 0.35;
+  }
+}
+@keyframes nb-gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .animate-float,
+  .animate-float-slow,
+  .animate-kenburns,
+  .animate-orb,
+  .animate-orb-late,
+  .animate-marquee,
+  .animate-scroll-cue,
+  .animate-gradient-pan {
+    animation: none;
+  }
+  .btn-shine::after {
+    display: none;
+  }
 }

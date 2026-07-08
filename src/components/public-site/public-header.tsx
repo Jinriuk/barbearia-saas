@@ -11,13 +11,13 @@ export function PublicHeader({
   hideCta?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-black/[.06] bg-[var(--tenant-bg)]/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+    <header className="sticky top-0 z-40 border-b border-current/[.08] bg-[var(--tenant-bg)]/85 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5">
         <Link
           href={`/${data.barbershop.slug}`}
           className="flex min-w-0 items-center gap-2.5"
         >
-          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)]">
+          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-md shadow-black/10">
             {data.barbershop.logoUrl ? (
               <Image
                 src={data.barbershop.logoUrl}
@@ -34,10 +34,24 @@ export function PublicHeader({
             {data.barbershop.name}
           </span>
         </Link>
+        <nav className="hidden items-center gap-6 text-sm opacity-70 md:flex">
+          <Link
+            href={`/${data.barbershop.slug}#servicos`}
+            className="transition-opacity hover:opacity-100"
+          >
+            Serviços
+          </Link>
+          <Link
+            href={`/${data.barbershop.slug}#profissionais`}
+            className="transition-opacity hover:opacity-100"
+          >
+            Profissionais
+          </Link>
+        </nav>
         {hideCta ? null : (
           <Link
             href={`/${data.barbershop.slug}/agendar`}
-            className="inline-flex h-10 shrink-0 items-center rounded-full bg-[var(--tenant-secondary)] px-5 text-sm font-medium text-[var(--tenant-on-secondary)] transition-opacity hover:opacity-85 active:scale-[.98]"
+            className="btn-shine inline-flex h-10 shrink-0 items-center rounded-full bg-[var(--tenant-secondary)] px-5 text-sm font-medium text-[var(--tenant-on-secondary)] shadow-md shadow-black/10 transition-all hover:opacity-90 active:scale-[.98]"
           >
             Agendar
           </Link>

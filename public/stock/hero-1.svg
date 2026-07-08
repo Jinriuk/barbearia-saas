@@ -1,29 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" preserveAspectRatio="xMidYMid slice">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#221a12"/>
-      <stop offset="1" stop-color="#0f0c08"/>
+      <stop offset="0" stop-color="#241a10"/>
+      <stop offset="0.55" stop-color="#140f08"/>
+      <stop offset="1" stop-color="#0b0805"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6bd75"/>
+      <stop offset="1" stop-color="#93692c"/>
     </linearGradient>
     <linearGradient id="pole" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#b8893e" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#b8893e" stop-opacity="0.08"/>
+      <stop offset="0" stop-color="#d9ab5e" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#d9ab5e" stop-opacity="0.05"/>
     </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="70"/></filter>
   </defs>
   <rect width="1400" height="1050" fill="url(#bg)"/>
-  <g stroke="url(#pole)" stroke-width="46" stroke-linecap="round">
-    <line x1="180" y1="-60" x2="-160" y2="360"/>
-    <line x1="360" y1="-60" x2="20" y2="360"/>
-    <line x1="540" y1="-60" x2="200" y2="360"/>
+  <circle cx="1050" cy="330" r="260" fill="#7a5622" fill-opacity="0.35" filter="url(#glow)"/>
+  <g stroke="url(#pole)" stroke-width="42" stroke-linecap="round">
+    <line x1="150" y1="-60" x2="-190" y2="380"/>
+    <line x1="320" y1="-60" x2="-20" y2="380"/>
+    <line x1="490" y1="-60" x2="150" y2="380"/>
   </g>
-  <g fill="none" stroke="#d8b98a" stroke-opacity="0.18" stroke-width="3">
-    <circle cx="1050" cy="700" r="190"/>
-    <circle cx="1050" cy="700" r="120"/>
-    <path d="M960 610 L1140 790 M1140 610 L960 790" stroke-width="4"/>
+  <g transform="translate(1010 560)">
+    <circle r="270" fill="none" stroke="url(#gold)" stroke-opacity="0.5" stroke-width="2.5"/>
+    <circle r="210" fill="none" stroke="url(#gold)" stroke-opacity="0.28" stroke-width="1.5"/>
+    <path d="M-110 130 L-110 -30 Q-110 -95 -45 -95 L45 -95 Q110 -95 110 -30 L110 130"
+      fill="none" stroke="url(#gold)" stroke-opacity="0.85" stroke-width="10" stroke-linecap="round"/>
+    <line x1="-150" y1="130" x2="150" y2="130" stroke="url(#gold)" stroke-opacity="0.85" stroke-width="10" stroke-linecap="round"/>
+    <line x1="-60" y1="196" x2="-60" y2="130" stroke="url(#gold)" stroke-opacity="0.55" stroke-width="8" stroke-linecap="round"/>
+    <line x1="60" y1="196" x2="60" y2="130" stroke="url(#gold)" stroke-opacity="0.55" stroke-width="8" stroke-linecap="round"/>
   </g>
-  <g fill="#d8b98a" fill-opacity="0.12">
-    <circle cx="240" cy="820" r="7"/>
-    <circle cx="300" cy="760" r="5"/>
-    <circle cx="200" cy="700" r="4"/>
-    <circle cx="350" cy="880" r="6"/>
+  <g fill="#e6bd75">
+    <circle cx="260" cy="760" r="5" opacity="0.3"/>
+    <circle cx="330" cy="690" r="3.4" opacity="0.24"/>
+    <circle cx="210" cy="620" r="2.6" opacity="0.18"/>
+    <circle cx="390" cy="830" r="4" opacity="0.26"/>
+    <circle cx="160" cy="880" r="3" opacity="0.2"/>
   </g>
+  <path d="M-40 960 C 360 900, 900 1010, 1440 930 L1440 1080 L-40 1080 Z" fill="#070503" opacity="0.9"/>
 </svg>

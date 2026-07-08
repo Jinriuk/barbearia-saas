@@ -30,9 +30,25 @@ import { Textarea } from "@/components/ui/textarea";
 const initialState: ActionState = { success: false, message: "" };
 
 const DEFAULT_BACKGROUNDS = [
+  { label: "Navalha", url: "/backgrounds/navalha.svg" },
+  { label: "Meia-noite", url: "/backgrounds/meia-noite.svg" },
+  { label: "Linhas", url: "/backgrounds/linhas.svg" },
+  { label: "Bronze", url: "/backgrounds/bronze.svg" },
+  { label: "Esmeralda", url: "/backgrounds/esmeralda.svg" },
+  { label: "Vinho", url: "/backgrounds/vinho.svg" },
+  { label: "Aurora", url: "/backgrounds/aurora.svg" },
   { label: "Ondas", url: "/backgrounds/ondas.svg" },
   { label: "Grade", url: "/backgrounds/grade.svg" },
-  { label: "Aurora", url: "/backgrounds/aurora.svg" },
+];
+
+/** Temas prontos: um clique define destaque, escura e fundo em harmonia. */
+const THEME_PRESETS = [
+  { name: "Dourado clássico", primary: "#b8893e", secondary: "#171717", background: "#faf8f4" },
+  { name: "Meia-noite", primary: "#d9a441", secondary: "#f4f1ea", background: "#101318" },
+  { name: "Esmeralda", primary: "#2f9e77", secondary: "#10231c", background: "#f2f7f4" },
+  { name: "Vinho nobre", primary: "#8e2f3c", secondary: "#241014", background: "#faf4f2" },
+  { name: "Grafite & ouro", primary: "#e5b95c", secondary: "#ece9e2", background: "#141416" },
+  { name: "Rosé", primary: "#b96a72", secondary: "#2a1a18", background: "#fbf3f1" },
 ];
 
 type Appearance = {
@@ -187,6 +203,54 @@ export function AppearanceEditor({
                   required
                 />
               </div>
+              {/* Temas prontos */}
+              <div className="space-y-2">
+                <Label>Temas prontos</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {THEME_PRESETS.map((preset) => {
+                    const active =
+                      values.primaryColor === preset.primary &&
+                      values.secondaryColor === preset.secondary &&
+                      values.backgroundColor === preset.background;
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        disabled={!isPlus}
+                        onClick={() =>
+                          setValues((prev) => ({
+                            ...prev,
+                            primaryColor: preset.primary,
+                            secondaryColor: preset.secondary,
+                            backgroundColor: preset.background,
+                          }))
+                        }
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs font-medium transition-all disabled:opacity-50",
+                          active
+                            ? "border-primary bg-primary/5"
+                            : "hover:border-black/20 hover:bg-muted/40 dark:hover:border-white/20",
+                        )}
+                        aria-label={`Aplicar tema ${preset.name}`}
+                      >
+                        <span
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full border"
+                          style={{ background: preset.background }}
+                        >
+                          <span
+                            className="size-3.5 rounded-full"
+                            style={{
+                              background: `linear-gradient(135deg, ${preset.primary} 50%, ${preset.secondary} 50%)`,
+                            }}
+                          />
+                        </span>
+                        <span className="truncate">{preset.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-3">
                 <ColorField
                   label="Destaque"
@@ -370,28 +434,52 @@ export function AppearanceEditor({
                   Agendar
                 </span>
               </div>
-              <div className="px-4 pt-2 pb-6">
+              <div className="px-4 pt-3 pb-6">
                 <p
-                  className="text-[10px] font-semibold tracking-widest uppercase"
+                  className="flex items-center gap-1.5 text-[10px] font-semibold tracking-widest uppercase"
                   style={{ color: values.primaryColor }}
                 >
+                  <span className="relative flex size-1.5">
+                    <span
+                      className="absolute inline-flex size-full animate-ping rounded-full opacity-60"
+                      style={{ background: values.primaryColor }}
+                    />
+                    <span
+                      className="relative inline-flex size-1.5 rounded-full"
+                      style={{ background: values.primaryColor }}
+                    />
+                  </span>
                   Agenda aberta
                 </p>
-                <p className="mt-2 text-xl leading-tight font-semibold">
+                <p className="mt-2.5 text-xl leading-tight font-semibold tracking-tight">
                   {values.heroTitle || "Seu título aqui"}
                 </p>
                 <p className="mt-2 text-xs opacity-70">
                   {values.heroSubtitle || "Seu subtítulo aqui"}
                 </p>
-                <span
-                  className="mt-4 inline-block rounded-lg px-3 py-1.5 text-xs font-medium"
-                  style={{
-                    background: values.secondaryColor,
-                    color: values.backgroundColor,
-                  }}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-block rounded-full px-3.5 py-1.5 text-xs font-medium"
+                    style={{
+                      background: values.secondaryColor,
+                      color: values.backgroundColor,
+                    }}
+                  >
+                    Agendar horário
+                  </span>
+                  <span
+                    className="inline-block rounded-full border px-3.5 py-1.5 text-xs font-medium"
+                    style={{ borderColor: hexA(values.secondaryColor, 0.25) }}
+                  >
+                    WhatsApp
+                  </span>
+                </div>
+                <p
+                  className="mt-4 text-[10px] font-medium"
+                  style={{ color: values.primaryColor }}
                 >
-                  Escolher meu horário
-                </span>
+                  ✦ Reserva em menos de 1 minuto
+                </p>
               </div>
             </div>
           </div>
