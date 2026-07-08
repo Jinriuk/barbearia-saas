@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // O upload de logo/fundo aceita imagens de até 4 MB; o padrão do Next
+      // (1 MB) derrubava a Server Action antes da validação. 5 MB deixa
+      // folga para o overhead do multipart/form-data.
+      bodySizeLimit: "5mb",
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
