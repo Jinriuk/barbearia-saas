@@ -15,4 +15,10 @@ describe("role permissions", () => {
   it("does not grant dashboard permissions to clients", () => {
     expect(can("client", "dashboard:view")).toBe(false);
   });
+
+  it("lets professionals manage their own agenda but not finances", () => {
+    expect(can("professional", "appointments:manage")).toBe(true);
+    expect(can("professional", "finance:view")).toBe(false);
+    expect(can("professional", "memberships:manage")).toBe(false);
+  });
 });

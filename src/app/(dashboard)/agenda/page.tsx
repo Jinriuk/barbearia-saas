@@ -23,6 +23,12 @@ export default async function AgendaPage({
   const { prof } = await searchParams;
   const tenant = await requireTenant();
   const canManage = can(tenant.role, "appointments:manage");
+  // O profissional vê apenas a própria agenda (a RLS já garante isso), então
+  // o filtro por profissional só faz sentido para quem enxerga a equipe toda.
+  const canSeeAllAgendas =
+    tenant.role === "owner" ||
+    tenant.role === "manager" ||
+    tenant.role === "receptionist";
   const supabase = await createSupabaseServerClient();
   const { start } = getUtcDayRange(tenant.timezone);
 
@@ -63,7 +69,7 @@ export default async function AgendaPage({
           </Button>
         }
       />
-      {professionals.length ? (
+      {canSeeAllAgendas && professionals.length ? (
         <div className="mb-5 flex flex-wrap gap-2">
           <Button
             asChild
