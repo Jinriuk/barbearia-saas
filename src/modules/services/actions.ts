@@ -14,6 +14,10 @@ export async function saveService(formData: FormData) {
     description: formData.get("description"),
     price: formData.get("price"),
     durationMinutes: formData.get("durationMinutes"),
+    category: formData.get("category") || undefined,
+    imageUrl: formData.get("imageUrl") ?? "",
+    active: formData.get("active") === "on",
+    professionalIds: formData.getAll("professionalIds").map(String),
   });
   if (!parsed.success) return;
   const tenant = await requireTenant();
@@ -25,12 +29,17 @@ export async function saveService(formData: FormData) {
     description: parsed.data.description || null,
     price: parsed.data.price,
     duration_minutes: parsed.data.durationMinutes,
+    category: parsed.data.category || null,
+    image_url: parsed.data.imageUrl || null,
+    active: parsed.data.active ?? true,
   };
-  if (parsed.data.id) {
+
+  let serviceId = parsed.data.id ?? null;
+  if (serviceId) {
     await supabase
       .from("services")
       .update(payload)
-      .eq("id", parsed.data.id)
+      .eq("id", serviceId)
       .eq("barbershop_id", tenant.id);
   } else {
     const { data: service } = await supabase
@@ -38,26 +47,48 @@ export async function saveService(formData: FormData) {
       .insert(payload)
       .select("id")
       .single();
+    serviceId = service?.id ?? null;
+  }
+  if (!serviceId) return;
 
-    if (service) {
-      const { data: professionals } = await supabase
-        .from("professionals")
-        .select("id")
-        .eq("barbershop_id", tenant.id)
-        .eq("active", true);
-
-      if (professionals?.length) {
-        await supabase.from("professional_services").insert(
-          professionals.map((professional) => ({
-            barbershop_id: tenant.id,
-            professional_id: professional.id,
-            service_id: service.id,
-          })),
-        );
-      }
+  const professionalIds = parsed.data.professionalIds ?? [];
+  if (formData.get("hasProfessionals") === "1") {
+    // O form trouxe a seção de profissionais: sincroniza para exatamente a
+    // seleção enviada (troca o conjunto atual, sem quebrar agendamentos antigos
+    // — estes referenciam professional_id direto no appointment).
+    await supabase
+      .from("professional_services")
+      .delete()
+      .eq("barbershop_id", tenant.id)
+      .eq("service_id", serviceId);
+    if (professionalIds.length) {
+      await supabase.from("professional_services").insert(
+        professionalIds.map((professionalId) => ({
+          barbershop_id: tenant.id,
+          professional_id: professionalId,
+          service_id: serviceId,
+        })),
+      );
+    }
+  } else if (!parsed.data.id) {
+    // Criação sem a seção (fallback): vincula todos os profissionais ativos.
+    const { data: professionals } = await supabase
+      .from("professionals")
+      .select("id")
+      .eq("barbershop_id", tenant.id)
+      .eq("active", true);
+    if (professionals?.length) {
+      await supabase.from("professional_services").insert(
+        professionals.map((professional) => ({
+          barbershop_id: tenant.id,
+          professional_id: professional.id,
+          service_id: serviceId,
+        })),
+      );
     }
   }
   revalidatePath("/servicos");
+  revalidatePath("/profissionais");
 }
 
 export async function toggleService(formData: FormData) {

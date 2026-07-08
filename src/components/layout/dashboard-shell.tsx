@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   Banknote,
   CalendarDays,
-  ChartNoAxesCombined,
   Contact,
   HandCoins,
   LayoutDashboard,
@@ -12,7 +11,6 @@ import {
   Settings,
   ShoppingBag,
   Store,
-  UserPlus,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,13 +50,7 @@ const nav: Array<{
     icon: ShoppingBag,
     permission: "catalog:manage",
   },
-  { href: "/profissionais", label: "Profissionais", icon: Users },
-  {
-    href: "/usuarios",
-    label: "Equipe",
-    icon: UserPlus,
-    permission: "memberships:manage",
-  },
+  { href: "/profissionais", label: "Profissionais e Equipe", icon: Users },
   {
     href: "/contas-a-pagar",
     label: "Contas a pagar",
@@ -70,18 +62,6 @@ const nav: Array<{
     label: "Contas a receber",
     icon: HandCoins,
     permission: "finance:view",
-  },
-  {
-    href: "/comissoes",
-    label: "Pagamento de Funcionários",
-    icon: HandCoins,
-    permission: "finance:view",
-  },
-  {
-    href: "/relatorios",
-    label: "Relatórios",
-    icon: ChartNoAxesCombined,
-    permission: "reports:view",
   },
   {
     href: "/configuracoes",

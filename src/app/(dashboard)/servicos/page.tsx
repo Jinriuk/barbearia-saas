@@ -23,12 +23,37 @@ export default async function ServicesPage() {
   const tenant = await requireTenant();
   const canManage = can(tenant.role, "catalog:manage");
   const supabase = await createSupabaseServerClient();
-  const { data: serviceData } = await supabase
-    .from("services")
-    .select("id,name,description,price,duration_minutes,active")
-    .eq("barbershop_id", tenant.id)
-    .order("name");
-  const data = serviceData ?? [];
+  const [{ data: serviceData }, { data: professionalData }, { data: linkData }] =
+    await Promise.all([
+      supabase
+        .from("services")
+        .select(
+          "id,name,description,price,duration_minutes,active,category,image_url",
+        )
+        .eq("barbershop_id", tenant.id)
+        .order("name"),
+      supabase
+        .from("professionals")
+        .select("id,name")
+        .eq("barbershop_id", tenant.id)
+        .eq("active", true)
+        .order("name"),
+      supabase
+        .from("professional_services")
+        .select("service_id,professional_id")
+        .eq("barbershop_id", tenant.id),
+    ]);
+  const professionals = professionalData ?? [];
+  const linksByService = new Map<string, string[]>();
+  for (const link of linkData ?? []) {
+    const list = linksByService.get(link.service_id) ?? [];
+    list.push(link.professional_id);
+    linksByService.set(link.service_id, list);
+  }
+  const data = (serviceData ?? []).map((item) => ({
+    ...item,
+    professionalIds: linksByService.get(item.id) ?? [],
+  }));
   return (
     <>
       <PageHeader
@@ -38,7 +63,7 @@ export default async function ServicesPage() {
         action={
           canManage ? (
             <div className="w-full sm:w-56">
-              <ServiceFormSheet />
+              <ServiceFormSheet professionals={professionals} />
             </div>
           ) : undefined
         }
@@ -63,7 +88,12 @@ export default async function ServicesPage() {
                 {data.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <p className="font-medium">{item.name}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{item.name}</p>
+                        {item.category ? (
+                          <Badge variant="outline">{item.category}</Badge>
+                        ) : null}
+                      </div>
                       <p className="text-muted-foreground max-w-72 truncate text-xs">
                         {item.description || "Sem descrição"}
                       </p>
@@ -83,7 +113,10 @@ export default async function ServicesPage() {
                     <TableCell className="text-right">
                       {canManage ? (
                         <div className="flex items-center justify-end gap-1">
-                          <ServiceFormSheet service={item} />
+                          <ServiceFormSheet
+                            service={item}
+                            professionals={professionals}
+                          />
                           <form action={toggleService}>
                             <input type="hidden" name="id" value={item.id} />
                             <input

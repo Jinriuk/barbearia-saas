@@ -65,3 +65,27 @@ export async function archiveClient(
   revalidatePath("/clientes");
   return { success: true, message: "Cliente arquivado." };
 }
+
+/** Restaura um cliente arquivado (active = true). */
+export async function restoreClient(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { success: false, message: "Cliente inválido." };
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) {
+    return { success: false, message: "Sem permissão para restaurar clientes." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ active: true })
+    .eq("id", id)
+    .eq("barbershop_id", tenant.id);
+  if (error) {
+    return { success: false, message: "Não foi possível restaurar o cliente." };
+  }
+  revalidatePath("/clientes");
+  return { success: true, message: "Cliente restaurado." };
+}

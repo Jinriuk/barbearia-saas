@@ -13,6 +13,7 @@ const createAccessSchema = z.object({
   email: z.email(),
   password: z.string().min(6).max(72),
   phone: z.string().trim().max(30).optional(),
+  role: z.enum(["professional", "receptionist", "manager"]).default("professional"),
   available: z.coerce.boolean().optional(),
   serviceIds: z.array(z.uuid()).max(200).optional(),
   commissionRate: z.coerce.number().min(0).max(100).optional(),
@@ -39,6 +40,7 @@ export async function createProfessionalWithAccess(
     email: String(formData.get("email") ?? "").trim().toLowerCase(),
     password: formData.get("password"),
     phone: formData.get("phone"),
+    role: formData.get("role") || "professional",
     available: formData.get("available") === "on",
     serviceIds: formData.getAll("serviceIds").map(String),
     commissionRate: formData.get("commissionRate") || 0,
@@ -101,15 +103,31 @@ export async function createProfessionalWithAccess(
   if (existingMembership) {
     await admin
       .from("memberships")
-      .update({ role: "professional", status: "active" })
+      .update({ role: parsed.data.role, status: "active" })
       .eq("id", existingMembership.id);
   } else {
     await admin.from("memberships").insert({
       profile_id: profileId,
       barbershop_id: tenant.id,
-      role: "professional",
+      role: parsed.data.role,
       status: "active",
     });
+  }
+
+  const roleLabels: Record<string, string> = {
+    professional: "Profissional",
+    receptionist: "Secretária",
+    manager: "Gerente",
+  };
+
+  // Papéis não-profissionais (secretária/gerente) recebem só o acesso: não há
+  // ficha de barbeiro, serviços, agenda própria ou regra de pagamento.
+  if (parsed.data.role !== "professional") {
+    revalidatePath("/profissionais");
+    return {
+      success: true,
+      message: `${parsed.data.name} (${roleLabels[parsed.data.role]}) já pode acessar com o e-mail e a senha definidos.`,
+    };
   }
 
   const { data: professional, error: proError } = await admin

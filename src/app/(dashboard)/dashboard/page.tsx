@@ -76,8 +76,8 @@ const quickLinks: Array<{
   },
   {
     href: "/profissionais",
-    label: "Equipe",
-    description: "Profissionais",
+    label: "Profissionais e Equipe",
+    description: "Equipe e acessos",
     icon: Users,
   },
   {
@@ -89,7 +89,7 @@ const quickLinks: Array<{
   },
   {
     href: "/configuracoes",
-    label: "Configurações",
+    label: "Identidade Visual",
     description: "White label",
     icon: Settings,
     permission: "settings:manage",
@@ -104,42 +104,34 @@ export default async function DashboardPage() {
   const { start: weekStart } = getUtcWeekRange(tenant.timezone);
   const { start: monthStart } = getUtcMonthRange(tenant.timezone);
 
-  // O mês é o intervalo mais antigo; buscamos as pagas do mês uma vez só e
-  // fatiamos por dia/semana em memória, evitando três consultas.
-  const incomeSince = (from: Date) =>
+  // Somas de receita por período vêm do banco (RPC), evitando o teto de linhas
+  // do PostgREST em meses cheios. O topo do intervalo é o fim de hoje.
+  const income = (from: Date) =>
     canFinance
-      ? supabase
-          .from("financial_transactions")
-          .select("amount,paid_at")
-          .eq("barbershop_id", tenant.id)
-          .eq("type", "income")
-          .eq("status", "paid")
-          .gte("paid_at", from.toISOString())
-          .lt("paid_at", dayEnd.toISOString())
-      : Promise.resolve({
-          data: [] as { amount: number; paid_at: string }[],
-        });
+      ? supabase.rpc("sum_paid_income", {
+          p_barbershop: tenant.id,
+          p_from: from.toISOString(),
+          p_to: dayEnd.toISOString(),
+        })
+      : Promise.resolve({ data: 0 });
 
-  const rangeStart = weekStart < monthStart ? weekStart : monthStart;
-
-  const [appointmentsRes, financeRes] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select(
-        "id,starts_at,status,client:clients(name),service:services(name),professional:professionals(name)",
-      )
-      .eq("barbershop_id", tenant.id)
-      .gte("starts_at", dayStart.toISOString())
-      .lt("starts_at", dayEnd.toISOString())
-      .order("starts_at"),
-    incomeSince(rangeStart),
-  ]);
+  const [appointmentsRes, dayIncome, weekIncome, monthIncome] =
+    await Promise.all([
+      supabase
+        .from("appointments")
+        .select(
+          "id,starts_at,status,client:clients(name),service:services(name),professional:professionals(name)",
+        )
+        .eq("barbershop_id", tenant.id)
+        .gte("starts_at", dayStart.toISOString())
+        .lt("starts_at", dayEnd.toISOString())
+        .order("starts_at"),
+      income(dayStart),
+      income(weekStart),
+      income(monthStart),
+    ]);
 
   const appointmentRows = appointmentsRes.data ?? [];
-  const paidRows = (financeRes.data ?? []) as {
-    amount: number;
-    paid_at: string;
-  }[];
 
   const appointments = appointmentRows.map((item) => ({
     id: item.id as string,
@@ -152,15 +144,9 @@ export default async function DashboardPage() {
 
   const scheduled = appointments.filter((item) => item.status !== "canceled");
   const completed = scheduled.filter((item) => item.status === "completed");
-  const sumFrom = (from: Date) =>
-    paidRows.reduce(
-      (total, row) =>
-        new Date(row.paid_at) >= from ? total + Number(row.amount) : total,
-      0,
-    );
-  const revenueToday = sumFrom(dayStart);
-  const revenueWeek = sumFrom(weekStart);
-  const revenueMonth = sumFrom(monthStart);
+  const revenueToday = Number(dayIncome.data ?? 0);
+  const revenueWeek = Number(weekIncome.data ?? 0);
+  const revenueMonth = Number(monthIncome.data ?? 0);
 
   const revenueCards = canFinance
     ? [

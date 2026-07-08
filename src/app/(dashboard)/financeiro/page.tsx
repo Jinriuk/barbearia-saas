@@ -22,6 +22,7 @@ import {
   MonthlyRevenueChart,
   type MonthlyRevenuePoint,
 } from "@/components/dashboard/monthly-revenue-chart";
+import { BarList } from "@/components/dashboard/bar-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -359,6 +360,60 @@ export default async function FinanceiroPage() {
           <MonthlyRevenueChart data={chartData} />
         </CardContent>
       </Card>
+
+      <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Scissors className="size-4" /> Serviços mais vendidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              items={services.slice(0, 5).map((item) => ({
+                label: item.name,
+                value: item.revenue,
+                hint: `${item.count}x`,
+              }))}
+              empty="Nenhum serviço faturado."
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="size-4" /> Produtos mais vendidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              items={products.slice(0, 5).map((item) => ({
+                label: item.name,
+                value: item.revenue,
+                hint: `${item.qty} un`,
+              }))}
+              empty="Nenhum produto vendido."
+            />
+          </CardContent>
+        </Card>
+        <Card className="md:col-span-2 xl:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="size-4" /> Profissionais por receita
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              items={professionals.slice(0, 5).map((item) => ({
+                label: item.name,
+                value: item.total,
+                hint: `${item.count} atend.`,
+              }))}
+              empty="Sem receitas neste mês."
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
