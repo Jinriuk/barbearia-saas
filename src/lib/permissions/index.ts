@@ -32,7 +32,9 @@ const permissions: Record<MembershipRole, Permission[]> = {
     "reports:view",
   ],
   receptionist: ["dashboard:view", "appointments:manage", "clients:manage"],
-  professional: ["dashboard:view"],
+  // O profissional pode gerenciar a agenda, mas a RLS o restringe aos próprios
+  // atendimentos (is_own_professional), então nunca vê os de outros.
+  professional: ["dashboard:view", "appointments:manage"],
   client: [],
 };
 

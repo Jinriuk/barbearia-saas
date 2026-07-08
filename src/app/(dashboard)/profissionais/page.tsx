@@ -1,4 +1,4 @@
-import { Plus, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -7,65 +7,53 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   deleteProfessional,
-  saveProfessional,
+  setProfessionalAvailability,
   toggleProfessional,
 } from "@/modules/professionals/actions";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
+import { ProfessionalForm } from "@/components/dashboard/professional-form";
 
 export default async function ProfessionalsPage() {
   const tenant = await requireTenant();
   const canManage = can(tenant.role, "catalog:manage");
+  const canCreateAccess = can(tenant.role, "memberships:manage");
+  const canSetAvailability =
+    tenant.role === "owner" ||
+    tenant.role === "manager" ||
+    tenant.role === "receptionist";
   const supabase = await createSupabaseServerClient();
-  const { data: professionalData } = await supabase
-    .from("professionals")
-    .select("id,name,phone,bio,active")
-    .eq("barbershop_id", tenant.id)
-    .order("name");
+  const [{ data: professionalData }, { data: serviceData }] = await Promise.all([
+    supabase
+      .from("professionals")
+      .select("id,name,phone,bio,active,public_visible")
+      .eq("barbershop_id", tenant.id)
+      .order("name"),
+    supabase
+      .from("services")
+      .select("id,name")
+      .eq("barbershop_id", tenant.id)
+      .eq("active", true)
+      .order("name"),
+  ]);
   const data = professionalData ?? [];
+  const services = serviceData ?? [];
+
   return (
     <>
       <PageHeader
         eyebrow="Equipe"
         title="Profissionais"
-        description="Quem atende, o que executa e quando está disponível."
+        description="Quem atende, o que executa, a disponibilidade e o acesso ao sistema."
       />
       <div
         className={
-          canManage ? "grid gap-6 xl:grid-cols-[360px_1fr]" : "grid gap-6"
+          canCreateAccess ? "grid gap-6 xl:grid-cols-[380px_1fr]" : "grid gap-6"
         }
       >
-        {canManage ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Plus className="size-4" /> Novo profissional
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form action={saveProfessional} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input id="name" name="name" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" name="phone" inputMode="tel" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Apresentação pública</Label>
-                  <Textarea id="bio" name="bio" rows={4} />
-                </div>
-                <Button className="w-full">Adicionar profissional</Button>
-              </form>
-            </CardContent>
-          </Card>
-        ) : null}
+        {canCreateAccess ? <ProfessionalForm services={services} /> : null}
         {data.length ? (
           <div className="grid gap-4 md:grid-cols-2">
             {data.map((item) => (
@@ -77,11 +65,17 @@ export default async function ProfessionalsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{item.name}</p>
-                      <Badge variant={item.active ? "default" : "secondary"}>
-                        {item.active ? "Ativo" : "Inativo"}
-                      </Badge>
+                      {!item.active ? (
+                        <Badge variant="secondary">Inativo</Badge>
+                      ) : item.public_visible ? (
+                        <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          Disponível
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Indisponível</Badge>
+                      )}
                     </div>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {item.phone || "Sem telefone"}
@@ -89,6 +83,24 @@ export default async function ProfessionalsPage() {
                     <p className="text-muted-foreground mt-3 line-clamp-2 text-sm">
                       {item.bio || "Sem apresentação pública."}
                     </p>
+                    {canSetAvailability && item.active ? (
+                      <form
+                        action={setProfessionalAvailability}
+                        className="mt-3"
+                      >
+                        <input type="hidden" name="id" value={item.id} />
+                        <input
+                          type="hidden"
+                          name="available"
+                          value={String(item.public_visible)}
+                        />
+                        <Button size="sm" variant="outline">
+                          {item.public_visible
+                            ? "Marcar indisponível"
+                            : "Marcar disponível"}
+                        </Button>
+                      </form>
+                    ) : null}
                   </div>
                   {canManage ? (
                     <div className="flex items-center gap-1">
@@ -118,7 +130,7 @@ export default async function ProfessionalsPage() {
         ) : (
           <EmptyState
             title="Sua equipe aparece aqui"
-            description="Adicione o primeiro profissional para configurar serviços e horários."
+            description="Adicione o primeiro profissional para configurar serviços, acesso e horários."
           />
         )}
       </div>
