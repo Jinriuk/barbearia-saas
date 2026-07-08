@@ -3,12 +3,30 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { slugify } from "@/lib/slug";
 import {
   barbershopSchema,
   loginSchema,
   resetPasswordSchema,
   signupSchema,
 } from "@/lib/validators/auth";
+
+/** Primeiro slug livre a partir de uma base (base, base-2, base-3, …). */
+async function resolveAvailableSlug(base: string): Promise<string> {
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin
+    .from("barbershops")
+    .select("slug")
+    .ilike("slug", `${base}%`);
+  const taken = new Set((data ?? []).map((row) => row.slug as string));
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 100; n += 1) {
+    const candidate = `${base}-${n}`.slice(0, 63);
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`.slice(0, 63);
+}
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -85,10 +103,18 @@ export async function createBarbershop(formData: FormData) {
   });
   if (!parsed.success) redirect("/onboarding?error=Revise+o+nome+e+o+endereço");
 
+  // Slug automático: usa o informado ou gera a partir do nome, garantindo
+  // que seja único (base, base-2, base-3…).
+  const base = slugify(parsed.data.slug || parsed.data.name);
+  if (base.length < 3) {
+    redirect("/onboarding?error=Nome+muito+curto+para+gerar+o+endereço");
+  }
+  const slug = await resolveAvailableSlug(base);
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("create_barbershop", {
     p_name: parsed.data.name,
-    p_slug: parsed.data.slug,
+    p_slug: slug,
   });
   if (error) redirect("/onboarding?error=Esse+endereço+não+está+disponível");
   redirect("/dashboard");
