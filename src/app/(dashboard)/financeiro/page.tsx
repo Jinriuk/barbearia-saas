@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ChartNoAxesCombined,
+  FileText,
   HandCoins,
   Package,
   Scissors,
@@ -313,6 +314,11 @@ export default async function FinanceiroPage() {
             <Button asChild variant="outline" size="sm">
               <Link href="/relatorios">
                 <ChartNoAxesCombined className="size-4" /> Relatórios
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/relatorio-financeiro" target="_blank">
+                <FileText className="size-4" /> Gerar PDF
               </Link>
             </Button>
           </div>
