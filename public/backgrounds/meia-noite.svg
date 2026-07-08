@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="sky" cx="0.7" cy="0.15" r="1.2">
+      <stop offset="0" stop-color="#17233f"/>
+      <stop offset="0.55" stop-color="#0d1526"/>
+      <stop offset="1" stop-color="#080c16"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="90"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <g filter="url(#glow)">
+    <circle cx="1180" cy="180" r="220" fill="#31437a" fill-opacity="0.5"/>
+    <circle cx="280" cy="760" r="260" fill="#1d2c55" fill-opacity="0.55"/>
+  </g>
+  <g fill="#dfe7ff">
+    <circle cx="180" cy="140" r="2.4" opacity="0.7"/>
+    <circle cx="340" cy="260" r="1.6" opacity="0.5"/>
+    <circle cx="520" cy="120" r="2" opacity="0.6"/>
+    <circle cx="760" cy="220" r="1.4" opacity="0.45"/>
+    <circle cx="980" cy="90" r="2.2" opacity="0.65"/>
+    <circle cx="1260" cy="330" r="1.6" opacity="0.5"/>
+    <circle cx="1420" cy="150" r="2.6" opacity="0.7"/>
+    <circle cx="1120" cy="480" r="1.4" opacity="0.4"/>
+    <circle cx="640" cy="420" r="1.8" opacity="0.5"/>
+    <circle cx="90" cy="420" r="1.6" opacity="0.45"/>
+  </g>
+  <path d="M-50 905 C 380 830, 900 960, 1650 870 L1650 1050 L-50 1050 Z" fill="#060910" opacity="0.85"/>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="wine" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#3c1420"/>
+      <stop offset="0.6" stop-color="#22090f"/>
+      <stop offset="1" stop-color="#140508"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="80"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#wine)"/>
+  <g filter="url(#soft)">
+    <circle cx="1300" cy="220" r="240" fill="#7c2740" fill-opacity="0.5"/>
+    <circle cx="240" cy="720" r="260" fill="#5b1b2e" fill-opacity="0.55"/>
+  </g>
+  <g fill="none" stroke="#e6b39a" stroke-opacity="0.12">
+    <path d="M-60 780 Q 400 640 830 760 T 1700 720" stroke-width="2"/>
+    <path d="M-60 850 Q 400 710 830 830 T 1700 790" stroke-width="1.4"/>
+    <path d="M-60 920 Q 400 780 830 900 T 1700 860" stroke-width="1"/>
+  </g>
+</svg>

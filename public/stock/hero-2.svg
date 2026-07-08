@@ -1,20 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" preserveAspectRatio="xMidYMid slice">
   <defs>
-    <radialGradient id="bg2" cx="0.7" cy="0.25" r="1.1">
-      <stop offset="0" stop-color="#2b2318"/>
-      <stop offset="1" stop-color="#141009"/>
-    </radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1712"/>
+      <stop offset="1" stop-color="#0b0906"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6bd75"/>
+      <stop offset="1" stop-color="#9a6f2e"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="80"/></filter>
   </defs>
-  <rect width="1400" height="1050" fill="url(#bg2)"/>
-  <!-- tesoura estilizada -->
-  <g stroke="#d8b98a" stroke-opacity="0.22" stroke-width="10" fill="none" stroke-linecap="round">
-    <line x1="420" y1="330" x2="900" y2="760"/>
-    <line x1="900" y1="330" x2="420" y2="760"/>
-    <circle cx="380" cy="790" r="58"/>
-    <circle cx="940" cy="790" r="58"/>
+  <rect width="1400" height="1050" fill="url(#bg)"/>
+  <circle cx="700" cy="480" r="300" fill="#6d4d1e" fill-opacity="0.32" filter="url(#glow)"/>
+  <g transform="translate(700 500) rotate(-24)" stroke="url(#gold)" fill="none" stroke-linecap="round">
+    <line x1="-40" y1="-260" x2="52" y2="120" stroke-width="14" stroke-opacity="0.9"/>
+    <line x1="40" y1="-260" x2="-52" y2="120" stroke-width="14" stroke-opacity="0.9"/>
+    <circle cx="86" cy="196" r="52" stroke-width="12" stroke-opacity="0.85"/>
+    <circle cx="-86" cy="196" r="52" stroke-width="12" stroke-opacity="0.85"/>
+    <circle cx="0" cy="26" r="13" fill="url(#gold)" stroke="none"/>
   </g>
-  <g stroke="#b8893e" stroke-opacity="0.28" stroke-width="3" fill="none">
-    <path d="M120 950 C 400 900, 1000 900, 1280 950"/>
-    <path d="M120 990 C 400 940, 1000 940, 1280 990"/>
+  <g fill="none" stroke="#e6bd75" stroke-opacity="0.14" stroke-width="2">
+    <circle cx="700" cy="500" r="360"/>
+    <circle cx="700" cy="500" r="430"/>
+  </g>
+  <g fill="#e6bd75">
+    <circle cx="1150" cy="220" r="4.5" opacity="0.3"/>
+    <circle cx="1230" cy="300" r="3" opacity="0.22"/>
+    <circle cx="220" cy="820" r="4" opacity="0.26"/>
+    <circle cx="300" cy="880" r="2.6" opacity="0.2"/>
   </g>
 </svg>
