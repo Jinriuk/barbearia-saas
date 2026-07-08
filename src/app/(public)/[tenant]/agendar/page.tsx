@@ -1,7 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicBarbershop } from "@/modules/barbershops/queries";
+import {
+  getPublicBarbershop,
+  tenantPageMetadata,
+} from "@/modules/barbershops/queries";
 import { isPlus } from "@/lib/plans";
 import { tenantStyle } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
@@ -10,6 +13,14 @@ import { BookingForm } from "@/components/public-site/booking-form";
 import { PublicHeader } from "@/components/public-site/public-header";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
+  return tenantPageMetadata(params, "Agendar");
+}
 
 export default async function BookingPage({
   params,
