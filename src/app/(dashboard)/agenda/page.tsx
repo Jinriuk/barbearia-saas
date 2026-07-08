@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, ShoppingBag } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import {
   formatShortDateInTz,
@@ -7,13 +7,25 @@ import {
   getUtcDayRange,
 } from "@/lib/dates";
 import { can } from "@/lib/permissions";
+import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
+import { ReservationActions } from "@/components/dashboard/reservation-actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+function first<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
 
 export default async function AgendaPage({
   searchParams,
@@ -40,6 +52,20 @@ export default async function AgendaPage({
     .order("name");
   const professionals = professionalData ?? [];
   const activeProfessional = professionals.find((item) => item.id === prof);
+
+  // Reservas de produto pendentes — secretária/gerente/dono confirmam ou cancelam.
+  const { data: reservationData } = canSeeAllAgendas
+    ? await supabase
+        .from("appointment_products")
+        .select(
+          "id,quantity,unit_price,product:products(name),appointment:appointments(client:clients(name),professional:professionals(name))",
+        )
+        .eq("barbershop_id", tenant.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(50)
+    : { data: null };
+  const reservations = reservationData ?? [];
 
   let query = supabase
     .from("appointments")
@@ -96,6 +122,42 @@ export default async function AgendaPage({
           ))}
         </div>
       ) : null}
+      {reservations.length ? (
+        <Card className="mb-5 border-amber-300 dark:border-amber-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShoppingBag className="size-4" /> Vendas de produto a confirmar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {reservations.map((reservation) => {
+              const appt = first(reservation.appointment);
+              const clientName = first(appt?.client)?.name ?? "Cliente";
+              const professionalName = first(appt?.professional)?.name ?? "—";
+              const total =
+                Number(reservation.quantity) * Number(reservation.unit_price);
+              return (
+                <div
+                  key={reservation.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {first(reservation.product)?.name ?? "Produto"} ×{" "}
+                      {reservation.quantity}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {clientName} · {professionalName} · {formatBRL(total)}
+                    </p>
+                  </div>
+                  <ReservationActions id={reservation.id} />
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardContent className="pt-6">
           {data.length ? (
