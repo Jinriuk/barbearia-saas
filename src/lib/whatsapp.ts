@@ -1,6 +1,6 @@
 // Central de mensagens de WhatsApp do painel. O texto fica aqui — e não
-// espalhado na UI — para a automação por API oficial (fase 4) reusar o mesmo
-// conteúdo que a equipe já dispara manualmente hoje.
+// espalhado na UI — para o disparo manual (wa.me) e o automático (API
+// oficial, cron de lembretes) usarem exatamente o mesmo conteúdo.
 
 import { whatsAppHref } from "@/lib/contact";
 
@@ -16,15 +16,23 @@ export type ReminderTenant = {
   vertical?: "barber" | "salon";
 };
 
+/** Pedaços do lembrete — viram variáveis do template da API oficial. */
+export type ReminderParts = {
+  firstName: string;
+  place: string;
+  serviceName: string;
+  day: string;
+  time: string;
+};
+
 /**
- * Mensagem de lembrete pronta em PT-BR, no fuso do tenant e com o termo da
- * vertical (barbearia/salão). Ex.: "Oi, Ana! Passando para lembrar o seu
- * horário no salão Studio Aurora: Escova, sexta-feira, 10 de julho às 15:00."
+ * Quebra o lembrete nos pedaços que o template aprovado na Meta espera
+ * ({{1}}..{{5}}), no fuso do tenant e com o termo da vertical.
  */
-export function reminderMessage(
+export function reminderParts(
   appointment: ReminderAppointment,
   tenant: ReminderTenant,
-): string {
+): ReminderParts {
   const date =
     typeof appointment.startsAt === "string"
       ? new Date(appointment.startsAt)
@@ -40,14 +48,31 @@ export function reminderMessage(
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-  const firstName = appointment.clientName.trim().split(/\s+/)[0];
-  const place =
-    tenant.vertical === "salon"
-      ? `no salão ${tenant.name}`
-      : `na barbearia ${tenant.name}`;
+  return {
+    firstName: appointment.clientName.trim().split(/\s+/)[0],
+    place:
+      tenant.vertical === "salon"
+        ? `no salão ${tenant.name}`
+        : `na barbearia ${tenant.name}`,
+    serviceName: appointment.serviceName,
+    day,
+    time,
+  };
+}
+
+/**
+ * Mensagem de lembrete pronta em PT-BR. Ex.: "Oi, Ana! Passando para lembrar
+ * o seu horário no salão Studio Aurora: Escova, sexta-feira, 10 de julho às
+ * 15:00." — o mesmo texto do template `lembrete_horario` da API oficial.
+ */
+export function reminderMessage(
+  appointment: ReminderAppointment,
+  tenant: ReminderTenant,
+): string {
+  const parts = reminderParts(appointment, tenant);
   return (
-    `Oi, ${firstName}! Passando para lembrar o seu horário ${place}: ` +
-    `${appointment.serviceName}, ${day} às ${time}. ` +
+    `Oi, ${parts.firstName}! Passando para lembrar o seu horário ${parts.place}: ` +
+    `${parts.serviceName}, ${parts.day} às ${parts.time}. ` +
     `Se precisar remarcar, é só responder por aqui. Até lá!`
   );
 }

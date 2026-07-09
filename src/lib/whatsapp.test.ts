@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { reminderMessage, reminderWhatsAppHref } from "./whatsapp";
+import { whatsAppNumber } from "./contact";
+import {
+  reminderMessage,
+  reminderParts,
+  reminderWhatsAppHref,
+} from "./whatsapp";
 
 // 2026-07-10T18:00:00Z = sexta-feira, 10 de julho, 15:00 em São Paulo (UTC-3).
 const STARTS_AT = "2026-07-10T18:00:00.000Z";
@@ -65,6 +70,40 @@ describe("reminderMessage", () => {
       },
     );
     expect(message).toContain("às 15:00");
+  });
+});
+
+describe("reminderParts", () => {
+  it("quebra o lembrete nas 5 variáveis do template oficial", () => {
+    const parts = reminderParts(
+      {
+        clientName: "Ana Paula Souza",
+        serviceName: "Escova",
+        startsAt: STARTS_AT,
+      },
+      {
+        name: "Studio Aurora",
+        timezone: "America/Sao_Paulo",
+        vertical: "salon",
+      },
+    );
+    expect(parts).toEqual({
+      firstName: "Ana",
+      place: "no salão Studio Aurora",
+      serviceName: "Escova",
+      day: "sexta-feira, 10 de julho",
+      time: "15:00",
+    });
+  });
+});
+
+describe("whatsAppNumber", () => {
+  it("normaliza para o formato internacional com DDI 55", () => {
+    expect(whatsAppNumber("(11) 98765-4321")).toBe("5511987654321");
+    expect(whatsAppNumber("5511987654321")).toBe("5511987654321");
+    expect(whatsAppNumber("11 3210-9876")).toBe("551132109876");
+    expect(whatsAppNumber("12")).toBeNull();
+    expect(whatsAppNumber(null)).toBeNull();
   });
 });
 
