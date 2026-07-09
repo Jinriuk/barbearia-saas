@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { AtSign, MapPin, MessageCircle, Scissors } from "lucide-react";
+import { AtSign, Flower2, MapPin, MessageCircle, Scissors } from "lucide-react";
 import { instagramHandle, whatsAppHref } from "@/lib/contact";
+import { normalizeVertical, verticalCopy } from "@/lib/verticals";
 import type { PublicBarbershop } from "@/types/domain";
 
 export function PublicFooter({ data }: { data: PublicBarbershop }) {
   const whatsapp = whatsAppHref(data.settings.whatsappNumber);
   const instagram = instagramHandle(data.settings.instagramUrl);
+  const copy = verticalCopy(data.barbershop.vertical);
+  const BrandIcon =
+    normalizeVertical(data.barbershop.vertical) === "salon"
+      ? Flower2
+      : Scissors;
 
   return (
     <footer className="border-t border-current/[.08] px-5 py-12">
@@ -59,11 +65,11 @@ export function PublicFooter({ data }: { data: PublicBarbershop }) {
             online
           </p>
           <Link
-            href="/"
+            href={copy.madeWithHref}
             className="flex items-center gap-1.5 transition-opacity hover:opacity-100"
           >
-            <Scissors className="size-3" />
-            Feito com NexoBarber
+            <BrandIcon className="size-3" />
+            {copy.madeWith}
           </Link>
         </div>
       </div>

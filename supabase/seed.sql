@@ -77,3 +77,111 @@ from public.professionals p
 cross join (values (1),(2),(3),(4),(5),(6)) as d(weekday)
 where p.barbershop_id = '10000000-0000-4000-8000-000000000001'
 on conflict do nothing;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Demo da vertical feminina (NexoBeleza): Studio Aurora — /studio-aurora.
+-- Espelha a demo criada no banco de produção: vertical salon, plano Plus,
+-- assinatura active de longo prazo e tema Rosé elegante.
+insert into public.barbershops (id, name, slug, status, plan, vertical)
+values ('10000000-0000-4000-8000-000000000002', 'Studio Aurora', 'studio-aurora', 'active', 'plus', 'salon')
+on conflict (id) do nothing;
+
+insert into public.tenant_settings (
+  id, barbershop_id, primary_color, secondary_color, background_color,
+  hero_title, hero_subtitle, address, opening_hours
+)
+values (
+  '20000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002',
+  '#c2497c',
+  '#33202b',
+  '#fdf8f5',
+  'Realce a sua beleza, no seu tempo.',
+  'Escolha o serviço, a profissional e o melhor horário — tudo online, sem fila e sem espera.',
+  'Rua das Flores, 250 — Jardins, São Paulo',
+  '{"monday":"09:00–19:00","tuesday":"09:00–19:00","wednesday":"09:00–19:00","thursday":"09:00–19:00","friday":"09:00–19:00","saturday":"09:00–19:00"}'
+)
+on conflict (barbershop_id) do nothing;
+
+-- Assinatura ativa de longuíssimo prazo: a demo nunca cai.
+insert into public.subscriptions (id, barbershop_id, plan, status, price_cents, current_period_end)
+values (
+  '50000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002',
+  'plus', 'active', 9990, now() + interval '10 years'
+)
+on conflict (barbershop_id) do nothing;
+
+insert into public.services (
+  id, barbershop_id, name, description, category, price, duration_minutes, commission_rate
+)
+values
+  ('31000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'Coloração', 'Cor personalizada com análise de tom e cuidado com os fios.', 'Cabelo', 180, 120, 40),
+  ('31000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'Escova', 'Escova modelada com finalização profissional.', 'Cabelo', 60, 40, 40),
+  ('31000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'Manicure + Pedicure', 'Cuidado completo das unhas com esmaltação impecável.', 'Unhas', 75, 60, 40),
+  ('31000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'Maquiagem', 'Make profissional para eventos, festas e ocasiões especiais.', 'Maquiagem', 130, 60, 40),
+  ('31000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000002', 'Hidratação', 'Tratamento profundo para devolver brilho e maciez.', 'Tratamentos', 90, 45, 40),
+  ('31000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-000000000002', 'Design de sobrancelhas', 'Modelagem que valoriza o seu olhar.', 'Sobrancelhas', 45, 30, 40)
+on conflict (id) do nothing;
+
+insert into public.professionals (id, barbershop_id, name, bio)
+values
+  ('41000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'Helena', 'Colorista e especialista em tratamentos capilares.'),
+  ('41000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000002', 'Valentina', 'Nail designer e design de sobrancelhas com olhar de detalhe.'),
+  ('41000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'Sofia', 'Maquiadora e hair stylist para todas as ocasiões.')
+on conflict (id) do nothing;
+
+insert into public.professional_services (barbershop_id, professional_id, service_id)
+select
+  '10000000-0000-4000-8000-000000000002'::uuid,
+  professional_id,
+  service_id
+from (
+  values
+    ('41000000-0000-4000-8000-000000000001'::uuid, '31000000-0000-4000-8000-000000000001'::uuid),
+    ('41000000-0000-4000-8000-000000000001'::uuid, '31000000-0000-4000-8000-000000000002'::uuid),
+    ('41000000-0000-4000-8000-000000000001'::uuid, '31000000-0000-4000-8000-000000000005'::uuid),
+    ('41000000-0000-4000-8000-000000000002'::uuid, '31000000-0000-4000-8000-000000000003'::uuid),
+    ('41000000-0000-4000-8000-000000000002'::uuid, '31000000-0000-4000-8000-000000000006'::uuid),
+    ('41000000-0000-4000-8000-000000000002'::uuid, '31000000-0000-4000-8000-000000000004'::uuid),
+    ('41000000-0000-4000-8000-000000000003'::uuid, '31000000-0000-4000-8000-000000000002'::uuid),
+    ('41000000-0000-4000-8000-000000000003'::uuid, '31000000-0000-4000-8000-000000000004'::uuid),
+    ('41000000-0000-4000-8000-000000000003'::uuid, '31000000-0000-4000-8000-000000000005'::uuid)
+) as pairs(professional_id, service_id)
+on conflict do nothing;
+
+-- Disponibilidade seg–sáb, 09:00–19:00.
+insert into public.professional_availability (
+  barbershop_id, professional_id, weekday, starts_at, ends_at, slot_interval_minutes
+)
+select
+  '10000000-0000-4000-8000-000000000002'::uuid,
+  p.id,
+  d.weekday,
+  '09:00'::time,
+  '19:00'::time,
+  15
+from public.professionals p
+cross join (values (1),(2),(3),(4),(5),(6)) as d(weekday)
+where p.barbershop_id = '10000000-0000-4000-8000-000000000002'
+on conflict do nothing;
+
+-- Produtos de beleza para o upsell no checkout (recurso Plus).
+insert into public.products (
+  barbershop_id, name, description, sku, cost_price, sale_price, minimum_stock, active, public_visible
+)
+values
+  ('10000000-0000-4000-8000-000000000002', 'Máscara de Hidratação Profunda', 'Nutrição intensa para fios ressecados.', 'SAU-MAS-01', 32.00, 89.00, 3, true, true),
+  ('10000000-0000-4000-8000-000000000002', 'Sérum Capilar Reparador', 'Brilho e proteção térmica no dia a dia.', 'SAU-SER-01', 28.00, 75.00, 3, true, true),
+  ('10000000-0000-4000-8000-000000000002', 'Kit Esmaltes Nude', 'Trio de tons neutros para todas as estações.', 'SAU-ESM-01', 18.00, 49.00, 3, true, true)
+on conflict (barbershop_id, sku) do nothing;
+
+-- Estoque inicial 10 de cada (uma única entrada por produto).
+insert into public.inventory_movements (barbershop_id, product_id, type, quantity, unit_cost, reason)
+select pd.barbershop_id, pd.id, 'purchase', 10, pd.cost_price, 'Estoque inicial da demonstração'
+from public.products pd
+where pd.barbershop_id = '10000000-0000-4000-8000-000000000002'
+  and not exists (
+    select 1 from public.inventory_movements im
+    where im.product_id = pd.id and im.type = 'purchase'
+  );

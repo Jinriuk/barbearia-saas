@@ -233,7 +233,7 @@ export default function SalonLandingPage() {
                 variant="outline"
                 className="h-13 w-full rounded-full border-[#33202b]/15 bg-white/60 px-7 text-[15px] text-[#33202b] hover:bg-white sm:w-auto"
               >
-                <a href="#recursos">Conhecer os recursos</a>
+                <Link href="/studio-aurora">Ver página de demonstração</Link>
               </Button>
             </div>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-4 text-sm text-[#33202b]/45 delay-300 duration-1000">
@@ -675,6 +675,12 @@ export default function SalonLandingPage() {
               className="transition-colors hover:text-[#33202b]"
             >
               Criar conta
+            </Link>
+            <Link
+              href="/studio-aurora"
+              className="transition-colors hover:text-[#33202b]"
+            >
+              Demonstração
             </Link>
             <Link href="/" className="transition-colors hover:text-[#33202b]">
               Tem uma barbearia? Conheça o NexoBarber →
