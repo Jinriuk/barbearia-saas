@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="lav-base" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#3a2d52"/>
+      <stop offset="0.6" stop-color="#2f2440"/>
+      <stop offset="1" stop-color="#1e1730"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="80"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#lav-base)"/>
+  <g filter="url(#soft)">
+    <circle cx="1280" cy="240" r="250" fill="#8459b3" fill-opacity="0.45"/>
+    <circle cx="260" cy="740" r="260" fill="#5d3f85" fill-opacity="0.5"/>
+    <circle cx="820" cy="120" r="180" fill="#a685cc" fill-opacity="0.2"/>
+  </g>
+  <g fill="none" stroke="#cdb6e8" stroke-opacity="0.12">
+    <path d="M-60 720 Q 400 580 830 700 T 1700 660" stroke-width="2"/>
+    <path d="M-60 800 Q 400 660 830 780 T 1700 740" stroke-width="1.4"/>
+    <path d="M-60 880 Q 400 740 830 860 T 1700 820" stroke-width="1"/>
+  </g>
+  <g fill="#cdb6e8">
+    <circle cx="420" cy="240" r="3" fill-opacity="0.35"/>
+    <circle cx="1180" cy="560" r="2.5" fill-opacity="0.3"/>
+    <circle cx="960" cy="320" r="2" fill-opacity="0.25"/>
+    <circle cx="680" cy="480" r="2.5" fill-opacity="0.3"/>
+  </g>
+</svg>

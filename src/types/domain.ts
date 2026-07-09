@@ -2,11 +2,7 @@ export type MembershipRole =
   "owner" | "manager" | "receptionist" | "professional" | "client";
 
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "suspended"
-  | "canceled";
+  "trialing" | "active" | "past_due" | "suspended" | "canceled";
 
 export type SubscriptionInfo = {
   status: SubscriptionStatus;
@@ -67,6 +63,7 @@ export type PublicBarbershop = {
     logoUrl: string | null;
     timezone: string;
     plan: string;
+    vertical: "barber" | "salon";
   };
   settings: {
     primaryColor: string;

@@ -68,7 +68,8 @@ export async function signUp(formData: FormData) {
       // plano escolhido na landing, mesmo passando pela confirmação de e-mail.
       data: {
         name: parsed.data.name,
-        preferred_plan: value(formData, "plano") === "plus" ? "plus" : "starter",
+        preferred_plan:
+          value(formData, "plano") === "plus" ? "plus" : "starter",
         preferred_vertical:
           value(formData, "vertical") === "salon" ? "salon" : "barber",
       },
@@ -128,5 +129,7 @@ export async function createBarbershop(formData: FormData) {
     p_vertical: vertical,
   });
   if (error) redirect("/onboarding?error=Esse+endereço+não+está+disponível");
-  redirect("/dashboard");
+  // bemvindo=1 marca a chegada pós-cadastro: o dashboard dispara a conversão
+  // (Meta Pixel CompleteRegistration) uma única vez e limpa o parâmetro.
+  redirect("/dashboard?bemvindo=1");
 }

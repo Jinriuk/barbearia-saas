@@ -19,7 +19,7 @@ import {
   getPublicBarbershop,
   tenantPageMetadata,
 } from "@/modules/barbershops/queries";
-import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
+import { verticalCopy } from "@/lib/verticals";
 import { tenantStyle, withAlpha } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
 import { PublicFooter } from "@/components/public-site/public-footer";
@@ -54,9 +54,11 @@ export default async function TenantPublicPage({
 
   const whatsapp = whatsAppHref(data.settings.whatsappNumber);
   const primary = data.settings.primaryColor;
-  // Banner enviado pelo dono > foto real padrão; a arte SVG fica de fallback.
-  const heroImage = data.settings.bannerUrl || REAL_PHOTOS.interior;
-  const ambienceImage = data.settings.bannerUrl || REAL_PHOTOS.razorShave;
+  const copy = verticalCopy(data.barbershop.vertical);
+  // Banner enviado pelo dono > foto real padrão da vertical; a arte SVG
+  // correspondente fica de fallback.
+  const heroImage = data.settings.bannerUrl || copy.heroPhoto;
+  const ambienceImage = data.settings.bannerUrl || copy.ambiencePhoto;
 
   return (
     <main
@@ -147,7 +149,7 @@ export default async function TenantPublicPage({
             <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-black/25 sm:aspect-[16/10] lg:aspect-[4/5]">
               <SmartImage
                 src={heroImage}
-                fallbackSrc={STOCK_PHOTOS.barberChair}
+                fallbackSrc={copy.heroFallback}
                 alt={`Ambiente da ${data.barbershop.name}`}
                 fill
                 sizes="(min-width: 1024px) 42vw, 100vw"
@@ -203,7 +205,7 @@ export default async function TenantPublicPage({
           <div className="overflow-hidden rounded-[2rem] bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-2xl shadow-black/20">
             <div className="p-6 sm:p-10">
               <p className="text-[11px] font-semibold tracking-[0.22em] text-[var(--tenant-primary)] uppercase">
-                Menu da casa
+                {copy.servicesEyebrow}
               </p>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
                 Serviços
@@ -396,7 +398,7 @@ export default async function TenantPublicPage({
           <div className="relative h-full w-full">
             <SmartImage
               src={ambienceImage}
-              fallbackSrc={STOCK_PHOTOS.beardTrim}
+              fallbackSrc={copy.ambienceFallback}
               alt=""
               fill
               sizes="100vw"
@@ -412,7 +414,7 @@ export default async function TenantPublicPage({
               style={{ background: primary }}
             />
             <p className="mt-6 max-w-xl text-2xl font-medium tracking-tight text-balance sm:text-3xl">
-              Tradição no corte, precisão no detalhe.
+              {copy.ambienceQuote}
             </p>
             <p className="mt-3 text-sm tracking-[0.18em] uppercase opacity-70">
               {data.barbershop.name}

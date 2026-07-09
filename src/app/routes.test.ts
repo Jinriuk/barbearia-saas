@@ -42,6 +42,7 @@ const SOURCES = [
   join(DASHBOARD_DIR, "relatorios", "page.tsx"),
   join(DASHBOARD_DIR, "permissoes", "page.tsx"),
   join(DASHBOARD_DIR, "profissionais", "page.tsx"),
+  join(APP_DIR, "salao", "page.tsx"),
 ];
 
 describe("integridade dos links do painel", () => {
@@ -53,6 +54,9 @@ describe("integridade dos links do painel", () => {
   routes.add("/recuperar-senha");
   routes.add("/relatorio-financeiro");
   routes.add("/admin");
+  routes.add("/salao");
+  // Demo pública da vertical feminina — rota dinâmica [tenant].
+  routes.add("/studio-aurora");
 
   for (const file of SOURCES) {
     it(`links de ${file.split("/").slice(-2).join("/")} apontam para rotas existentes`, () => {

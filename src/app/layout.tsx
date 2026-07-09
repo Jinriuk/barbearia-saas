@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MetaPixel } from "@/components/platform/meta-pixel";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +35,8 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col antialiased">
         <TooltipProvider>{children}</TooltipProvider>
+        <Analytics />
+        <MetaPixel />
       </body>
     </html>
   );

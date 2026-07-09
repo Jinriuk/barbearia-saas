@@ -93,6 +93,7 @@ export default async function BookingPage({
             isPlus={isPlus(data.barbershop.plan)}
             initialServiceId={initialServiceId}
             whatsappHref={whatsAppHref(data.settings.whatsappNumber)}
+            vertical={data.barbershop.vertical}
           />
         </div>
       </div>

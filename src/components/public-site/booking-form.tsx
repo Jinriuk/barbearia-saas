@@ -16,6 +16,7 @@ import type {
   PublicProfessional,
   PublicService,
 } from "@/types/domain";
+import { verticalCopy } from "@/lib/verticals";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +77,7 @@ export function BookingForm({
   isPlus,
   initialServiceId,
   whatsappHref,
+  vertical,
 }: {
   tenant: string;
   timezone: string;
@@ -86,7 +88,9 @@ export function BookingForm({
   isPlus: boolean;
   initialServiceId?: string;
   whatsappHref: string | null;
+  vertical?: "barber" | "salon";
 }) {
+  const copy = verticalCopy(vertical);
   const [serviceId, setServiceId] = useState(initialServiceId ?? "");
   const [professionalId, setProfessionalId] = useState("");
   const [date, setDate] = useState("");
@@ -305,7 +309,7 @@ export function BookingForm({
             Reserva enviada!
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-6 opacity-60">
-            A barbearia vai confirmar seu horário. Guarde os detalhes:
+            {copy.confirmationNote}
           </p>
         </div>
         <div className="px-5 pb-6">
@@ -348,7 +352,7 @@ export function BookingForm({
               className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
             >
               <MessageCircle className="size-4.5" />
-              Falar com a barbearia
+              {copy.talkToBusiness}
             </a>
           ) : null}
         </div>

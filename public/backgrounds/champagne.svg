@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="champ-base" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#fbf7ef"/>
+      <stop offset="0.55" stop-color="#f4e8d4"/>
+      <stop offset="1" stop-color="#e9d5b5"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="80"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#champ-base)"/>
+  <g filter="url(#soft)">
+    <circle cx="1300" cy="220" r="240" fill="#d9b06e" fill-opacity="0.4"/>
+    <circle cx="240" cy="740" r="260" fill="#b98a4f" fill-opacity="0.25"/>
+  </g>
+  <g fill="#b98a4f">
+    <circle cx="380" cy="300" r="5" fill-opacity="0.2"/>
+    <circle cx="470" cy="210" r="3.5" fill-opacity="0.16"/>
+    <circle cx="560" cy="340" r="4" fill-opacity="0.18"/>
+    <circle cx="1080" cy="620" r="5" fill-opacity="0.2"/>
+    <circle cx="1180" cy="540" r="3.5" fill-opacity="0.16"/>
+    <circle cx="1260" cy="660" r="4.5" fill-opacity="0.18"/>
+    <circle cx="820" cy="180" r="3" fill-opacity="0.14"/>
+    <circle cx="920" cy="840" r="4" fill-opacity="0.16"/>
+  </g>
+  <g fill="none" stroke="#9a6d33" stroke-opacity="0.14">
+    <path d="M-60 760 Q 400 640 830 750 T 1700 710" stroke-width="1.8"/>
+    <path d="M-60 840 Q 400 720 830 830 T 1700 790" stroke-width="1.2"/>
+  </g>
+</svg>

@@ -45,6 +45,11 @@ const DEFAULT_BACKGROUNDS = [
   { label: "Aurora", url: "/backgrounds/aurora.svg" },
   { label: "Ondas", url: "/backgrounds/ondas.svg" },
   { label: "Grade", url: "/backgrounds/grade.svg" },
+  // Artes femininas (paleta rosé/lavanda/champagne) — qualquer tenant usa.
+  { label: "Pétalas", url: "/backgrounds/petalas.svg" },
+  { label: "Lavanda", url: "/backgrounds/lavanda.svg" },
+  { label: "Champagne", url: "/backgrounds/champagne.svg" },
+  { label: "Rosé noite", url: "/backgrounds/rose-noite.svg" },
 ];
 
 /** Temas prontos: um clique define destaque, escura e fundo em harmonia. */
@@ -55,6 +60,10 @@ const THEME_PRESETS = [
   { name: "Vinho nobre", primary: "#8e2f3c", secondary: "#241014", background: "#faf4f2" },
   { name: "Grafite & ouro", primary: "#e5b95c", secondary: "#ece9e2", background: "#141416" },
   { name: "Rosé", primary: "#b96a72", secondary: "#2a1a18", background: "#fbf3f1" },
+  // Temas femininos — os mesmos apresentados na landing do NexoBeleza.
+  { name: "Rosé elegante", primary: "#c2497c", secondary: "#33202b", background: "#fdf8f5" },
+  { name: "Lavanda suave", primary: "#8459b3", secondary: "#2f2440", background: "#f7f4fb" },
+  { name: "Champagne", primary: "#b98a4f", secondary: "#3d2f1f", background: "#fbf7ef" },
 ];
 
 type Appearance = {

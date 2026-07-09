@@ -24,6 +24,7 @@ import {
 import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { WelcomeConversion } from "@/components/platform/welcome-conversion";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,13 @@ const quickLinks: Array<{
   },
 ];
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = (await searchParams) ?? {};
+  const justOnboarded = params.bemvindo === "1";
   const tenant = await requireTenant();
   const canFinance = can(tenant.role, "finance:view");
   const supabase = await createSupabaseServerClient();
@@ -188,6 +195,7 @@ export default async function DashboardPage() {
 
   return (
     <>
+      {justOnboarded ? <WelcomeConversion /> : null}
       <PageHeader
         eyebrow="Resumo do dia"
         title={`Olá, ${tenant.profileName.split(" ")[0]}!`}
