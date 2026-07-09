@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard, LogOut, Settings, UserCog } from "lucide-react";
+import { CreditCard, LogOut, Settings, ShieldCheck, UserCog } from "lucide-react";
 import { signOut } from "@/modules/auth/actions";
 import {
   DropdownMenu,
@@ -24,10 +24,12 @@ export function UserMenu({
   name,
   role,
   canManageSettings,
+  isPlatformAdmin = false,
 }: {
   name: string;
   role: string;
   canManageSettings: boolean;
+  isPlatformAdmin?: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -68,6 +70,13 @@ export function UserMenu({
               </Link>
             </DropdownMenuItem>
           </>
+        ) : null}
+        {isPlatformAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <ShieldCheck /> Plataforma (super-admin)
+            </Link>
+          </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
         <form action={signOut}>

@@ -52,6 +52,7 @@ describe("integridade dos links do painel", () => {
   routes.add("/cadastro");
   routes.add("/recuperar-senha");
   routes.add("/relatorio-financeiro");
+  routes.add("/admin");
 
   for (const file of SOURCES) {
     it(`links de ${file.split("/").slice(-2).join("/")} apontam para rotas existentes`, () => {
