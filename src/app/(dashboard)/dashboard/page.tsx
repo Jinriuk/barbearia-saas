@@ -7,6 +7,7 @@ import {
   ChartNoAxesCombined,
   CheckCheck,
   Contact,
+  MessageCircle,
   Scissors,
   Settings,
   ShoppingBag,
@@ -19,9 +20,11 @@ import {
   formatTimeInTz,
   getUtcDayRange,
   getUtcMonthRange,
+  getUtcNextDayRange,
   getUtcWeekRange,
 } from "@/lib/dates";
 import { formatBRL } from "@/lib/financial";
+import { reminderMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WelcomeConversion } from "@/components/platform/welcome-conversion";
@@ -122,7 +125,10 @@ export default async function DashboardPage({
         })
       : Promise.resolve({ data: 0 });
 
-  const [appointmentsRes, dayIncome, weekIncome, monthIncome] =
+  // Janela de amanhã no fuso do tenant, para o card de lembretes.
+  const { end: tomorrowEnd } = getUtcNextDayRange(tenant.timezone);
+
+  const [appointmentsRes, tomorrowRes, dayIncome, weekIncome, monthIncome] =
     await Promise.all([
       supabase
         .from("appointments")
@@ -133,12 +139,43 @@ export default async function DashboardPage({
         .gte("starts_at", dayStart.toISOString())
         .lt("starts_at", dayEnd.toISOString())
         .order("starts_at"),
+      supabase
+        .from("appointments")
+        .select(
+          "id,starts_at,status,client:clients(name,phone),service:services(name),professional:professionals(name)",
+        )
+        .eq("barbershop_id", tenant.id)
+        .in("status", ["pending", "confirmed"])
+        .gte("starts_at", dayEnd.toISOString())
+        .lt("starts_at", tomorrowEnd.toISOString())
+        .order("starts_at"),
       income(dayStart),
       income(weekStart),
       income(monthStart),
     ]);
 
   const appointmentRows = appointmentsRes.data ?? [];
+
+  // Lembretes de amanhã: um toque abre o WhatsApp com a mensagem pronta —
+  // a secretária dispara todos em sequência.
+  const reminders = (tomorrowRes.data ?? []).map((item) => {
+    const clientName = first(item.client)?.name ?? "Cliente";
+    const serviceName = first(item.service)?.name ?? "seu atendimento";
+    return {
+      id: item.id as string,
+      startsAt: item.starts_at as string,
+      clientName,
+      serviceName,
+      professionalName: first(item.professional)?.name ?? "",
+      whatsappHref: reminderWhatsAppHref(
+        first(item.client)?.phone,
+        reminderMessage(
+          { clientName, serviceName, startsAt: item.starts_at as string },
+          tenant,
+        ),
+      ),
+    };
+  });
 
   const appointments = appointmentRows.map((item) => ({
     id: item.id as string,
@@ -282,6 +319,63 @@ export default async function DashboardPage({
           )}
         </CardContent>
       </Card>
+
+      {reminders.length ? (
+        <Card className="mt-6 border-emerald-300 dark:border-emerald-900">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
+              Lembretes de amanhã
+            </CardTitle>
+            <span className="text-muted-foreground text-xs">
+              {reminders.length}{" "}
+              {reminders.length === 1 ? "horário" : "horários"}
+            </span>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {reminders.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center gap-3 rounded-lg border p-3.5"
+              >
+                <span className="font-mono text-sm font-semibold">
+                  {formatTimeInTz(item.startsAt, tenant.timezone)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {item.clientName}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {item.serviceName}
+                    {item.professionalName ? ` · ${item.professionalName}` : ""}
+                  </p>
+                </div>
+                {item.whatsappHref ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="text-emerald-700 dark:text-emerald-400"
+                  >
+                    <a
+                      href={item.whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <MessageCircle className="size-3.5" />
+                      Lembrar no WhatsApp
+                    </a>
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground text-xs">
+                    Sem telefone
+                  </span>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="mt-6">
         <h2 className="mb-3 text-sm font-semibold tracking-tight">

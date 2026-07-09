@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Image as ImageIcon, Pencil, Plus } from "lucide-react";
 import { saveProduct } from "@/modules/products/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +26,7 @@ type ProductInput = {
   sale_price: number;
   cost_price: number | null;
   public_visible: boolean;
+  image_url?: string | null;
 };
 
 /**
@@ -125,6 +126,35 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
               rows={3}
               defaultValue={product?.description ?? ""}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-photo">Foto do produto</Label>
+            <div className="flex items-center gap-3">
+              {product?.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.image_url}
+                  alt={`Foto de ${product.name}`}
+                  className="size-14 shrink-0 rounded-lg border object-cover"
+                />
+              ) : (
+                <span className="bg-muted text-muted-foreground grid size-14 shrink-0 place-items-center rounded-lg border">
+                  <ImageIcon className="size-5" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1 space-y-1">
+                <input
+                  id="product-photo"
+                  type="file"
+                  name="photo"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="text-muted-foreground file:bg-muted file:text-foreground block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-sm"
+                />
+                <p className="text-muted-foreground text-xs">
+                  PNG, JPG ou WebP, até 2 MB. Aparece na vitrine pública.
+                </p>
+              </div>
+            </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input

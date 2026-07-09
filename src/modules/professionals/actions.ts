@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
+import { MAX_PHOTO_BYTES, uploadPublicImage } from "@/lib/storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ActionState } from "@/types/domain";
@@ -13,7 +14,9 @@ const createAccessSchema = z.object({
   email: z.email(),
   password: z.string().min(6).max(72),
   phone: z.string().trim().max(30).optional(),
-  role: z.enum(["professional", "receptionist", "manager"]).default("professional"),
+  role: z
+    .enum(["professional", "receptionist", "manager"])
+    .default("professional"),
   available: z.coerce.boolean().optional(),
   serviceIds: z.array(z.uuid()).max(200).optional(),
   commissionRate: z.coerce.number().min(0).max(100).optional(),
@@ -32,12 +35,17 @@ export async function createProfessionalWithAccess(
 ): Promise<ActionState> {
   const tenant = await requireTenant();
   if (!can(tenant.role, "memberships:manage")) {
-    return { success: false, message: "Apenas o proprietário pode criar acessos." };
+    return {
+      success: false,
+      message: "Apenas o proprietário pode criar acessos.",
+    };
   }
 
   const parsed = createAccessSchema.safeParse({
     name: formData.get("name"),
-    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    email: String(formData.get("email") ?? "")
+      .trim()
+      .toLowerCase(),
     password: formData.get("password"),
     phone: formData.get("phone"),
     role: formData.get("role") || "professional",
@@ -54,16 +62,17 @@ export async function createProfessionalWithAccess(
   }
 
   const admin = createSupabaseAdminClient();
-  const { data: created, error: createError } = await admin.auth.admin.createUser(
-    {
+  const { data: created, error: createError } =
+    await admin.auth.admin.createUser({
       email: parsed.data.email,
       password: parsed.data.password,
       email_confirm: true,
       user_metadata: { name: parsed.data.name, phone: parsed.data.phone ?? "" },
-    },
-  );
+    });
   if (createError || !created.user) {
-    const already = /already|exists|registered/i.test(createError?.message ?? "");
+    const already = /already|exists|registered/i.test(
+      createError?.message ?? "",
+    );
     return {
       success: false,
       message: already
@@ -143,7 +152,10 @@ export async function createProfessionalWithAccess(
     .select("id")
     .single();
   if (proError || !professional) {
-    return { success: false, message: "Acesso criado, mas falhou ao criar o profissional." };
+    return {
+      success: false,
+      message: "Acesso criado, mas falhou ao criar o profissional.",
+    };
   }
 
   const serviceIds = parsed.data.serviceIds ?? [];
@@ -168,7 +180,10 @@ export async function createProfessionalWithAccess(
     })),
   );
 
-  if ((parsed.data.baseSalary ?? 0) > 0 || (parsed.data.commissionRate ?? 0) > 0) {
+  if (
+    (parsed.data.baseSalary ?? 0) > 0 ||
+    (parsed.data.commissionRate ?? 0) > 0
+  ) {
     const hasSalary = (parsed.data.baseSalary ?? 0) > 0;
     const hasCommission = (parsed.data.commissionRate ?? 0) > 0;
     await admin.from("employee_pay_settings").upsert(
@@ -194,6 +209,72 @@ export async function createProfessionalWithAccess(
   return {
     success: true,
     message: `${parsed.data.name} pode acessar com o e-mail e a senha definidos.`,
+  };
+}
+
+const profileSchema = z.object({
+  id: z.uuid(),
+  bio: z.string().trim().max(200).optional(),
+});
+
+/**
+ * Perfil público do profissional: bio curta e foto (avatar). É o que deixa a
+ * página pública viva — o site já exibe avatarUrl/bio, faltava a tela gravar.
+ */
+export async function updateProfessionalProfile(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "memberships:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
+
+  const parsed = profileSchema.safeParse({
+    id: formData.get("id"),
+    bio: formData.get("bio") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Revise a apresentação (máximo de 200 caracteres).",
+    };
+  }
+
+  const updates: { bio: string | null; avatar_url?: string } = {
+    bio: parsed.data.bio || null,
+  };
+
+  const avatar = formData.get("avatar");
+  if (avatar instanceof File && avatar.size > 0) {
+    const result = await uploadPublicImage(
+      avatar,
+      `professionals/${tenant.id}/${parsed.data.id}`,
+      MAX_PHOTO_BYTES,
+    );
+    if ("error" in result) return { success: false, message: result.error };
+    updates.avatar_url = result.url;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("professionals")
+    .update(updates)
+    .eq("id", parsed.data.id)
+    .eq("barbershop_id", tenant.id);
+  if (error) {
+    return {
+      success: false,
+      message: "Não foi possível salvar. Tente de novo.",
+    };
+  }
+
+  revalidatePath("/profissionais");
+  revalidatePath(`/${tenant.slug}`);
+  revalidatePath(`/${tenant.slug}/agendar`);
+  return {
+    success: true,
+    message: "Perfil atualizado. Já vale na sua página.",
   };
 }
 

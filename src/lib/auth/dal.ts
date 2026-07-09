@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { accessState } from "@/lib/billing";
+import { normalizeVertical } from "@/lib/verticals";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   MembershipRole,
@@ -34,7 +35,7 @@ export const getTenantContext = cache(
     const { data, error } = await supabase
       .from("memberships")
       .select(
-        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id), barbershop:barbershops!inner(id,name,slug,timezone,plan)",
+        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id), barbershop:barbershops!inner(id,name,slug,timezone,plan,vertical)",
       )
       .eq("status", "active")
       .eq("profiles.auth_user_id", user.id)
@@ -74,6 +75,7 @@ export const getTenantContext = cache(
       slug: barbershop.slug,
       timezone: barbershop.timezone,
       plan: barbershop.plan,
+      vertical: normalizeVertical(barbershop.vertical),
       role: data.role as MembershipRole,
       profileId: profile.id,
       profileName: profile.name,
@@ -82,17 +84,15 @@ export const getTenantContext = cache(
   },
 );
 
-export const requireTenant = cache(
-  async (opts?: { allowLocked?: boolean }) => {
-    await requireUser();
-    const tenant = await getTenantContext();
-    if (!tenant) redirect("/onboarding");
-    // Assinatura vencida além da tolerância bloqueia o painel inteiro,
-    // exceto as telas de regularização (que passam allowLocked).
-    if (!opts?.allowLocked) {
-      const state = accessState(tenant.subscription);
-      if (state === "locked" || state === "gone") redirect("/assinatura");
-    }
-    return tenant;
-  },
-);
+export const requireTenant = cache(async (opts?: { allowLocked?: boolean }) => {
+  await requireUser();
+  const tenant = await getTenantContext();
+  if (!tenant) redirect("/onboarding");
+  // Assinatura vencida além da tolerância bloqueia o painel inteiro,
+  // exceto as telas de regularização (que passam allowLocked).
+  if (!opts?.allowLocked) {
+    const state = accessState(tenant.subscription);
+    if (state === "locked" || state === "gone") redirect("/assinatura");
+  }
+  return tenant;
+});

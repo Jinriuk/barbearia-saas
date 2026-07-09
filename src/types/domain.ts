@@ -18,6 +18,7 @@ export type TenantContext = {
   slug: string;
   timezone: string;
   plan: string;
+  vertical: "barber" | "salon";
   role: MembershipRole;
   profileId: string;
   profileName: string;

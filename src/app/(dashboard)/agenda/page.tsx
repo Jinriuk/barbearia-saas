@@ -1,26 +1,25 @@
 import Link from "next/link";
-import { CalendarPlus, ShoppingBag } from "lucide-react";
+import { CalendarPlus, MessageCircle, ShoppingBag } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import {
   formatShortDateInTz,
   formatTimeInTz,
+  getDateInTz,
   getUtcDayRange,
+  getUtcNextDayRange,
 } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { formatBRL } from "@/lib/financial";
+import { reminderMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
+import { ManualAppointmentSheet } from "@/components/dashboard/manual-appointment-sheet";
 import { ReservationActions } from "@/components/dashboard/reservation-actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function first<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -43,15 +42,60 @@ export default async function AgendaPage({
     tenant.role === "receptionist";
   const supabase = await createSupabaseServerClient();
   const { start } = getUtcDayRange(tenant.timezone);
+  // Fim de amanhã no fuso do tenant: janela dos lembretes de WhatsApp.
+  const { end: tomorrowEnd } = getUtcNextDayRange(tenant.timezone);
 
   const { data: professionalData } = await supabase
     .from("professionals")
-    .select("id,name")
+    .select("id,name,public_visible")
     .eq("barbershop_id", tenant.id)
     .eq("active", true)
     .order("name");
   const professionals = professionalData ?? [];
   const activeProfessional = professionals.find((item) => item.id === prof);
+
+  // Insumos do lançamento manual (mesmo catálogo visível no site público,
+  // porque os horários livres vêm da mesma RPC da página de agendamento).
+  const [{ data: serviceData }, { data: linkData }, { data: clientData }] =
+    canSeeAllAgendas
+      ? await Promise.all([
+          supabase
+            .from("services")
+            .select("id,name,duration_minutes")
+            .eq("barbershop_id", tenant.id)
+            .eq("active", true)
+            .eq("public_visible", true)
+            .order("name"),
+          supabase
+            .from("professional_services")
+            .select("professional_id,service_id")
+            .eq("barbershop_id", tenant.id),
+          supabase
+            .from("clients")
+            .select("id,name,phone")
+            .eq("barbershop_id", tenant.id)
+            .order("name")
+            .limit(400),
+        ])
+      : [{ data: null }, { data: null }, { data: null }];
+  const bookableServices = (serviceData ?? []).map((service) => ({
+    id: service.id,
+    name: service.name,
+    durationMinutes: service.duration_minutes,
+  }));
+  const serviceIdsByProfessional = new Map<string, string[]>();
+  for (const link of linkData ?? []) {
+    const list = serviceIdsByProfessional.get(link.professional_id) ?? [];
+    list.push(link.service_id);
+    serviceIdsByProfessional.set(link.professional_id, list);
+  }
+  const bookableProfessionals = professionals
+    .filter((professional) => professional.public_visible)
+    .map((professional) => ({
+      id: professional.id,
+      name: professional.name,
+      serviceIds: serviceIdsByProfessional.get(professional.id) ?? [],
+    }));
 
   // Reservas de produto pendentes — secretária/gerente/dono confirmam ou cancelam.
   const { data: reservationData } = canSeeAllAgendas
@@ -88,11 +132,21 @@ export default async function AgendaPage({
         title="Agenda"
         description="Confirme, conclua ou cancele os próximos atendimentos."
         action={
-          <Button asChild>
-            <Link href={`/${tenant.slug}/agendar`} target="_blank">
-              <CalendarPlus /> Novo agendamento
-            </Link>
-          </Button>
+          canSeeAllAgendas ? (
+            <ManualAppointmentSheet
+              clients={clientData ?? []}
+              services={bookableServices}
+              professionals={bookableProfessionals}
+              timezone={tenant.timezone}
+              todayInTz={getDateInTz(tenant.timezone)}
+            />
+          ) : (
+            <Button asChild>
+              <Link href={`/${tenant.slug}/agendar`} target="_blank">
+                <CalendarPlus /> Novo agendamento
+              </Link>
+            </Button>
+          )
         }
       />
       {canSeeAllAgendas && professionals.length ? (
@@ -172,6 +226,24 @@ export default async function AgendaPage({
                 const professional = Array.isArray(item.professional)
                   ? item.professional[0]
                   : item.professional;
+                // Lembrete de WhatsApp: só para horários de hoje e amanhã
+                // ainda de pé (pendentes/confirmados) e com telefone.
+                const startsAt = new Date(item.starts_at);
+                const reminderHref =
+                  startsAt < tomorrowEnd &&
+                  (item.status === "pending" || item.status === "confirmed")
+                    ? reminderWhatsAppHref(
+                        client?.phone,
+                        reminderMessage(
+                          {
+                            clientName: client?.name ?? "cliente",
+                            serviceName: service?.name ?? "seu atendimento",
+                            startsAt,
+                          },
+                          tenant,
+                        ),
+                      )
+                    : null;
                 return (
                   <div
                     key={item.id}
@@ -201,6 +273,23 @@ export default async function AgendaPage({
                     </div>
                     <div className="flex flex-col items-start gap-2 sm:items-end">
                       <AppointmentStatusBadge status={item.status} />
+                      {reminderHref ? (
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="text-emerald-700 dark:text-emerald-400"
+                        >
+                          <a
+                            href={reminderHref}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <MessageCircle className="size-3.5" />
+                            Lembrar no WhatsApp
+                          </a>
+                        </Button>
+                      ) : null}
                       {canManage ? (
                         <AppointmentActions
                           appointmentId={item.id}

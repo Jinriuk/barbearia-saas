@@ -65,7 +65,7 @@ export default async function ProductsPage() {
     supabase
       .from("products")
       .select(
-        "id,name,description,sale_price,cost_price,minimum_stock,active,public_visible",
+        "id,name,description,sale_price,cost_price,minimum_stock,active,public_visible,image_url",
       )
       .eq("barbershop_id", tenant.id)
       .order("name"),
@@ -119,7 +119,8 @@ export default async function ProductsPage() {
     0,
   );
   const stockValue = activeProducts.reduce(
-    (total, product) => total + stockOf(product.id) * Number(product.sale_price),
+    (total, product) =>
+      total + stockOf(product.id) * Number(product.sale_price),
     0,
   );
   const lowStock = activeProducts.filter(
@@ -286,8 +287,7 @@ export default async function ProductsPage() {
                       const reserved = reservedOf(product.id);
                       const available = stock - reserved;
                       const low =
-                        product.active &&
-                        stock < Number(product.minimum_stock);
+                        product.active && stock < Number(product.minimum_stock);
                       return (
                         <TableRow key={product.id}>
                           <TableCell>
@@ -313,7 +313,9 @@ export default async function ProductsPage() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               <Badge
-                                variant={product.active ? "default" : "secondary"}
+                                variant={
+                                  product.active ? "default" : "secondary"
+                                }
                               >
                                 {product.active ? "Ativo" : "Oculto"}
                               </Badge>
@@ -446,7 +448,9 @@ export default async function ProductsPage() {
                               className={`font-mono ${isIn ? "text-emerald-600" : "text-rose-600"}`}
                             >
                               {isIn ? "+" : "−"}
-                              {Number(movement.quantity).toLocaleString("pt-BR")}
+                              {Number(movement.quantity).toLocaleString(
+                                "pt-BR",
+                              )}
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">
