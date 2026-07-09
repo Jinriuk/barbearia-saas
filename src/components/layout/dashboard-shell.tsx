@@ -77,9 +77,11 @@ const nav: Array<{
 
 export function DashboardShell({
   tenant,
+  isPlatformAdmin = false,
   children,
 }: {
   tenant: TenantContext;
+  isPlatformAdmin?: boolean;
   children: React.ReactNode;
 }) {
   const visibleNav = nav.filter(
@@ -148,6 +150,7 @@ export function DashboardShell({
               name={tenant.profileName}
               role={tenant.role}
               canManageSettings={can(tenant.role, "settings:manage")}
+              isPlatformAdmin={isPlatformAdmin}
             />
           </div>
         </header>

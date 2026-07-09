@@ -48,6 +48,10 @@ export function planConfig(plan: string | null | undefined) {
   return PLANS[(plan ?? "starter") as PlanKey] ?? PLANS.starter;
 }
 
+export function planLabelFromKey(plan: string | null | undefined): string {
+  return planConfig(plan).label;
+}
+
 export type AccessState = "ok" | "warn" | "locked" | "gone";
 
 const DAY_MS = 86_400_000;
