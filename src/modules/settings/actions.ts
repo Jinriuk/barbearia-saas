@@ -44,6 +44,7 @@ const contactSchema = z.object({
   whatsappNumber: z.string().trim().max(30).optional(),
   instagramUrl: z.union([z.url(), z.literal("")]).optional(),
   address: z.string().trim().max(240).optional(),
+  whatsappRemindersEnabled: z.coerce.boolean().optional(),
 });
 
 export async function saveAppearanceSettings(
@@ -110,6 +111,7 @@ export async function saveContactSettings(
     whatsappNumber: formData.get("whatsappNumber"),
     instagramUrl: formData.get("instagramUrl"),
     address: formData.get("address"),
+    whatsappRemindersEnabled: formData.get("whatsappRemindersEnabled") === "on",
   });
   if (!parsed.success) {
     return { success: false, message: "Revise os dados de contato." };
@@ -125,6 +127,7 @@ export async function saveContactSettings(
       whatsapp_number: parsed.data.whatsappNumber || null,
       instagram_url: parsed.data.instagramUrl || null,
       address: parsed.data.address || null,
+      whatsapp_reminders_enabled: parsed.data.whatsappRemindersEnabled ?? true,
     })
     .eq("barbershop_id", tenant.id);
   if (error) {

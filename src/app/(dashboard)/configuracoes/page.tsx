@@ -71,7 +71,8 @@ export default async function SettingsPage() {
             primaryColor: data?.primary_color ?? "#b8893e",
             secondaryColor: data?.secondary_color ?? "#171717",
             backgroundColor: data?.background_color ?? "#faf8f4",
-            backgroundType: (data?.background_type as "color" | "image") ?? "color",
+            backgroundType:
+              (data?.background_type as "color" | "image") ?? "color",
             backgroundImageUrl: data?.background_image_url ?? "",
             logoUrl: shop?.logo_url ?? "",
           }}
@@ -81,6 +82,7 @@ export default async function SettingsPage() {
             whatsappNumber: data?.whatsapp_number ?? "",
             instagramUrl: data?.instagram_url ?? "",
             address: data?.address ?? "",
+            whatsappRemindersEnabled: data?.whatsapp_reminders_enabled ?? true,
           }}
         />
       </div>

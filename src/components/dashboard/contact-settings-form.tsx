@@ -19,6 +19,7 @@ export function ContactSettingsForm({
     whatsappNumber: string;
     instagramUrl: string;
     address: string;
+    whatsappRemindersEnabled: boolean;
   };
 }) {
   const [state, formAction, pending] = useActionState(
@@ -68,6 +69,15 @@ export function ContactSettingsForm({
             <Label htmlFor="address">Endereço</Label>
             <Input id="address" name="address" defaultValue={initial.address} />
           </div>
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              name="whatsappRemindersEnabled"
+              defaultChecked={initial.whatsappRemindersEnabled}
+              className="size-4 rounded border"
+            />
+            Enviar lembrete automático de horário por WhatsApp na véspera
+          </label>
           <Button className="sm:w-fit" disabled={pending}>
             {pending ? "Salvando…" : "Salvar contato"}
           </Button>
