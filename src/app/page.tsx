@@ -15,6 +15,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
+import { PLANS, formatPriceBRL } from "@/lib/billing";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -172,7 +173,7 @@ export default function HomePage() {
               asChild
               className="btn-shine bg-amber-500 text-stone-950 hover:bg-amber-400"
             >
-              <Link href="/cadastro">Começar agora</Link>
+              <Link href="/cadastro">Testar grátis</Link>
             </Button>
           </div>
         </div>
@@ -213,9 +214,10 @@ export default function HomePage() {
               .
             </h1>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-stone-400 delay-150 duration-1000">
-              Agenda sem conflito, financeiro que se preenche sozinho e uma
-              página de agendamento deslumbrante com a cara da sua marca. Tudo
-              em um lugar — sem planilha, sem caderninho.
+              O sistema que cuida do seu negócio inteiro: agenda sem
+              conflito, financeiro que se preenche sozinho, clientes, equipe,
+              estoque e uma página de agendamento deslumbrante com a sua
+              marca. Sem planilha, sem caderninho.
             </p>
             <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
@@ -224,7 +226,7 @@ export default function HomePage() {
                 className="btn-shine h-13 w-full rounded-full bg-amber-500 px-8 text-[15px] text-stone-950 shadow-xl shadow-amber-500/20 hover:bg-amber-400 sm:w-auto"
               >
                 <Link href="/cadastro">
-                  Criar minha barbearia <ArrowRight />
+                  Começar 7 dias grátis <ArrowRight />
                 </Link>
               </Button>
               <Button
@@ -236,6 +238,10 @@ export default function HomePage() {
                 <Link href="/aurora">Ver página de demonstração</Link>
               </Button>
             </div>
+            <p className="motion-safe:animate-in motion-safe:fade-in mt-4 text-sm text-stone-500 delay-300 duration-1000">
+              A partir de {formatPriceBRL(PLANS.starter.priceCents)}/mês · 7
+              dias grátis · cancele quando quiser
+            </p>
             <div className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-500">
               {[
                 "Grátis para começar",
@@ -533,8 +539,12 @@ export default function HomePage() {
             Planos
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Comece grátis. Evolua quando fizer sentido.
+            7 dias grátis. Cancele quando quiser.
           </h2>
+          <p className="mx-auto mt-4 max-w-xl text-stone-400">
+            Teste tudo sem compromisso — a primeira cobrança só acontece
+            depois do período de teste.
+          </p>
         </Reveal>
         <div className="mt-12 grid gap-6 md:grid-cols-2">
           <Reveal>
@@ -544,7 +554,13 @@ export default function HomePage() {
                 Para colocar a agenda no ar hoje.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                Grátis
+                {formatPriceBRL(PLANS.starter.priceCents)}
+                <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
+                  /mês
+                </span>
+              </p>
+              <p className="mt-1 text-xs font-medium text-amber-400">
+                7 dias grátis para testar
               </p>
               <ul className="mt-7 space-y-3 text-sm text-stone-400">
                 {[
@@ -565,7 +581,9 @@ export default function HomePage() {
                 variant="outline"
                 className="mt-8 w-full rounded-full border-white/15 bg-white/5 hover:bg-white/10"
               >
-                <Link href="/cadastro?plano=starter">Criar conta grátis</Link>
+                <Link href="/cadastro?plano=starter">
+                  Começar 7 dias grátis
+                </Link>
               </Button>
             </div>
           </Reveal>
@@ -579,10 +597,13 @@ export default function HomePage() {
                 Para marcas que querem impressionar.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                Plus
-                <span className="ml-2 align-middle text-sm font-normal text-stone-500">
-                  fale com a gente
+                {formatPriceBRL(PLANS.plus.priceCents)}
+                <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
+                  /mês
                 </span>
+              </p>
+              <p className="mt-1 text-xs font-medium text-amber-400">
+                7 dias grátis para testar
               </p>
               <ul className="mt-7 space-y-3 text-sm text-stone-300">
                 {[
@@ -603,7 +624,7 @@ export default function HomePage() {
                 className="btn-shine mt-8 w-full rounded-full bg-amber-500 text-stone-950 hover:bg-amber-400"
               >
                 <Link href="/cadastro?plano=plus">
-                  Começar pelo Plus <ArrowUpRight />
+                  Testar o Plus grátis <ArrowUpRight />
                 </Link>
               </Button>
             </div>
@@ -659,8 +680,8 @@ export default function HomePage() {
                 Um link seu, um QR Code no balcão, e a agenda trabalha por você.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-stone-400">
-                Comece grátis. Configure em minutos e receba reservas ainda
-                hoje.
+                7 dias grátis para testar tudo. Configure em minutos e receba
+                reservas ainda hoje.
               </p>
               <Button
                 asChild
@@ -668,7 +689,7 @@ export default function HomePage() {
                 className="btn-shine mt-9 h-13 rounded-full bg-amber-500 px-9 text-[15px] text-stone-950 shadow-xl shadow-amber-500/25 hover:bg-amber-400"
               >
                 <Link href="/cadastro">
-                  Criar minha barbearia <ArrowRight />
+                  Começar 7 dias grátis <ArrowRight />
                 </Link>
               </Button>
             </div>
