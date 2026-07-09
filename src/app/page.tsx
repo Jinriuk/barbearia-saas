@@ -719,6 +719,9 @@ export default function HomePage() {
             <Link href="/aurora" className="transition-colors hover:text-stone-300">
               Demonstração
             </Link>
+            <Link href="/salao" className="transition-colors hover:text-stone-300">
+              É salão de beleza? Conheça o NexoBeleza →
+            </Link>
           </div>
         </div>
       </footer>

@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 
 export function OnboardingForm({
   defaultPlan = "starter",
+  vertical = "barber",
 }: {
   defaultPlan?: PlanKey;
+  vertical?: "barber" | "salon";
 }) {
   const [plan, setPlan] = useState<PlanKey>(defaultPlan);
   const [name, setName] = useState("");
@@ -22,12 +24,15 @@ export function OnboardingForm({
 
   return (
     <form action={createBarbershop} className="space-y-4">
+      <input type="hidden" name="vertical" value={vertical} />
       <div className="space-y-2">
-        <Label htmlFor="name">Nome da barbearia</Label>
+        <Label htmlFor="name">
+          {vertical === "salon" ? "Nome do salão" : "Nome da barbearia"}
+        </Label>
         <Input
           id="name"
           name="name"
-          placeholder="Barbearia Aurora"
+          placeholder={vertical === "salon" ? "Studio Aurora" : "Barbearia Aurora"}
           value={name}
           onChange={(event) => {
             setName(event.target.value);
