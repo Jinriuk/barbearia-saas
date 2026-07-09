@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
+import { MAX_PHOTO_BYTES, uploadPublicImage } from "@/lib/storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/types/domain";
 
@@ -42,7 +43,15 @@ export async function saveProduct(
   }
 
   const supabase = await createSupabaseServerClient();
-  const payload = {
+  const payload: {
+    barbershop_id: string;
+    name: string;
+    description: string | null;
+    sale_price: number;
+    cost_price: number;
+    public_visible: boolean;
+    image_url?: string;
+  } = {
     barbershop_id: tenant.id,
     name: parsed.data.name,
     description: parsed.data.description || null,
@@ -50,6 +59,18 @@ export async function saveProduct(
     cost_price: parsed.data.costPrice ?? 0,
     public_visible: parsed.data.publicVisible ?? false,
   };
+
+  // Foto do produto (opcional): aparece na vitrine pública e no checkout.
+  const photo = formData.get("photo");
+  if (photo instanceof File && photo.size > 0) {
+    const result = await uploadPublicImage(
+      photo,
+      `products/${tenant.id}/product`,
+      MAX_PHOTO_BYTES,
+    );
+    if ("error" in result) return { success: false, message: result.error };
+    payload.image_url = result.url;
+  }
   const { error } = parsed.data.id
     ? await supabase
         .from("products")

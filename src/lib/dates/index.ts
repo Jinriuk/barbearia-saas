@@ -77,6 +77,27 @@ export function getUtcDayRange(timeZone: string, now = new Date()) {
   };
 }
 
+/** Janela de amanhã no fuso dado — usada nos lembretes de WhatsApp. */
+export function getUtcNextDayRange(timeZone: string, now = new Date()) {
+  const local = partsInTimeZone(now, timeZone);
+  const next = new Date(Date.UTC(local.year, local.month - 1, local.day + 1));
+  const after = new Date(Date.UTC(local.year, local.month - 1, local.day + 2));
+  return {
+    start: zonedMidnightToUtc(
+      next.getUTCFullYear(),
+      next.getUTCMonth() + 1,
+      next.getUTCDate(),
+      timeZone,
+    ),
+    end: zonedMidnightToUtc(
+      after.getUTCFullYear(),
+      after.getUTCMonth() + 1,
+      after.getUTCDate(),
+      timeZone,
+    ),
+  };
+}
+
 export function getUtcWeekRange(timeZone: string, now = new Date()) {
   const local = partsInTimeZone(now, timeZone);
   const dow = new Date(
