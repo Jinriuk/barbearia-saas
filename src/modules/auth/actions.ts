@@ -69,6 +69,8 @@ export async function signUp(formData: FormData) {
       data: {
         name: parsed.data.name,
         preferred_plan: value(formData, "plano") === "plus" ? "plus" : "starter",
+        preferred_vertical:
+          value(formData, "vertical") === "salon" ? "salon" : "barber",
       },
       emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
     },
@@ -108,6 +110,7 @@ export async function createBarbershop(formData: FormData) {
   });
   if (!parsed.success) redirect("/onboarding?error=Revise+o+nome+e+o+endereço");
   const plan = value(formData, "plan") === "plus" ? "plus" : "starter";
+  const vertical = value(formData, "vertical") === "salon" ? "salon" : "barber";
 
   // Slug automático: usa o informado ou gera a partir do nome, garantindo
   // que seja único (base, base-2, base-3…).
@@ -122,6 +125,7 @@ export async function createBarbershop(formData: FormData) {
     p_name: parsed.data.name,
     p_slug: slug,
     p_plan: plan,
+    p_vertical: vertical,
   });
   if (error) redirect("/onboarding?error=Esse+endereço+não+está+disponível");
   redirect("/dashboard");

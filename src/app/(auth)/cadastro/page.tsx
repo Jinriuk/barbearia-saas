@@ -23,6 +23,11 @@ export default async function SignupPage({
           name="plano"
           value={typeof params.plano === "string" ? params.plano : "starter"}
         />
+        <input
+          type="hidden"
+          name="vertical"
+          value={params.vertical === "salon" ? "salon" : "barber"}
+        />
         <div className="space-y-2">
           <Label htmlFor="name">Seu nome</Label>
           <Input id="name" name="name" autoComplete="name" required />
