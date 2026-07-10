@@ -55,7 +55,11 @@ describe("integridade dos links do painel", () => {
   routes.add("/relatorio-financeiro");
   routes.add("/admin");
   routes.add("/salao");
-  // Demo pública da vertical feminina — rota dinâmica [tenant].
+  // Páginas legais — grupo de rota (legal).
+  routes.add("/privacidade");
+  routes.add("/termos");
+  // Demos públicas — rota dinâmica [tenant].
+  routes.add("/aurora");
   routes.add("/studio-aurora");
 
   for (const file of SOURCES) {

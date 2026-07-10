@@ -14,10 +14,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { archiveClient, restoreClient } from "@/modules/clients/actions";
+import {
+  archiveClient,
+  deleteClientPermanently,
+  restoreClient,
+} from "@/modules/clients/actions";
 import { ClientForm } from "@/components/dashboard/client-form";
 import { ArchiveClientButton } from "@/components/dashboard/archive-client-button";
 import { RestoreClientButton } from "@/components/dashboard/restore-client-button";
+import { DeleteClientForeverButton } from "@/components/dashboard/delete-client-forever-button";
 
 export default async function ClientsPage({
   searchParams,
@@ -97,11 +102,21 @@ export default async function ClientsPage({
                       </TableCell>
                       <TableCell className="text-right">
                         {showArchived ? (
-                          <RestoreClientButton
-                            id={item.id}
-                            action={restoreClient}
-                            itemName={item.name}
-                          />
+                          <span className="inline-flex items-center gap-1">
+                            <RestoreClientButton
+                              id={item.id}
+                              action={restoreClient}
+                              itemName={item.name}
+                            />
+                            {tenant.role === "owner" ||
+                            tenant.role === "manager" ? (
+                              <DeleteClientForeverButton
+                                id={item.id}
+                                action={deleteClientPermanently}
+                                itemName={item.name}
+                              />
+                            ) : null}
+                          </span>
                         ) : (
                           <ArchiveClientButton
                             id={item.id}

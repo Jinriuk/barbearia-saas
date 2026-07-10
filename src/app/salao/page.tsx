@@ -682,6 +682,18 @@ export default function SalonLandingPage() {
             >
               Demonstração
             </Link>
+            <Link
+              href="/privacidade"
+              className="transition-colors hover:text-[#33202b]"
+            >
+              Privacidade
+            </Link>
+            <Link
+              href="/termos"
+              className="transition-colors hover:text-[#33202b]"
+            >
+              Termos
+            </Link>
             <Link href="/" className="transition-colors hover:text-[#33202b]">
               Tem uma barbearia? Conheça o NexoBarber →
             </Link>

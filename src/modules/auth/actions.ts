@@ -56,6 +56,11 @@ export async function signUp(formData: FormData) {
     password: value(formData, "password"),
   });
   if (!parsed.success) redirect("/cadastro?error=Revise+os+dados+informados");
+  // Aceite dos termos é obrigatório (LGPD): o checkbox required cobre o
+  // navegador; esta checagem cobre POSTs montados fora do formulário.
+  if (formData.get("terms") !== "on") {
+    redirect("/cadastro?error=É+preciso+aceitar+os+termos+para+continuar");
+  }
 
   const origin =
     (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_APP_URL;

@@ -284,3 +284,38 @@
     display: none;
   }
 }
+
+/* Tipografia das páginas legais (privacidade/termos) — sem plugin externo. */
+.prose-legal h1 {
+  font-size: 1.875rem;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.prose-legal .lead {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-stone-500, #78716c);
+}
+.prose-legal h2 {
+  margin-top: 2.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.prose-legal p {
+  margin-top: 0.875rem;
+  line-height: 1.75;
+}
+.prose-legal ul {
+  margin-top: 0.875rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+  display: grid;
+  gap: 0.5rem;
+  line-height: 1.7;
+}
+.prose-legal a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

@@ -1,14 +1,27 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
 import Script from "next/script";
+import { getStoredConsent, subscribeConsent } from "@/lib/consent";
 
 /**
- * Meta Pixel opcional para medir conversão do tráfego pago. Só entra na
- * página quando NEXT_PUBLIC_META_PIXEL_ID está definida — sem a env, nada é
+ * Meta Pixel opcional para medir conversão do tráfego pago. Duas condições
+ * para entrar na página: NEXT_PUBLIC_META_PIXEL_ID definida E consentimento
+ * de medição aceito no banner (LGPD). Sem qualquer uma delas, nada é
  * injetado. O snippet base já dispara o PageView; o evento de conversão
  * (CompleteRegistration) fica com <WelcomeConversion/> no dashboard.
  */
 export function MetaPixel() {
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-  if (!pixelId) return null;
+  // No servidor não há escolha (null); no cliente lê o localStorage e
+  // re-renderiza quando o banner dispara a mudança.
+  const choice = useSyncExternalStore(
+    subscribeConsent,
+    getStoredConsent,
+    () => null,
+  );
+
+  if (!pixelId || choice !== "granted") return null;
   return (
     <Script id="meta-pixel" strategy="afterInteractive">
       {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?

@@ -64,13 +64,27 @@ export function PublicFooter({ data }: { data: PublicBarbershop }) {
             © {new Date().getFullYear()} {data.barbershop.name} · Reserva
             online
           </p>
-          <Link
-            href={copy.madeWithHref}
-            className="flex items-center gap-1.5 transition-opacity hover:opacity-100"
-          >
-            <BrandIcon className="size-3" />
-            {copy.madeWith}
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href="/privacidade"
+              className="transition-opacity hover:opacity-100"
+            >
+              Privacidade
+            </Link>
+            <Link
+              href="/termos"
+              className="transition-opacity hover:opacity-100"
+            >
+              Termos
+            </Link>
+            <Link
+              href={copy.madeWithHref}
+              className="flex items-center gap-1.5 transition-opacity hover:opacity-100"
+            >
+              <BrandIcon className="size-3" />
+              {copy.madeWith}
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

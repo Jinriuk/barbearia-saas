@@ -1,5 +1,26 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
+// CSP sem nonce (mantém as landings estáticas/cacheáveis). 'unsafe-inline'
+// em script-src é exigido pelos inlines de hidratação do Next; a proteção
+// real aqui é a lista fechada de ORIGENS externas: só Supabase, Vercel
+// Analytics e Meta Pixel — qualquer outro script/conexão injetado é
+// bloqueado pelo navegador.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://connect.facebook.net https://va.vercel-scripts.com`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://www.facebook.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com https://vitals.vercel-insights.com https://connect.facebook.net https://www.facebook.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
@@ -33,6 +54,12 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          { key: "Content-Security-Policy", value: csp },
+          {
+            // 2 anos + subdomínios (importante para o white-label *.dominio).
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
         ],
       },

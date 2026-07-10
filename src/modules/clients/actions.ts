@@ -78,6 +78,64 @@ export async function archiveClient(
   return { success: true, message: "Cliente arquivado." };
 }
 
+/**
+ * Exclusão definitiva (LGPD, direito de eliminação): remove o registro do
+ * cliente. Quando há histórico de atendimentos (FK on delete restrict), o
+ * registro é ANONIMIZADO no lugar — o histórico financeiro permanece, mas
+ * sem nenhum dado pessoal. Restrito a owner/manager (mesma regra da policy
+ * de DELETE no banco).
+ */
+export async function deleteClientPermanently(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { success: false, message: "Cliente inválido." };
+  const tenant = await requireTenant();
+  if (tenant.role !== "owner" && tenant.role !== "manager") {
+    return { success: false, message: "Sem permissão para excluir clientes." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("clients")
+    .delete()
+    .eq("id", id)
+    .eq("barbershop_id", tenant.id);
+  if (!error) {
+    revalidatePath("/clientes");
+    return { success: true, message: "Cliente excluído definitivamente." };
+  }
+  if (error.code !== "23503") {
+    return { success: false, message: "Não foi possível excluir o cliente." };
+  }
+  // Tem agendamentos vinculados: anonimiza. O telefone é not null + único por
+  // tenant, então entra um placeholder numérico impossível de colidir.
+  const { error: anonError } = await supabase
+    .from("clients")
+    .update({
+      name: "Cliente removido",
+      phone: "(removido)",
+      // 2 zeros + epoch ms = 15 dígitos: passa no check ^[0-9]{8,15}$ e não
+      // colide com telefone real (nenhum começa com 00).
+      phone_normalized: `00${Date.now()}`,
+      email: null,
+      birth_date: null,
+      notes: null,
+      active: false,
+    })
+    .eq("id", id)
+    .eq("barbershop_id", tenant.id);
+  if (anonError) {
+    return { success: false, message: "Não foi possível excluir o cliente." };
+  }
+  revalidatePath("/clientes");
+  return {
+    success: true,
+    message:
+      "Dados pessoais removidos. O histórico de atendimentos foi mantido de forma anônima.",
+  };
+}
+
 /** Restaura um cliente arquivado (active = true). */
 export async function restoreClient(
   _prev: ActionState,
