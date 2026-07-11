@@ -7,6 +7,9 @@ export const loginSchema = z.object({
 
 export const signupSchema = loginSchema.extend({
   name: z.string().trim().min(2, "Informe seu nome.").max(100),
+  // Aceite dos Termos/Privacidade (LGPD): o checkbox envia "on"; qualquer
+  // outra coisa (inclusive ausência) reprova já na validação canônica.
+  terms: z.literal("on", "É preciso aceitar os termos para continuar."),
 });
 
 export const resetPasswordSchema = z.object({

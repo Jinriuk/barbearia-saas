@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getStoredConsent } from "@/lib/consent";
 
 declare global {
   interface Window {
@@ -18,7 +19,12 @@ declare global {
 export function WelcomeConversion() {
   const router = useRouter();
   useEffect(() => {
-    window.fbq?.("track", "CompleteRegistration");
+    // Gate explícito de consentimento (LGPD): não basta fbq estar indefinido
+    // — outro script poderia definir window.fbq e o evento dispararia sem
+    // base legal. É a mesma checagem que condiciona o <MetaPixel/>.
+    if (getStoredConsent() === "granted") {
+      window.fbq?.("track", "CompleteRegistration");
+    }
     router.replace("/dashboard", { scroll: false });
   }, [router]);
   return null;

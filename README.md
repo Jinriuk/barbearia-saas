@@ -1,7 +1,8 @@
 # NexoBarber — SaaS para barbearias
 
-Novo sistema criado em pasta separada do legado PHP. O legado permanece em `../barbearia/`
-e foi usado somente como referência funcional.
+Sistema Next.js + Supabase. O legado PHP que serviu de referência funcional foi
+removido do repositório (era vulnerável e não fazia parte do produto); a análise
+dele sobrevive em `docs/01-analise-legado.md`.
 
 ## O que existe
 

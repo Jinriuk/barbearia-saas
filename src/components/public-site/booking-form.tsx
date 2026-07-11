@@ -638,6 +638,19 @@ export function BookingForm({
                 className="min-h-20 rounded-xl bg-white/60 text-base"
               />
             </div>
+            <p className="text-xs leading-relaxed opacity-60">
+              Seus dados serão usados apenas para confirmar e lembrar este
+              horário, conforme a{" "}
+              <a
+                href="/privacidade"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                Política de Privacidade
+              </a>
+              .
+            </p>
           </div>
         </section>
       ) : null}

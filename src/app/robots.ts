@@ -1,0 +1,42 @@
+import type { MetadataRoute } from "next";
+import { APP_URL } from "@/lib/app-url";
+
+/**
+ * Indexação: landings, páginas legais e páginas públicas dos tenants são
+ * indexáveis; painel, admin, APIs e fluxo de auth ficam de fora. Os paths
+ * do painel vivem na raiz (grupo de rota), por isso a lista explícita.
+ */
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: "*",
+      disallow: [
+        "/api/",
+        "/auth/",
+        "/admin",
+        "/dashboard",
+        "/onboarding",
+        "/agenda",
+        "/assinatura",
+        "/clientes",
+        "/comissoes",
+        "/configuracoes",
+        "/contas-a-pagar",
+        "/contas-a-receber",
+        "/estoque",
+        "/financeiro",
+        "/minha-conta",
+        "/permissoes",
+        "/produtos",
+        "/profissionais",
+        "/relatorios",
+        "/relatorio-financeiro",
+        "/servicos",
+        "/usuarios",
+        "/atualizar-senha",
+        "/recuperar-senha",
+      ],
+    },
+    sitemap: `${APP_URL}/sitemap.xml`,
+  };
+}

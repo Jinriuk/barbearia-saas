@@ -54,8 +54,20 @@ export async function signUp(formData: FormData) {
     name: value(formData, "name"),
     email: value(formData, "email"),
     password: value(formData, "password"),
+    terms: value(formData, "terms"),
   });
-  if (!parsed.success) redirect("/cadastro?error=Revise+os+dados+informados");
+  if (!parsed.success) {
+    // Termos não aceitos merecem mensagem própria — é exigência legal, não
+    // um campo digitado errado.
+    const missingTerms = parsed.error.issues.some(
+      (issue) => issue.path[0] === "terms",
+    );
+    redirect(
+      missingTerms
+        ? "/cadastro?error=É+preciso+aceitar+os+termos+para+continuar"
+        : "/cadastro?error=Revise+os+dados+informados",
+    );
+  }
 
   const origin =
     (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_APP_URL;

@@ -54,6 +54,33 @@ export default async function SignupPage({
           />
           <p className="text-xs text-stone-500">Use ao menos 8 caracteres.</p>
         </div>
+        <label className="flex items-start gap-2.5 text-xs leading-relaxed text-stone-400">
+          <input
+            type="checkbox"
+            name="terms"
+            required
+            className="mt-0.5 size-4 shrink-0 accent-amber-500"
+          />
+          <span>
+            Li e aceito os{" "}
+            <Link
+              href="/termos"
+              target="_blank"
+              className="text-amber-400 underline underline-offset-2"
+            >
+              Termos de Uso
+            </Link>{" "}
+            e a{" "}
+            <Link
+              href="/privacidade"
+              target="_blank"
+              className="text-amber-400 underline underline-offset-2"
+            >
+              Política de Privacidade
+            </Link>
+            .
+          </span>
+        </label>
         <Button className="w-full">Criar conta</Button>
       </form>
       <p className="text-center text-sm text-stone-400">

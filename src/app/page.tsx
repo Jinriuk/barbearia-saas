@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -21,6 +22,12 @@ import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+export const metadata: Metadata = {
+  title: "NexoBarber — o sistema completo para a sua barbearia",
+  description:
+    "Agenda online, financeiro automático, clientes, estoque e uma página de agendamento com a sua marca. 7 dias grátis, sem cartão.",
+};
 
 const features = [
   {
@@ -718,6 +725,18 @@ export default function HomePage() {
             </Link>
             <Link href="/aurora" className="transition-colors hover:text-stone-300">
               Demonstração
+            </Link>
+            <Link
+              href="/privacidade"
+              className="transition-colors hover:text-stone-300"
+            >
+              Privacidade
+            </Link>
+            <Link
+              href="/termos"
+              className="transition-colors hover:text-stone-300"
+            >
+              Termos
             </Link>
             <Link href="/salao" className="transition-colors hover:text-stone-300">
               É salão de beleza? Conheça o NexoBeleza →
