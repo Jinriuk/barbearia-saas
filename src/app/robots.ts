@@ -1,7 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://barbearia-saas-sigma.vercel.app";
+import { APP_URL } from "@/lib/app-url";
 
 /**
  * Indexação: landings, páginas legais e páginas públicas dos tenants são

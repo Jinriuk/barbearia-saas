@@ -5,6 +5,9 @@ import type { PublicBarbershop } from "@/types/domain";
 export const alt = "Agende seu horário online";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+// Crawlers sociais re-raspam o mesmo link repetidamente; o nome do negócio
+// muda raramente — 1h de cache evita RPC + render de PNG idênticos por hit.
+export const revalidate = 3600;
 
 const THEME = {
   barber: {
@@ -13,7 +16,9 @@ const THEME = {
     muted: "#a8a29e",
     accent: "#f59e0b",
     brand: "NexoBarber",
-    glyph: "✂",
+    // Letra da marca em vez de emoji: a fonte embutida do satori não tem os
+    // glifos ✂/❀ e o download dinâmico de fonte falha em build sem rede.
+    glyph: "N",
     accentText: "#0c0a09",
   },
   salon: {
@@ -22,7 +27,7 @@ const THEME = {
     muted: "#33202b99",
     accent: "#c2497c",
     brand: "NexoBeleza",
-    glyph: "❀",
+    glyph: "N",
     accentText: "#ffffff",
   },
 } as const;

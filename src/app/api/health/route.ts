@@ -2,13 +2,26 @@ export const dynamic = "force-dynamic";
 
 /**
  * Health check em dois níveis:
- *  - GET /api/health          → liveness: sempre 200 se o app responde, com o
- *    diagnóstico do Supabase no corpo (o e2e e o boot local usam este modo);
- *  - GET /api/health?strict=1 → readiness: 503 se o Supabase não respondeu —
- *    é este que o monitor externo (UptimeRobot/Checkly) deve vigiar.
+ *  - GET /api/health           → liveness: "o processo responde?" — 200
+ *    imediato, sem tocar em dependência nenhuma (é o que o boot do
+ *    Playwright e o deploy usam);
+ *  - GET /api/health?strict=1  → readiness: consulta o Supabase e devolve
+ *    503 se ele não respondeu — é este que o monitor externo
+ *    (UptimeRobot/Checkly) deve vigiar.
  */
 export async function GET(request: Request) {
-  const strict = new URL(request.url).searchParams.has("strict");
+  const strictParam = new URL(request.url).searchParams.get("strict");
+  // Presença conta como ligado (?strict), mas "?strict=0"/"false" desliga —
+  // um monitor configurado para desativar o strict não pode ativá-lo.
+  const strict =
+    strictParam !== null && strictParam !== "0" && strictParam !== "false";
+
+  if (!strict) {
+    return Response.json(
+      { status: "ok", service: "barbearia-saas" },
+      { headers: { "cache-control": "no-store" } },
+    );
+  }
 
   let supabase = "unconfigured";
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,12 +42,12 @@ export async function GET(request: Request) {
   const healthy = supabase === "ok";
   return Response.json(
     {
-      status: strict ? (healthy ? "ok" : "degraded") : "ok",
+      status: healthy ? "ok" : "degraded",
       service: "barbearia-saas",
       checks: { supabase },
     },
     {
-      status: strict && !healthy ? 503 : 200,
+      status: healthy ? 200 : 503,
       headers: { "cache-control": "no-store" },
     },
   );

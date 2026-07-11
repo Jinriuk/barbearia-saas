@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Fonte única dos hosts de imagem remota: alimenta o img-src da CSP E o
+// images.remotePatterns — adicionados juntos, nunca divergem (host liberado
+// no otimizador mas bloqueado pelo navegador, ou vice-versa).
+const REMOTE_IMAGE_HOSTS = ["images.unsplash.com", "*.supabase.co"];
+
 // CSP sem nonce (mantém as landings estáticas/cacheáveis). 'unsafe-inline'
 // em script-src é exigido pelos inlines de hidratação do Next; a proteção
 // real aqui é a lista fechada de ORIGENS externas: só Supabase, Vercel
@@ -11,7 +16,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://connect.facebook.net https://va.vercel-scripts.com`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://www.facebook.com",
+  `img-src 'self' blob: data: ${REMOTE_IMAGE_HOSTS.map((host) => `https://${host}`).join(" ")} https://www.facebook.com`,
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com https://vitals.vercel-insights.com https://connect.facebook.net https://www.facebook.com",
   "object-src 'none'",
@@ -32,10 +37,10 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "*.supabase.co" },
-    ],
+    remotePatterns: REMOTE_IMAGE_HOSTS.map((hostname) => ({
+      protocol: "https" as const,
+      hostname,
+    })),
     // As artes de capa padrão são SVGs locais (/public/stock). O combo abaixo
     // é o recomendado pela doc do Next para servir SVG pelo otimizador com
     // segurança (sem scripts, sandbox).

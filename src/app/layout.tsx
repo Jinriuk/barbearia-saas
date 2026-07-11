@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MetaPixel } from "@/components/platform/meta-pixel";
 import { ConsentBanner } from "@/components/platform/consent-banner";
+import { APP_URL } from "@/lib/app-url";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +16,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://barbearia-saas-sigma.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),

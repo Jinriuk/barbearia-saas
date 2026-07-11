@@ -44,7 +44,7 @@ export default function OpengraphImage() {
               fontSize: 30,
             }}
           >
-            ✂
+            N
           </div>
           NexoBarber
         </div>

@@ -54,12 +54,19 @@ export async function signUp(formData: FormData) {
     name: value(formData, "name"),
     email: value(formData, "email"),
     password: value(formData, "password"),
+    terms: value(formData, "terms"),
   });
-  if (!parsed.success) redirect("/cadastro?error=Revise+os+dados+informados");
-  // Aceite dos termos é obrigatório (LGPD): o checkbox required cobre o
-  // navegador; esta checagem cobre POSTs montados fora do formulário.
-  if (formData.get("terms") !== "on") {
-    redirect("/cadastro?error=É+preciso+aceitar+os+termos+para+continuar");
+  if (!parsed.success) {
+    // Termos não aceitos merecem mensagem própria — é exigência legal, não
+    // um campo digitado errado.
+    const missingTerms = parsed.error.issues.some(
+      (issue) => issue.path[0] === "terms",
+    );
+    redirect(
+      missingTerms
+        ? "/cadastro?error=É+preciso+aceitar+os+termos+para+continuar"
+        : "/cadastro?error=Revise+os+dados+informados",
+    );
   }
 
   const origin =

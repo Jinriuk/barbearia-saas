@@ -7,7 +7,7 @@ import {
   sendReminderTemplate,
   whatsAppCloudConfigured,
 } from "@/lib/whatsapp-cloud";
-import { errorMessage, logError, logInfo } from "@/lib/log";
+import { errorMessage, logError, logInfo, logWarn } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,11 @@ export async function GET(request: Request) {
   let sent = 0;
   let failed = 0;
   let withoutPhone = 0;
+  // Falha de INFRA (consulta/marcação no banco) é diferente de falha de
+  // ENTREGA (número inválido, rejeição da Meta): só infra derruba o status
+  // HTTP — senão um único telefone ruim marcaria a execução inteira como
+  // falha no painel de crons e criaria alarme falso crônico.
+  let infraFailed = 0;
 
   for (const tenant of tenants ?? []) {
     const settings = Array.isArray(tenant.settings)
@@ -80,7 +85,7 @@ export async function GET(request: Request) {
       .limit(200);
     if (appointmentsError) {
       // Um tenant com consulta quebrada não pode derrubar o lote inteiro.
-      failed += 1;
+      infraFailed += 1;
       logError("cron.reminders.appointments_query_failed", {
         tenantId: tenant.id,
         message: errorMessage(appointmentsError),
@@ -126,6 +131,7 @@ export async function GET(request: Request) {
         if (markError) {
           // Enviou mas não marcou: o próximo run pode reenviar — precisa
           // aparecer no log para investigação, não pode passar em silêncio.
+          infraFailed += 1;
           logError("cron.reminders.mark_sent_failed", {
             appointmentId: appointment.id,
             message: errorMessage(markError),
@@ -142,8 +148,9 @@ export async function GET(request: Request) {
     }
   }
 
-  const summary = { sent, failed, withoutPhone };
-  if (failed) logError("cron.reminders.completed_with_failures", summary);
+  const summary = { sent, failed, withoutPhone, infraFailed };
+  if (infraFailed) logError("cron.reminders.completed_with_failures", summary);
+  else if (failed) logWarn("cron.reminders.completed_with_send_failures", summary);
   else logInfo("cron.reminders.completed", summary);
-  return Response.json(summary, { status: failed ? 500 : 200 });
+  return Response.json(summary, { status: infraFailed ? 500 : 200 });
 }

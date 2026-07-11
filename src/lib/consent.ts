@@ -30,7 +30,7 @@ export function storeConsent(choice: ConsentChoice) {
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: choice }));
 }
 
-export function onConsentChange(listener: (choice: ConsentChoice) => void) {
+function onConsentChange(listener: (choice: ConsentChoice) => void) {
   const handler = (event: Event) => {
     listener((event as CustomEvent<ConsentChoice>).detail);
   };

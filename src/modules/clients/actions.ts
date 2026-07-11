@@ -96,36 +96,49 @@ export async function deleteClientPermanently(
     return { success: false, message: "Sem permissão para excluir clientes." };
   }
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
+  // .select() para contar as linhas: RLS negando (ou id de outro tenant)
+  // retorna error=null com 0 linhas — sem a contagem viraria um falso
+  // "excluído com sucesso" numa operação LGPD.
+  const { data: deleted, error } = await supabase
     .from("clients")
     .delete()
     .eq("id", id)
-    .eq("barbershop_id", tenant.id);
+    .eq("barbershop_id", tenant.id)
+    .select("id");
   if (!error) {
+    if (!deleted?.length) {
+      return { success: false, message: "Cliente não encontrado." };
+    }
     revalidatePath("/clientes");
     return { success: true, message: "Cliente excluído definitivamente." };
   }
   if (error.code !== "23503") {
     return { success: false, message: "Não foi possível excluir o cliente." };
   }
-  // Tem agendamentos vinculados: anonimiza. O telefone é not null + único por
-  // tenant, então entra um placeholder numérico impossível de colidir.
-  const { error: anonError } = await supabase
+  // Tem agendamentos vinculados: anonimiza. O telefone é not null + único
+  // por tenant, então entra um placeholder numérico.
+  const randomDigits = Array.from(
+    crypto.getRandomValues(new Uint8Array(13)),
+    (byte) => byte % 10,
+  ).join("");
+  const { data: anonymized, error: anonError } = await supabase
     .from("clients")
     .update({
       name: "Cliente removido",
       phone: "(removido)",
-      // 2 zeros + epoch ms = 15 dígitos: passa no check ^[0-9]{8,15}$ e não
-      // colide com telefone real (nenhum começa com 00).
-      phone_normalized: `00${Date.now()}`,
+      // 2 zeros + 13 dígitos aleatórios: passa no check ^[0-9]{8,15}$, não
+      // colide com telefone real (nenhum começa com 00) e não depende do
+      // relógio — Date.now() colidia em duas exclusões no mesmo milissegundo.
+      phone_normalized: `00${randomDigits}`,
       email: null,
       birth_date: null,
       notes: null,
       active: false,
     })
     .eq("id", id)
-    .eq("barbershop_id", tenant.id);
-  if (anonError) {
+    .eq("barbershop_id", tenant.id)
+    .select("id");
+  if (anonError || !anonymized?.length) {
     return { success: false, message: "Não foi possível excluir o cliente." };
   }
   revalidatePath("/clientes");

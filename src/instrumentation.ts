@@ -1,6 +1,21 @@
 import type { Instrumentation } from "next";
 import { errorMessage, logError } from "@/lib/log";
 
+// Throttle por instância: um erro recorrente sob carga geraria um POST por
+// ocorrência bem no meio do incidente (e 429 no Slack/Discord). Um alerta
+// por erro distinto por minuto basta — o volume completo fica nos logs.
+const ALERT_TTL_MS = 60_000;
+const lastAlertAt = new Map<string, number>();
+
+function shouldAlert(key: string): boolean {
+  const now = Date.now();
+  const last = lastAlertAt.get(key);
+  if (last !== undefined && now - last < ALERT_TTL_MS) return false;
+  if (lastAlertAt.size > 500) lastAlertAt.clear();
+  lastAlertAt.set(key, now);
+  return true;
+}
+
 /**
  * Captura central de erros do servidor (render, route handlers, server
  * actions e proxy). Tudo vira log estruturado nos logs da Vercel e, se
@@ -30,7 +45,7 @@ export const onRequestError: Instrumentation.onRequestError = async (
   logError("server.unhandled", payload);
 
   const webhook = process.env.ERROR_WEBHOOK_URL;
-  if (webhook) {
+  if (webhook && shouldAlert(digest ?? payload.message)) {
     try {
       await fetch(webhook, {
         method: "POST",
