@@ -62,3 +62,65 @@ substituídos pelo editor semanal na próxima iteração.
 Instantes são UTC em `timestamptz`. Disponibilidade semanal é uma regra local (`time` +
 weekday). Exibição e validação usam `barbershops.timezone`, com
 `America/Sao_Paulo` como padrão.
+
+## Verdade financeira (Fase 0)
+
+Conceitos separados e nunca misturados nas telas:
+
+| Conceito  | Significado                                                           |
+| --------- | --------------------------------------------------------------------- |
+| Vendido   | Serviço concluído ou produto entregue, independentemente do pagamento |
+| Recebido  | Transação efetivamente paga, com `payment_method` e `paid_at`         |
+| A receber | Venda realizada com transação ainda `pending`/`overdue`               |
+| Despesa   | Saída registrada ou conta paga                                        |
+| Lucro     | Recebido menos despesas pagas no período (regime de caixa)            |
+
+Regras:
+
+1. Concluir atendimento cria, de forma idempotente, **uma** transação de
+   receita `pending` (trigger `sync_completed_appointment_income` + índice
+   único por atendimento/categoria `service`). Sem `paid_at`, sem forma de
+   pagamento.
+2. O preço aplicado é congelado na conclusão: mudanças futuras no catálogo
+   não alteram vendas passadas.
+3. Receber exige forma de pagamento. O banco bloqueia transição nova de
+   receita para `paid` sem `payment_method`
+   (trigger `enforce_income_payment_method`) e `paid` sem `paid_at`
+   (constraint). Transações pagas antes da Fase 0 sem método aparecem como
+   "Não informado".
+4. Estorno não apaga: `revert_income_payment` volta a transação para
+   `pending` e registra em `audit_logs`. Cancelamento de venda pendente usa
+   `cancel_income_transaction` (status `canceled` + auditoria).
+5. Venda de produto: reserva → confirmação transacional
+   (`confirm_product_sale`) que baixa o estoque e cria a receita `pending`;
+   se a forma de pagamento for informada na mesma operação, a receita já
+   nasce `paid`. Repetir a confirmação não duplica estoque nem receita.
+6. Falta (`no_show`) e cancelamento não geram receita.
+7. Relatórios derivam de `financial_transactions` (fonte de verdade), nunca
+   de textos ou estados visuais.
+8. **Lucro é regime de caixa**: recebido (paid_at no período) menos despesas
+   pagas (paid_at no período). Decisão pendente para fase futura: visão por
+   competência, desconto/acréscimo por atendimento.
+
+## Agendamento público (Fase 0)
+
+- A reserva pública nasce `pending`; a página diz "Solicitação enviada" e
+  explica que a barbearia confirmará — nunca promete confirmação imediata.
+- O endpoint público retorna apenas `reference` (código curto, ex.: `A7K2MC`)
+  e `status`. O UUID interno e dados de outros clientes nunca saem.
+- `appointments.public_reference` é único por barbearia e gerado por trigger.
+- Modo de confirmação automática por barbearia é evolução futura; a
+  interface deve sempre refletir o modo configurado.
+
+## Público do serviço (Fase 0)
+
+`services.audience` define quem vê e agenda:
+
+- `public` — página e agendamento públicos;
+- `members` — exclusivo de assinantes; enquanto os planos de clientes não
+  existem, nunca aparece ao público geral;
+- `internal` — apenas lançamento manual pelo balcão.
+
+"Oculto" continua sendo `public_visible = false`. As RPCs públicas
+(`get_public_barbershop`, `get_public_availability`,
+`create_public_appointment`) filtram `audience = 'public'`.

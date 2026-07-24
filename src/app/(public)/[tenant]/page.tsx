@@ -132,7 +132,7 @@ export default async function TenantPublicPage({
               </span>
               <span className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[var(--tenant-primary)]" />
-                Confirmação na hora
+                {copy.confirmationChip}
               </span>
             </div>
 
@@ -162,9 +162,7 @@ export default async function TenantPublicPage({
                   <CalendarCheck2 className="size-4.5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    Horários em tempo real
-                  </p>
+                  <p className="text-sm font-medium">Horários em tempo real</p>
                   <p className="truncate text-xs opacity-75">
                     Escolha o serviço, o profissional e o horário.
                   </p>

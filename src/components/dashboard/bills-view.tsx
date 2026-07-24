@@ -1,5 +1,5 @@
 import { Check, Trash2 } from "lucide-react";
-import { formatBRL } from "@/lib/financial";
+import { formatBRL, PAYMENT_METHODS } from "@/lib/financial";
 import { formatShortDateInTz } from "@/lib/dates";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ export function BillsView({
   settleLabel,
   settleAction,
   deleteAction,
+  askPaymentMethod = false,
 }: {
   bills: Bill[];
   today: string;
@@ -28,6 +29,8 @@ export function BillsView({
   settleLabel: string;
   settleAction: (formData: FormData) => Promise<void>;
   deleteAction: (formData: FormData) => Promise<void>;
+  /** Recebimentos exigem forma de pagamento (regra da Fase 0). */
+  askPaymentMethod?: boolean;
 }) {
   const pending = bills
     .filter((bill) => bill.status !== "paid")
@@ -108,9 +111,26 @@ export function BillsView({
                     <span className="font-mono text-sm font-semibold">
                       {formatBRL(Number(bill.amount))}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <form action={settleAction}>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <form
+                        action={settleAction}
+                        className="flex items-center gap-1.5"
+                      >
                         <input type="hidden" name="id" value={bill.id} />
+                        {askPaymentMethod ? (
+                          <select
+                            name="paymentMethod"
+                            defaultValue="pix"
+                            aria-label={`Forma de pagamento de ${bill.description}`}
+                            className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
+                          >
+                            {PAYMENT_METHODS.map((item) => (
+                              <option key={item.value} value={item.value}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"

@@ -28,8 +28,27 @@ type ServiceInput = {
   category: string | null;
   image_url: string | null;
   active: boolean;
+  audience?: string | null;
   professionalIds: string[];
 };
+
+const AUDIENCES = [
+  {
+    value: "public",
+    label: "Público geral",
+    hint: "Aparece na página e no agendamento online.",
+  },
+  {
+    value: "members",
+    label: "Exclusivo de assinantes",
+    hint: "Não aparece ao público geral (planos de clientes).",
+  },
+  {
+    value: "internal",
+    label: "Interno (balcão)",
+    hint: "Só a equipe lança, nunca aparece na página.",
+  },
+] as const;
 
 /**
  * Formulário de serviço em painel lateral, usado tanto para criar quanto para
@@ -180,6 +199,22 @@ export function ServiceFormSheet({
               </div>
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="service-audience">Quem pode ver e agendar</Label>
+            <select
+              id="service-audience"
+              name="audience"
+              defaultValue={service?.audience ?? "public"}
+              className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm"
+            >
+              {AUDIENCES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label} — {item.hint}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <label className="flex items-center gap-2 text-sm">
             <input

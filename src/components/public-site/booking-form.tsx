@@ -101,6 +101,7 @@ export function BookingForm({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
 
   const days = useMemo(() => buildDayOptions(todayInTz), [todayInTz]);
   const availableProfessionals = useMemo(
@@ -267,9 +268,11 @@ export function BookingForm({
       // Resposta pode não ser JSON (502/erro de proxy) — não deixa quebrar.
       const result = (await response.json().catch(() => null)) as {
         ok?: boolean;
+        reference?: string;
         error?: string;
       } | null;
       if (response.ok && result?.ok) {
+        setReference(result.reference ?? null);
         setSuccess(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -306,7 +309,7 @@ export function BookingForm({
             <Check className="size-8" strokeWidth={2.5} />
           </span>
           <h2 className="mt-6 text-2xl font-semibold tracking-tight">
-            Reserva enviada!
+            Solicitação enviada!
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-6 opacity-60">
             {copy.confirmationNote}
@@ -314,6 +317,10 @@ export function BookingForm({
         </div>
         <div className="px-5 pb-6">
           <dl className="divide-y divide-black/[.06] rounded-2xl border border-black/10 bg-white/70">
+            {reference ? (
+              <SummaryRow label="Referência" value={reference} />
+            ) : null}
+            <SummaryRow label="Status" value="Aguardando confirmação" />
             <SummaryRow label="Serviço" value={selectedService?.name ?? "—"} />
             <SummaryRow
               label="Profissional"
@@ -689,7 +696,7 @@ export function BookingForm({
               ) : (
                 <CalendarCheck2 className="size-4.5" />
               )}
-              Confirmar
+              Reservar
             </button>
           </div>
         </div>

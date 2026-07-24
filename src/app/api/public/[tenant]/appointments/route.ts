@@ -1,5 +1,5 @@
 import { publicErrorMessage } from "@/lib/errors";
-import { rateLimit, requestIp } from "@/lib/rate-limit";
+import { requestIp, sharedRateLimit } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { publicBookingSchema } from "@/lib/validators/entities";
 
@@ -8,7 +8,9 @@ export async function POST(
   context: { params: Promise<{ tenant: string }> },
 ) {
   const { tenant } = await context.params;
-  if (!rateLimit(`booking:${requestIp(request)}`, 8, 60_000)) {
+  // Limite compartilhado entre instâncias (Fase 0): o em-memória sozinho não
+  // segura rajadas distribuídas em múltiplas lambdas.
+  if (!(await sharedRateLimit(`booking:${requestIp(request)}`, 8, 60_000))) {
     return Response.json(
       { error: "Muitas tentativas. Aguarde um minuto e tente de novo." },
       { status: 429 },
@@ -25,7 +27,7 @@ export async function POST(
     );
   }
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("create_public_appointment", {
+  const { data, error } = await supabase.rpc("create_public_appointment", {
     p_slug: tenant,
     p_professional_id: parsed.data.professionalId,
     p_service_id: parsed.data.serviceId,
@@ -37,5 +39,16 @@ export async function POST(
     p_products: parsed.data.products ?? [],
   });
   if (error) return Response.json({ error: publicErrorMessage(error) }, { status: 409 });
-  return Response.json({ ok: true }, { status: 201 });
+
+  // Contrato público: status realmente persistido + referência curta da
+  // reserva. Nenhum dado privado e nenhum UUID interno.
+  const result = (data ?? {}) as { reference?: string; status?: string };
+  return Response.json(
+    {
+      ok: true,
+      reference: result.reference ?? null,
+      status: result.status ?? "pending",
+    },
+    { status: 201 },
+  );
 }

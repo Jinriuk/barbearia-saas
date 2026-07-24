@@ -11,10 +11,19 @@ import {
 } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
-import { getUtcDayRange, getUtcMonthRange } from "@/lib/dates";
+import {
+  formatShortDateInTz,
+  getUtcDayRange,
+  getUtcMonthRange,
+} from "@/lib/dates";
 import { formatBRL, PAYMENT_METHODS } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { confirmPayment, revertPayment } from "@/modules/financial/actions";
+import {
+  cancelPendingTransaction,
+  confirmPayment,
+  confirmTransactionPayment,
+  revertPayment,
+} from "@/modules/financial/actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
@@ -77,9 +86,12 @@ export default async function FinanceiroPage() {
 
   const supabase = await createSupabaseServerClient();
   const { start: dayStart, end: dayEnd } = getUtcDayRange(tenant.timezone);
-  const { start: monthStart, end: monthEnd, year, month } = getUtcMonthRange(
-    tenant.timezone,
-  );
+  const {
+    start: monthStart,
+    end: monthEnd,
+    year,
+    month,
+  } = getUtcMonthRange(tenant.timezone);
 
   const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: tenant.timezone,
@@ -107,6 +119,9 @@ export default async function FinanceiroPage() {
     { data: incomeRows },
     { data: saleRows },
     { data: chartRows },
+    { data: summaryRows },
+    { data: receivableRows },
+    { count: completedCount },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -118,7 +133,8 @@ export default async function FinanceiroPage() {
       .lt("starts_at", dayEnd.toISOString())
       .neq("status", "canceled")
       .order("starts_at"),
-    // Receita de serviço (e outros lançamentos) — produto é tratado à parte.
+    // Vendas de serviço do mês (pagas ou a receber) — produto é tratado à
+    // parte. Cancelada não conta.
     supabase
       .from("financial_transactions")
       .select(
@@ -126,10 +142,10 @@ export default async function FinanceiroPage() {
       )
       .eq("barbershop_id", tenant.id)
       .eq("type", "income")
-      .eq("status", "paid")
+      .neq("status", "canceled")
       .neq("category", "product")
-      .gte("paid_at", monthStart.toISOString())
-      .lt("paid_at", monthEnd.toISOString()),
+      .gte("created_at", monthStart.toISOString())
+      .lt("created_at", monthEnd.toISOString()),
     // Vendas de produto confirmadas no mês.
     supabase
       .from("appointment_products")
@@ -148,16 +164,41 @@ export default async function FinanceiroPage() {
       .eq("status", "paid")
       .gte("paid_at", chartStart.toISOString())
       .lt("paid_at", monthEnd.toISOString()),
+    // Verdade financeira (Fase 0): vendido × recebido × a receber, somados
+    // no banco para não esbarrar no teto de linhas do PostgREST.
+    supabase.rpc("income_summary", {
+      p_barbershop: tenant.id,
+      p_from: monthStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+    }),
+    // Receitas pendentes: o que foi vendido e ainda não recebido.
+    supabase
+      .from("financial_transactions")
+      .select("id,description,amount,category,created_at")
+      .eq("barbershop_id", tenant.id)
+      .eq("type", "income")
+      .in("status", ["pending", "overdue"])
+      .order("created_at", { ascending: false })
+      .limit(100),
+    // Atendimentos concluídos no mês (contagem real, independe do pagamento).
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "completed")
+      .gte("starts_at", monthStart.toISOString())
+      .lt("starts_at", monthEnd.toISOString()),
   ]);
+
+  const summary0 = Array.isArray(summaryRows) ? summaryRows[0] : summaryRows;
+  const soldMonth = Number(summary0?.sold ?? 0);
+  const receivedMonth = Number(summary0?.received ?? 0);
+  const receivableTotal = Number(summary0?.receivable ?? 0);
+  const receivables = receivableRows ?? [];
 
   const byProfessional = new Map<string, ProfessionalAgg>();
   const byService = new Map<string, ServiceAgg>();
   const byProduct = new Map<string, ProductAgg>();
-  let monthServiceRevenue = 0;
-  let monthProductRevenue = 0;
-  let monthOtherRevenue = 0;
-  let attendedCount = 0;
-  let productUnits = 0;
 
   const professionalEntry = (id: string, name: string) => {
     const current = byProfessional.get(id) ?? {
@@ -174,12 +215,7 @@ export default async function FinanceiroPage() {
   for (const row of incomeRows ?? []) {
     const amount = Number(row.amount);
     const appt = first(row.appointment);
-    if (!appt) {
-      monthOtherRevenue += amount;
-      continue;
-    }
-    monthServiceRevenue += amount;
-    attendedCount += 1;
+    if (!appt) continue;
     const professional = first(appt.professional);
     if (professional) {
       const entry = professionalEntry(professional.id, professional.name);
@@ -202,8 +238,6 @@ export default async function FinanceiroPage() {
 
   for (const row of saleRows ?? []) {
     const revenue = Number(row.quantity) * Number(row.unit_price);
-    monthProductRevenue += revenue;
-    productUnits += Number(row.quantity);
     const name = first(row.product)?.name ?? "Produto";
     const current = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
     current.qty += Number(row.quantity);
@@ -236,33 +270,38 @@ export default async function FinanceiroPage() {
   const professionals = [...byProfessional.values()].sort(
     (a, b) => b.total - a.total,
   );
-  const services = [...byService.values()].sort((a, b) => b.revenue - a.revenue);
-  const products = [...byProduct.values()].sort((a, b) => b.revenue - a.revenue);
-  const monthTotal =
-    monthServiceRevenue + monthProductRevenue + monthOtherRevenue;
+  const services = [...byService.values()].sort(
+    (a, b) => b.revenue - a.revenue,
+  );
+  const products = [...byProduct.values()].sort(
+    (a, b) => b.revenue - a.revenue,
+  );
 
+  // Verdade financeira (Fase 0): vendido ≠ recebido. "Vendido" soma as
+  // receitas criadas no mês (pagas ou não); "Recebido" soma o que foi pago
+  // no mês; "A receber" é o saldo atual de receitas pendentes.
   const summary = [
     {
-      label: "Receita de serviços",
-      value: formatBRL(monthServiceRevenue),
-      icon: Scissors,
+      label: "Vendido no mês",
+      value: formatBRL(soldMonth),
+      icon: TrendingUp,
       accent: true,
     },
     {
-      label: "Receita de produtos",
-      value: formatBRL(monthProductRevenue),
-      icon: Package,
-      href: "#vendas-produtos",
+      label: "Recebido no mês",
+      value: formatBRL(receivedMonth),
+      icon: Wallet,
+    },
+    {
+      label: "A receber",
+      value: formatBRL(receivableTotal),
+      icon: HandCoins,
+      href: "#a-receber",
     },
     {
       label: "Atendimentos concluídos",
-      value: String(attendedCount),
+      value: String(completedCount ?? 0),
       icon: Users,
-    },
-    {
-      label: "Produtos vendidos",
-      value: productUnits.toLocaleString("pt-BR"),
-      icon: TrendingUp,
     },
   ];
 
@@ -290,14 +329,14 @@ export default async function FinanceiroPage() {
       <PageHeader
         eyebrow="Financeiro"
         title="Financeiro"
-        description={`Receitas de ${monthLabel.format(new Date(Date.UTC(year, month - 1, 1)))} — serviços concluídos e vendas entram automaticamente.`}
+        description={`${monthLabel.format(new Date(Date.UTC(year, month - 1, 1)))} — atendimento concluído vira venda a receber; o dinheiro só conta como recebido com a forma de pagamento.`}
         action={
           <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Badge
               variant="outline"
               className="col-span-2 justify-center py-1.5 font-mono sm:col-auto sm:py-0.5"
             >
-              Total do mês {formatBRL(monthTotal)}
+              Recebido no mês {formatBRL(receivedMonth)}
             </Badge>
             <Button asChild variant="outline" size="sm">
               <Link href="/comissoes">
@@ -359,10 +398,74 @@ export default async function FinanceiroPage() {
         })}
       </div>
 
+      {receivables.length ? (
+        <Card
+          className="mt-6 scroll-mt-20 border-amber-300 dark:border-amber-900"
+          id="a-receber"
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <HandCoins className="size-4" /> A receber ({receivables.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {receivables.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {item.description}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {item.category === "product" ? "Produto" : "Serviço"} ·
+                    vendido em{" "}
+                    {formatShortDateInTz(item.created_at, tenant.timezone)}
+                  </p>
+                </div>
+                <span className="font-mono text-sm font-semibold">
+                  {formatBRL(Number(item.amount))}
+                </span>
+                <form
+                  action={confirmTransactionPayment}
+                  className="flex items-center gap-2"
+                >
+                  <input type="hidden" name="transactionId" value={item.id} />
+                  <select
+                    name="paymentMethod"
+                    defaultValue="pix"
+                    aria-label={`Forma de pagamento de ${item.description}`}
+                    className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                  >
+                    {PAYMENT_METHODS.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button size="sm">Receber</Button>
+                </form>
+                <form action={cancelPendingTransaction}>
+                  <input type="hidden" name="transactionId" value={item.id} />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                  >
+                    Cancelar venda
+                  </Button>
+                </form>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-base">
-            Evolução da receita (6 meses)
+            Evolução do recebido (6 meses)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -384,7 +487,7 @@ export default async function FinanceiroPage() {
                 value: item.revenue,
                 hint: `${item.count}x`,
               }))}
-              empty="Nenhum serviço faturado."
+              empty="Nenhum serviço vendido."
             />
           </CardContent>
         </Card>
@@ -408,7 +511,7 @@ export default async function FinanceiroPage() {
         <Card className="md:col-span-2 xl:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="size-4" /> Profissionais por receita
+              <TrendingUp className="size-4" /> Profissionais por vendas
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -418,7 +521,7 @@ export default async function FinanceiroPage() {
                 value: item.total,
                 hint: `${item.count} atend.`,
               }))}
-              empty="Sem receitas neste mês."
+              empty="Sem vendas neste mês."
             />
           </CardContent>
         </Card>
@@ -427,70 +530,76 @@ export default async function FinanceiroPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Receitas por profissional</CardTitle>
+            <CardTitle className="text-base">Vendas por profissional</CardTitle>
           </CardHeader>
           <CardContent>
             {professionals.length ? (
               <>
-              {/* Celular: cards resumidos no lugar da tabela larga. */}
-              <div className="space-y-3 sm:hidden">
-                {professionals.map((item) => (
-                  <div key={item.name} className="rounded-xl border p-4">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="min-w-0 truncate font-medium">
-                        {item.name}
+                {/* Celular: cards resumidos no lugar da tabela larga. */}
+                <div className="space-y-3 sm:hidden">
+                  {professionals.map((item) => (
+                    <div key={item.name} className="rounded-xl border p-4">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="min-w-0 truncate font-medium">
+                          {item.name}
+                        </p>
+                        <p className="shrink-0 font-mono font-semibold">
+                          {formatBRL(item.total)}
+                        </p>
+                      </div>
+                      <p className="text-muted-foreground mt-1.5 text-xs">
+                        {item.count} atend. · Serviços {formatBRL(item.service)}{" "}
+                        · Produtos {formatBRL(item.product)}
                       </p>
-                      <p className="shrink-0 font-mono font-semibold">
-                        {formatBRL(item.total)}
+                      <p className="text-muted-foreground mt-0.5 text-xs">
+                        Ticket médio{" "}
+                        {formatBRL(item.count ? item.total / item.count : 0)}
                       </p>
                     </div>
-                    <p className="text-muted-foreground mt-1.5 text-xs">
-                      {item.count} atend. · Serviços {formatBRL(item.service)} ·
-                      Produtos {formatBRL(item.product)}
-                    </p>
-                    <p className="text-muted-foreground mt-0.5 text-xs">
-                      Ticket médio{" "}
-                      {formatBRL(item.count ? item.total / item.count : 0)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Profissional</TableHead>
-                    <TableHead className="text-right">Atend.</TableHead>
-                    <TableHead className="text-right">Serviços</TableHead>
-                    <TableHead className="text-right">Produtos</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Ticket médio</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {professionals.map((item) => (
-                    <TableRow key={item.name}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {item.count}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatBRL(item.service)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatBRL(item.product)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-semibold">
-                        {formatBRL(item.total)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-right font-mono">
-                        {formatBRL(item.count ? item.total / item.count : 0)}
-                      </TableCell>
-                    </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-              </div>
+                </div>
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead className="text-right">Atend.</TableHead>
+                        <TableHead className="text-right">Serviços</TableHead>
+                        <TableHead className="text-right">Produtos</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">
+                          Ticket médio
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {professionals.map((item) => (
+                        <TableRow key={item.name}>
+                          <TableCell className="font-medium">
+                            {item.name}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {item.count}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatBRL(item.service)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatBRL(item.product)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold">
+                            {formatBRL(item.total)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-right font-mono">
+                            {formatBRL(
+                              item.count ? item.total / item.count : 0,
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </>
             ) : (
               <p className="text-muted-foreground py-6 text-center text-sm">
@@ -502,7 +611,7 @@ export default async function FinanceiroPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Receitas por serviço</CardTitle>
+            <CardTitle className="text-base">Vendas por serviço</CardTitle>
           </CardHeader>
           <CardContent>
             {services.length ? (
@@ -585,110 +694,33 @@ export default async function FinanceiroPage() {
         <CardContent>
           {dayAppointments.length ? (
             <>
-            {/* Celular: um card por atendimento, com o pagamento em destaque
+              {/* Celular: um card por atendimento, com o pagamento em destaque
                 — é a ação mais usada no balcão pelo telefone. */}
-            <div className="space-y-3 sm:hidden">
-              {dayAppointments.map((item) => (
-                <div key={item.id} className="rounded-xl border p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{item.clientName}</p>
-                      <p className="text-muted-foreground truncate text-xs">
-                        {item.serviceName}
-                        {item.professionalName
-                          ? ` · ${item.professionalName}`
-                          : ""}
+              <div className="space-y-3 sm:hidden">
+                {dayAppointments.map((item) => (
+                  <div key={item.id} className="rounded-xl border p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {item.clientName}
+                        </p>
+                        <p className="text-muted-foreground truncate text-xs">
+                          {item.serviceName}
+                          {item.professionalName
+                            ? ` · ${item.professionalName}`
+                            : ""}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-mono font-semibold">
+                        {formatBRL(item.amount)}
                       </p>
                     </div>
-                    <p className="shrink-0 font-mono font-semibold">
-                      {formatBRL(item.amount)}
-                    </p>
-                  </div>
-                  <div className="mt-2">
-                    <AppointmentStatusBadge status={item.status} />
-                  </div>
-                  <div className="mt-3 border-t pt-3">
-                    {item.paid ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                          Recebido
-                        </Badge>
-                        <form action={revertPayment}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={item.id}
-                          />
-                          <Button size="sm" variant="ghost">
-                            Estornar
-                          </Button>
-                        </form>
-                      </div>
-                    ) : (
-                      <form
-                        action={confirmPayment}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="hidden"
-                          name="appointmentId"
-                          value={item.id}
-                        />
-                        <select
-                          name="paymentMethod"
-                          defaultValue="pix"
-                          aria-label="Forma de pagamento"
-                          className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
-                        >
-                          {PAYMENT_METHODS.map((method) => (
-                            <option key={method.value} value={method.value}>
-                              {method.label}
-                            </option>
-                          ))}
-                        </select>
-                        <Button size="sm" className="h-10 shrink-0">
-                          Confirmar
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="hidden sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Pagamento</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dayAppointments.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-medium">{item.clientName}</p>
-                      <AppointmentStatusBadge
-                        status={item.status}
-                        className="mt-1"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{item.serviceName}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {item.professionalName
-                          ? `com ${item.professionalName}`
-                          : ""}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-mono font-medium">
-                      {formatBRL(item.amount)}
-                    </TableCell>
-                    <TableCell>
+                    <div className="mt-2">
+                      <AppointmentStatusBadge status={item.status} />
+                    </div>
+                    <div className="mt-3 border-t pt-3">
                       {item.paid ? (
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center justify-between gap-2">
                           <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                             Recebido
                           </Badge>
@@ -706,7 +738,7 @@ export default async function FinanceiroPage() {
                       ) : (
                         <form
                           action={confirmPayment}
-                          className="flex flex-wrap items-center gap-2"
+                          className="flex items-center gap-2"
                         >
                           <input
                             type="hidden"
@@ -717,7 +749,7 @@ export default async function FinanceiroPage() {
                             name="paymentMethod"
                             defaultValue="pix"
                             aria-label="Forma de pagamento"
-                            className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                            className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
                           >
                             {PAYMENT_METHODS.map((method) => (
                               <option key={method.value} value={method.value}>
@@ -725,15 +757,97 @@ export default async function FinanceiroPage() {
                               </option>
                             ))}
                           </select>
-                          <Button size="sm">Confirmar pagamento</Button>
+                          <Button size="sm" className="h-10 shrink-0">
+                            Confirmar
+                          </Button>
                         </form>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-            </div>
+              </div>
+              <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Serviço</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Pagamento</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dayAppointments.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <p className="font-medium">{item.clientName}</p>
+                          <AppointmentStatusBadge
+                            status={item.status}
+                            className="mt-1"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{item.serviceName}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {item.professionalName
+                              ? `com ${item.professionalName}`
+                              : ""}
+                          </p>
+                        </TableCell>
+                        <TableCell className="font-mono font-medium">
+                          {formatBRL(item.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {item.paid ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                Recebido
+                              </Badge>
+                              <form action={revertPayment}>
+                                <input
+                                  type="hidden"
+                                  name="appointmentId"
+                                  value={item.id}
+                                />
+                                <Button size="sm" variant="ghost">
+                                  Estornar
+                                </Button>
+                              </form>
+                            </div>
+                          ) : (
+                            <form
+                              action={confirmPayment}
+                              className="flex flex-wrap items-center gap-2"
+                            >
+                              <input
+                                type="hidden"
+                                name="appointmentId"
+                                value={item.id}
+                              />
+                              <select
+                                name="paymentMethod"
+                                defaultValue="pix"
+                                aria-label="Forma de pagamento"
+                                className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                              >
+                                {PAYMENT_METHODS.map((method) => (
+                                  <option
+                                    key={method.value}
+                                    value={method.value}
+                                  >
+                                    {method.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <Button size="sm">Confirmar pagamento</Button>
+                            </form>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </>
           ) : (
             <EmptyState

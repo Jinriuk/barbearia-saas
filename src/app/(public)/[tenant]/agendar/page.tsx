@@ -9,6 +9,7 @@ import { isPlus } from "@/lib/plans";
 import { tenantStyle, withAlpha } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
 import { getDateInTz } from "@/lib/dates";
+import { verticalCopy } from "@/lib/verticals";
 import { BookingForm } from "@/components/public-site/booking-form";
 import { PublicHeader } from "@/components/public-site/public-header";
 
@@ -33,6 +34,7 @@ export default async function BookingPage({
   const data = await getPublicBarbershop(tenant);
   if (!data) notFound();
 
+  const copy = verticalCopy(data.barbershop.vertical);
   const initialServiceId = data.services.some((item) => item.id === servico)
     ? servico
     : undefined;
@@ -77,7 +79,7 @@ export default async function BookingPage({
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-current/10 bg-current/[.04] px-3 py-1.5">
               <Sparkles className="size-3.5 text-[var(--tenant-primary)]" />
-              Confirmação na hora
+              {copy.confirmationChip}
             </span>
           </div>
         </div>

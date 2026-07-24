@@ -11,6 +11,9 @@ export const serviceSchema = z.object({
   category: z.string().trim().max(60).optional(),
   imageUrl: z.union([z.url(), z.literal("")]).optional(),
   active: z.coerce.boolean().optional(),
+  // Regra de público (Fase 0): serviço de assinante ou interno não aparece
+  // na página nem no agendamento público.
+  audience: z.enum(["public", "members", "internal"]).optional(),
   professionalIds: z.array(uuid).max(200).optional(),
 });
 

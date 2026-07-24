@@ -46,6 +46,8 @@ export const VERTICAL_COPY = {
     /** Nota da tela de sucesso do agendamento. */
     confirmationNote:
       "A barbearia vai confirmar seu horário. Guarde os detalhes:",
+    /** Chip de promessa de confirmação (a reserva nasce pendente — Fase 0). */
+    confirmationChip: "A barbearia confirma seu horário",
     /** CTA de contato pós-reserva. */
     talkToBusiness: "Falar com a barbearia",
     /** Assinatura do rodapé público. */
@@ -61,6 +63,7 @@ export const VERTICAL_COPY = {
     servicesEyebrow: "Menu de beleza",
     ambienceQuote: "Beleza no detalhe, cuidado em cada gesto.",
     confirmationNote: "O salão vai confirmar seu horário. Guarde os detalhes:",
+    confirmationChip: "O salão confirma seu horário",
     talkToBusiness: "Falar com o salão",
     madeWith: "Feito com NexoBeleza",
     madeWithHref: "/salao",

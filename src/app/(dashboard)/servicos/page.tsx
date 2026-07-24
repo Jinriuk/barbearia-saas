@@ -23,26 +23,29 @@ export default async function ServicesPage() {
   const tenant = await requireTenant();
   const canManage = can(tenant.role, "catalog:manage");
   const supabase = await createSupabaseServerClient();
-  const [{ data: serviceData }, { data: professionalData }, { data: linkData }] =
-    await Promise.all([
-      supabase
-        .from("services")
-        .select(
-          "id,name,description,price,duration_minutes,active,category,image_url",
-        )
-        .eq("barbershop_id", tenant.id)
-        .order("name"),
-      supabase
-        .from("professionals")
-        .select("id,name")
-        .eq("barbershop_id", tenant.id)
-        .eq("active", true)
-        .order("name"),
-      supabase
-        .from("professional_services")
-        .select("service_id,professional_id")
-        .eq("barbershop_id", tenant.id),
-    ]);
+  const [
+    { data: serviceData },
+    { data: professionalData },
+    { data: linkData },
+  ] = await Promise.all([
+    supabase
+      .from("services")
+      .select(
+        "id,name,description,price,duration_minutes,active,category,image_url,audience",
+      )
+      .eq("barbershop_id", tenant.id)
+      .order("name"),
+    supabase
+      .from("professionals")
+      .select("id,name")
+      .eq("barbershop_id", tenant.id)
+      .eq("active", true)
+      .order("name"),
+    supabase
+      .from("professional_services")
+      .select("service_id,professional_id")
+      .eq("barbershop_id", tenant.id),
+  ]);
   const professionals = professionalData ?? [];
   const linksByService = new Map<string, string[]>();
   for (const link of linkData ?? []) {
@@ -106,9 +109,17 @@ export default async function ServicesPage() {
                       })}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={item.active ? "default" : "secondary"}>
-                        {item.active ? "Visível" : "Oculto"}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={item.active ? "default" : "secondary"}>
+                          {item.active ? "Visível" : "Oculto"}
+                        </Badge>
+                        {item.audience === "members" ? (
+                          <Badge variant="outline">Assinantes</Badge>
+                        ) : null}
+                        {item.audience === "internal" ? (
+                          <Badge variant="outline">Interno</Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {canManage ? (
@@ -129,10 +140,14 @@ export default async function ServicesPage() {
                               variant="ghost"
                               className="text-muted-foreground hover:text-foreground"
                               title={
-                                item.active ? "Ocultar serviço" : "Exibir serviço"
+                                item.active
+                                  ? "Ocultar serviço"
+                                  : "Exibir serviço"
                               }
                               aria-label={
-                                item.active ? "Ocultar serviço" : "Exibir serviço"
+                                item.active
+                                  ? "Ocultar serviço"
+                                  : "Exibir serviço"
                               }
                             >
                               {item.active ? (

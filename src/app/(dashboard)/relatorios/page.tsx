@@ -86,7 +86,9 @@ export default async function ReportsPage() {
 
   const byMethod = new Map<string, number>();
   for (const row of paid) {
-    const key = row.payment_method ?? "other";
+    // Sem método registrado (dados anteriores à Fase 0) → "Não informado",
+    // nunca somado como se fosse "Outro".
+    const key = row.payment_method ?? "";
     byMethod.set(key, (byMethod.get(key) ?? 0) + Number(row.amount));
   }
   const methodBreakdown = [...byMethod.entries()].sort((a, b) => b[1] - a[1]);

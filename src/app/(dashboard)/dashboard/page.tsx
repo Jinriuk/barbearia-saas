@@ -128,31 +128,44 @@ export default async function DashboardPage({
   // Janela de amanhã no fuso do tenant, para o card de lembretes.
   const { end: tomorrowEnd } = getUtcNextDayRange(tenant.timezone);
 
-  const [appointmentsRes, tomorrowRes, dayIncome, weekIncome, monthIncome] =
-    await Promise.all([
-      supabase
-        .from("appointments")
-        .select(
-          "id,starts_at,status,client:clients(name),service:services(name),professional:professionals(name)",
-        )
-        .eq("barbershop_id", tenant.id)
-        .gte("starts_at", dayStart.toISOString())
-        .lt("starts_at", dayEnd.toISOString())
-        .order("starts_at"),
-      supabase
-        .from("appointments")
-        .select(
-          "id,starts_at,status,client:clients(name,phone),service:services(name),professional:professionals(name)",
-        )
-        .eq("barbershop_id", tenant.id)
-        .in("status", ["pending", "confirmed"])
-        .gte("starts_at", dayEnd.toISOString())
-        .lt("starts_at", tomorrowEnd.toISOString())
-        .order("starts_at"),
-      income(dayStart),
-      income(weekStart),
-      income(monthStart),
-    ]);
+  const [
+    appointmentsRes,
+    tomorrowRes,
+    dayIncome,
+    weekIncome,
+    monthIncome,
+    summaryRes,
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        "id,starts_at,status,client:clients(name),service:services(name),professional:professionals(name)",
+      )
+      .eq("barbershop_id", tenant.id)
+      .gte("starts_at", dayStart.toISOString())
+      .lt("starts_at", dayEnd.toISOString())
+      .order("starts_at"),
+    supabase
+      .from("appointments")
+      .select(
+        "id,starts_at,status,client:clients(name,phone),service:services(name),professional:professionals(name)",
+      )
+      .eq("barbershop_id", tenant.id)
+      .in("status", ["pending", "confirmed"])
+      .gte("starts_at", dayEnd.toISOString())
+      .lt("starts_at", tomorrowEnd.toISOString())
+      .order("starts_at"),
+    income(dayStart),
+    income(weekStart),
+    income(monthStart),
+    canFinance
+      ? supabase.rpc("income_summary", {
+          p_barbershop: tenant.id,
+          p_from: monthStart.toISOString(),
+          p_to: dayEnd.toISOString(),
+        })
+      : Promise.resolve({ data: null }),
+  ]);
 
   const appointmentRows = appointmentsRes.data ?? [];
 
@@ -191,14 +204,24 @@ export default async function DashboardPage({
   const revenueToday = Number(dayIncome.data ?? 0);
   const revenueWeek = Number(weekIncome.data ?? 0);
   const revenueMonth = Number(monthIncome.data ?? 0);
+  const summaryRow = Array.isArray(summaryRes.data)
+    ? summaryRes.data[0]
+    : summaryRes.data;
+  const receivableTotal = Number(summaryRow?.receivable ?? 0);
 
-  const revenueCards = canFinance
-    ? [
-        { label: "Recebido hoje", value: formatBRL(revenueToday) },
-        { label: "Recebido na semana", value: formatBRL(revenueWeek) },
-        { label: "Recebido no mês", value: formatBRL(revenueMonth) },
-      ]
-    : [];
+  const revenueCards: Array<{ label: string; value: string; href?: string }> =
+    canFinance
+      ? [
+          { label: "Recebido hoje", value: formatBRL(revenueToday) },
+          { label: "Recebido na semana", value: formatBRL(revenueWeek) },
+          { label: "Recebido no mês", value: formatBRL(revenueMonth) },
+          {
+            label: "A receber",
+            value: formatBRL(receivableTotal),
+            href: "/financeiro#a-receber",
+          },
+        ]
+      : [];
 
   const metrics = [
     {
@@ -241,22 +264,31 @@ export default async function DashboardPage({
       />
 
       {revenueCards.length ? (
-        <div className="mb-4 grid gap-4 sm:grid-cols-3">
-          {revenueCards.map((card) => (
-            <Card key={card.label} className="border-primary/40">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-muted-foreground text-sm font-medium">
-                  {card.label}
-                </CardTitle>
-                <Wallet className="text-primary size-4" />
-              </CardHeader>
-              <CardContent>
-                <p className="font-mono text-2xl font-semibold sm:text-3xl">
-                  {card.value}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {revenueCards.map((card) => {
+            const content = (
+              <Card className="border-primary/40 h-full">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-muted-foreground text-sm font-medium">
+                    {card.label}
+                  </CardTitle>
+                  <Wallet className="text-primary size-4" />
+                </CardHeader>
+                <CardContent>
+                  <p className="font-mono text-2xl font-semibold sm:text-3xl">
+                    {card.value}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+            return card.href ? (
+              <Link key={card.label} href={card.href} className="block">
+                {content}
+              </Link>
+            ) : (
+              <div key={card.label}>{content}</div>
+            );
+          })}
         </div>
       ) : null}
 
