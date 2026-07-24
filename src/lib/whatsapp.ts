@@ -111,3 +111,25 @@ export function returnMessage(input: {
     `É só responder esta mensagem que a gente encontra o melhor horário para você.`
   );
 }
+
+/**
+ * Cobrança do plano vencido (Fase 4B): lembrete educado de renovação.
+ * Abre no WhatsApp EDITÁVEL — a equipe ajusta antes de enviar.
+ */
+export function membershipChargeMessage(input: {
+  clientName: string;
+  planName: string;
+  price: number;
+  businessTerm: string;
+}): string {
+  const firstName = input.clientName.split(" ")[0];
+  const priceLabel = input.price.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+  });
+  return (
+    `Oi, ${firstName}! Aqui é ${input.businessTerm}. ` +
+    `Seu plano ${input.planName} venceu — para continuar aproveitando os ` +
+    `benefícios é só renovar (R$ ${priceLabel}). ` +
+    `Pode pagar aqui pelo WhatsApp ou na próxima visita. Qualquer dúvida, é só responder!`
+  );
+}
