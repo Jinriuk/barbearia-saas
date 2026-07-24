@@ -13,10 +13,10 @@ import {
   formatPriceBRL,
   planConfig,
 } from "@/lib/billing";
+import { loadPlanCatalog } from "@/lib/billing/catalog";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -46,6 +46,13 @@ export default async function SubscriptionPage() {
   const trialDays =
     sub?.status === "trialing" ? daysLeft(sub.trialEndsAt) : null;
   const periodEnd = formatDate(sub?.currentPeriodEnd ?? null);
+
+  // Preços da fonte de verdade (catálogo no banco — Fase 2B).
+  const catalog = await loadPlanCatalog();
+  const planKey = (sub?.plan ?? tenant.plan) === "plus" ? "plus" : "starter";
+  const monthlyCents = catalog[planKey].monthlyCents;
+  const yearlyCents = catalog[planKey].yearlyCents;
+  const yearlySavingsCents = monthlyCents * 12 - yearlyCents;
 
   return (
     <>
@@ -128,7 +135,7 @@ export default async function SubscriptionPage() {
               <BadgeCheck className="text-primary size-4" /> Plano {plan.label}
             </CardTitle>
             <p className="font-mono text-lg font-semibold">
-              {formatPriceBRL(sub?.priceCents ?? plan.priceCents)}
+              {formatPriceBRL(sub?.priceCents ?? monthlyCents)}
               <span className="text-muted-foreground text-xs font-normal">
                 /mês
               </span>
@@ -157,19 +164,47 @@ export default async function SubscriptionPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="size-4" /> Pagamento
+              <CreditCard className="size-4" /> Periodicidade e pagamento
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border p-4">
+                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Mensal
+                </p>
+                <p className="mt-1 font-mono text-xl font-semibold">
+                  {formatPriceBRL(monthlyCents)}
+                  <span className="text-muted-foreground text-xs font-normal">
+                    /mês
+                  </span>
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Renova todo mês, cancele quando quiser.
+                </p>
+              </div>
+              <div className="border-primary/40 rounded-xl border p-4">
+                <p className="text-primary text-xs font-medium tracking-wide uppercase">
+                  Anual à vista
+                </p>
+                <p className="mt-1 font-mono text-xl font-semibold">
+                  {formatPriceBRL(yearlyCents)}
+                  <span className="text-muted-foreground text-xs font-normal">
+                    /ano
+                  </span>
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Equivale a 10 mensalidades — economia de{" "}
+                  {formatPriceBRL(yearlySavingsCents)} por ano. Renovação anual.
+                </p>
+              </div>
+            </div>
             <p className="text-muted-foreground text-sm leading-6">
-              O pagamento online recorrente (cartão e Pix via Mercado Pago) está
-              em configuração. Assim que estiver ativo, você poderá assinar e
-              regularizar por aqui, sem falar com ninguém.
+              O pagamento online (cartão e Pix) ainda não está disponível —
+              estamos finalizando a integração com o provedor. Para assinar,
+              renovar ou regularizar agora, fale com o suporte do NexoBarber; os
+              preços cobrados são exatamente os desta tela.
             </p>
-            <Button disabled title="Disponível em breve">
-              <CreditCard className="size-4" /> Pagar com Mercado Pago — em
-              breve
-            </Button>
           </CardContent>
         </Card>
       </div>

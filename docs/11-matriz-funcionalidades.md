@@ -69,13 +69,15 @@
 
 ## SaaS (NexoBarber)
 
-| Funcionalidade                   | Estado      | Observações                                 |
-| -------------------------------- | ----------- | ------------------------------------------- |
-| Cadastro + onboarding + trial    | operacional |                                             |
-| Assinatura com registro no banco | beta        | Estrutura existe; sem cobrança online real. |
-| Checkout online (mensal/anual)   | planejado   | Fase 2B.                                    |
-| Webhook de pagamento             | desativado  | Placeholder — não ativa conta. Fase 2B.     |
-| Verticais barbearia/salão        | operacional | Campo `vertical`; landings separadas.       |
+| Funcionalidade                             | Estado      | Observações                                                                                                                 |
+| ------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Cadastro + onboarding + trial              | operacional |                                                                                                                             |
+| Catálogo de preços no banco (mensal/anual) | operacional | Fase 2B: plan_prices versionado; landing/onboarding/assinatura leem do banco com fallback.                                  |
+| Captura de lead pré-checkout               | interno     | Fase 2B: tabela + rota com rate limit e consentimento; UI entra na Fase 5.                                                  |
+| Assinatura com registro no banco           | operacional | Régua trial→past_due→suspended→canceled com auditoria no cron.                                                              |
+| Checkout online (mensal/anual)             | planejado   | Bloqueado por decisão de provedor de pagamento; preços mensal/anual já exibidos do catálogo.                                |
+| Webhook de pagamento                       | beta        | Fase 2B: HMAC + anti-replay + idempotência (billing_events) + preço conferido no catálogo; falta contratar o provedor real. |
+| Verticais barbearia/salão                  | operacional | Campo `vertical`; landings separadas.                                                                                       |
 
 ## Plataforma
 

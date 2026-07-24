@@ -16,7 +16,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { SALON_PHOTOS, SALON_STOCK } from "@/lib/assets";
-import { PLANS, formatPriceBRL } from "@/lib/billing";
+import { formatPriceBRL } from "@/lib/billing";
+import { loadPlanCatalog } from "@/lib/billing/catalog";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -132,7 +133,12 @@ const agendaPreview = [
   { time: "11:15", client: "Beatriz Nunes", service: "Manicure e pedicure" },
 ];
 
-export default function SalonLandingPage() {
+export const revalidate = 3600;
+
+export default async function SalonLandingPage() {
+  // Preço da fonte de verdade (catálogo no banco — Fase 2B); a página segue
+  // estática com revalidação horária.
+  const catalog = await loadPlanCatalog();
   return (
     <main className="min-h-screen overflow-x-clip bg-[#fdf8f5] text-[#33202b]">
       {/* ===== Header ===== */}
@@ -148,7 +154,10 @@ export default function SalonLandingPage() {
             NexoBeleza
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-[#33202b]/60 md:flex">
-            <a href="#recursos" className="transition-colors hover:text-[#33202b]">
+            <a
+              href="#recursos"
+              className="transition-colors hover:text-[#33202b]"
+            >
               Recursos
             </a>
             <a
@@ -157,7 +166,10 @@ export default function SalonLandingPage() {
             >
               Como funciona
             </a>
-            <a href="#planos" className="transition-colors hover:text-[#33202b]">
+            <a
+              href="#planos"
+              className="transition-colors hover:text-[#33202b]"
+            >
               Planos
             </a>
           </nav>
@@ -207,7 +219,7 @@ export default function SalonLandingPage() {
             </Badge>
             <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-5xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-7xl">
               Seu salão cheio,{" "}
-              <span className="animate-gradient-pan bg-gradient-to-r from-[#c2497c] via-[#d9832f] to-[#c2497c] bg-clip-text font-serif italic text-transparent">
+              <span className="animate-gradient-pan bg-gradient-to-r from-[#c2497c] via-[#d9832f] to-[#c2497c] bg-clip-text font-serif text-transparent italic">
                 sua agenda leve
               </span>
               .
@@ -237,18 +249,20 @@ export default function SalonLandingPage() {
               </Button>
             </div>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-4 text-sm text-[#33202b]/45 delay-300 duration-1000">
-              A partir de {formatPriceBRL(PLANS.starter.priceCents)}/mês · 7
+              A partir de {formatPriceBRL(catalog.starter.monthlyCents)}/mês · 7
               dias grátis · cancele quando quiser
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#33202b]/55">
-              {["Sem app para a cliente", "Pronto em minutos", "Suporte em português"].map(
-                (item) => (
-                  <span key={item} className="flex items-center gap-2">
-                    <Check className="size-4 text-[#c2497c]" />
-                    {item}
-                  </span>
-                ),
-              )}
+              {[
+                "Sem app para a cliente",
+                "Pronto em minutos",
+                "Suporte em português",
+              ].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <Check className="size-4 text-[#c2497c]" />
+                  {item}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -275,32 +289,32 @@ export default function SalonLandingPage() {
               </p>
             </div>
             <div className="animate-float-slow absolute -right-6 -bottom-10 w-72 rounded-2xl border border-[#33202b]/[.07] bg-white/95 p-4 shadow-xl shadow-[#33202b]/[.08] backdrop-blur">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-[#33202b]/50">Hoje na agenda</p>
-                  <CalendarCheck className="size-4 text-[#c2497c]" />
-                </div>
-                <p className="mt-1 text-xl font-semibold">14 horários</p>
-                <div className="mt-3 space-y-2">
-                  {agendaPreview.map((item) => (
-                    <div
-                      key={item.time}
-                      className="flex items-center gap-3 rounded-xl bg-[#fdf6f3] px-3 py-2"
-                    >
-                      <span className="font-mono text-xs font-semibold text-[#c2497c]">
-                        {item.time}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-medium">
-                          {item.client}
-                        </p>
-                        <p className="truncate text-[10px] text-[#33202b]/45">
-                          {item.service}
-                        </p>
-                      </div>
-                      <span className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-500" />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[#33202b]/50">Hoje na agenda</p>
+                <CalendarCheck className="size-4 text-[#c2497c]" />
+              </div>
+              <p className="mt-1 text-xl font-semibold">14 horários</p>
+              <div className="mt-3 space-y-2">
+                {agendaPreview.map((item) => (
+                  <div
+                    key={item.time}
+                    className="flex items-center gap-3 rounded-xl bg-[#fdf6f3] px-3 py-2"
+                  >
+                    <span className="font-mono text-xs font-semibold text-[#c2497c]">
+                      {item.time}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium">
+                        {item.client}
+                      </p>
+                      <p className="truncate text-[10px] text-[#33202b]/45">
+                        {item.service}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    <span className="ml-auto size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -324,14 +338,17 @@ export default function SalonLandingPage() {
       </div>
 
       {/* ===== Recursos ===== */}
-      <section id="recursos" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24">
+      <section
+        id="recursos"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
+      >
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
             Recursos
           </p>
           <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Tudo o que o seu salão precisa,{" "}
-            <span className="font-serif italic text-[#c2497c]">
+            <span className="font-serif text-[#c2497c] italic">
               em um lugar só
             </span>
             .
@@ -395,7 +412,7 @@ export default function SalonLandingPage() {
       {/* ===== Como funciona ===== */}
       <section
         id="como-funciona"
-        className="border-y border-[#33202b]/[.06] bg-white/60 scroll-mt-20"
+        className="scroll-mt-20 border-y border-[#33202b]/[.06] bg-white/60"
       >
         <div className="mx-auto max-w-7xl px-6 py-24">
           <Reveal className="text-center">
@@ -404,7 +421,7 @@ export default function SalonLandingPage() {
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
               No ar{" "}
-              <span className="font-serif italic text-[#c2497c]">hoje</span>,
+              <span className="font-serif text-[#c2497c] italic">hoje</span>,
               sem complicação.
             </h2>
           </Reveal>
@@ -432,7 +449,7 @@ export default function SalonLandingPage() {
           </p>
           <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Uma página tão{" "}
-            <span className="font-serif italic text-[#c2497c]">linda</span>{" "}
+            <span className="font-serif text-[#c2497c] italic">linda</span>{" "}
             quanto o seu trabalho.
           </h2>
           <p className="mt-4 max-w-xl text-[#33202b]/55">
@@ -490,14 +507,17 @@ export default function SalonLandingPage() {
       </section>
 
       {/* ===== Planos ===== */}
-      <section id="planos" className="mx-auto max-w-5xl scroll-mt-20 px-6 pb-24">
+      <section
+        id="planos"
+        className="mx-auto max-w-5xl scroll-mt-20 px-6 pb-24"
+      >
         <Reveal className="text-center">
           <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
             Planos
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             7 dias grátis.{" "}
-            <span className="font-serif italic text-[#c2497c]">
+            <span className="font-serif text-[#c2497c] italic">
               Cancele quando quiser.
             </span>
           </h2>
@@ -514,7 +534,7 @@ export default function SalonLandingPage() {
                 Para colocar a agenda no ar hoje.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(PLANS.starter.priceCents)}
+                {formatPriceBRL(catalog.starter.monthlyCents)}
                 <span className="ml-1.5 align-middle text-sm font-normal text-[#33202b]/45">
                   /mês
                 </span>
@@ -557,7 +577,7 @@ export default function SalonLandingPage() {
                 Para marcas que querem encantar.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(PLANS.plus.priceCents)}
+                {formatPriceBRL(catalog.plus.monthlyCents)}
                 <span className="ml-1.5 align-middle text-sm font-normal text-[#33202b]/45">
                   /mês
                 </span>
@@ -600,7 +620,7 @@ export default function SalonLandingPage() {
           </p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Feito para o dia a dia{" "}
-            <span className="font-serif italic text-[#c2497c]">real</span> do
+            <span className="font-serif text-[#c2497c] italic">real</span> do
             salão.
           </h2>
         </Reveal>
@@ -634,7 +654,7 @@ export default function SalonLandingPage() {
               <QrCode className="mx-auto size-7 text-[#c2497c]" />
               <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
                 Um link seu, um QR Code na recepção — e a agenda{" "}
-                <span className="font-serif italic text-[#c2497c]">
+                <span className="font-serif text-[#c2497c] italic">
                   trabalha por você
                 </span>
                 .
@@ -667,7 +687,10 @@ export default function SalonLandingPage() {
             NexoBeleza © {new Date().getFullYear()}
           </span>
           <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link href="/login" className="transition-colors hover:text-[#33202b]">
+            <Link
+              href="/login"
+              className="transition-colors hover:text-[#33202b]"
+            >
               Entrar
             </Link>
             <Link

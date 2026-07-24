@@ -16,7 +16,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
-import { PLANS, formatPriceBRL } from "@/lib/billing";
+import { formatPriceBRL } from "@/lib/billing";
+import { loadPlanCatalog } from "@/lib/billing/catalog";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -139,7 +140,12 @@ const marqueeItems = [
   "Relatório em PDF",
 ];
 
-export default function HomePage() {
+export const revalidate = 3600;
+
+export default async function HomePage() {
+  // Preço da fonte de verdade (catálogo no banco — Fase 2B); a página segue
+  // estática com revalidação horária.
+  const catalog = await loadPlanCatalog();
   return (
     <main className="min-h-screen overflow-x-clip bg-[#0c0b09] text-stone-50">
       {/* ===== Header ===== */}
@@ -155,7 +161,10 @@ export default function HomePage() {
             NexoBarber
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-stone-400 md:flex">
-            <a href="#recursos" className="transition-colors hover:text-stone-100">
+            <a
+              href="#recursos"
+              className="transition-colors hover:text-stone-100"
+            >
               Recursos
             </a>
             <a
@@ -164,7 +173,10 @@ export default function HomePage() {
             >
               Como funciona
             </a>
-            <a href="#planos" className="transition-colors hover:text-stone-100">
+            <a
+              href="#planos"
+              className="transition-colors hover:text-stone-100"
+            >
               Planos
             </a>
           </nav>
@@ -221,10 +233,10 @@ export default function HomePage() {
               .
             </h1>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-stone-400 delay-150 duration-1000">
-              O sistema que cuida do seu negócio inteiro: agenda sem
-              conflito, financeiro que se preenche sozinho, clientes, equipe,
-              estoque e uma página de agendamento deslumbrante com a sua
-              marca. Sem planilha, sem caderninho.
+              O sistema que cuida do seu negócio inteiro: agenda sem conflito,
+              financeiro que se preenche sozinho, clientes, equipe, estoque e
+              uma página de agendamento deslumbrante com a sua marca. Sem
+              planilha, sem caderninho.
             </p>
             <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
@@ -246,7 +258,7 @@ export default function HomePage() {
               </Button>
             </div>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-4 text-sm text-stone-500 delay-300 duration-1000">
-              A partir de {formatPriceBRL(PLANS.starter.priceCents)}/mês · 7
+              A partir de {formatPriceBRL(catalog.starter.monthlyCents)}/mês · 7
               dias grátis · cancele quando quiser
             </p>
             <div className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-stone-500">
@@ -339,7 +351,10 @@ export default function HomePage() {
       </div>
 
       {/* ===== Recursos ===== */}
-      <section id="recursos" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24">
+      <section
+        id="recursos"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
+      >
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
             Recursos
@@ -540,7 +555,10 @@ export default function HomePage() {
       </section>
 
       {/* ===== Planos ===== */}
-      <section id="planos" className="mx-auto max-w-5xl scroll-mt-20 px-6 py-24">
+      <section
+        id="planos"
+        className="mx-auto max-w-5xl scroll-mt-20 px-6 py-24"
+      >
         <Reveal className="text-center">
           <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
             Planos
@@ -549,8 +567,8 @@ export default function HomePage() {
             7 dias grátis. Cancele quando quiser.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-stone-400">
-            Teste tudo sem compromisso — a primeira cobrança só acontece
-            depois do período de teste.
+            Teste tudo sem compromisso — a primeira cobrança só acontece depois
+            do período de teste.
           </p>
         </Reveal>
         <div className="mt-12 grid gap-6 md:grid-cols-2">
@@ -561,7 +579,7 @@ export default function HomePage() {
                 Para colocar a agenda no ar hoje.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(PLANS.starter.priceCents)}
+                {formatPriceBRL(catalog.starter.monthlyCents)}
                 <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
                   /mês
                 </span>
@@ -604,7 +622,7 @@ export default function HomePage() {
                 Para marcas que querem impressionar.
               </p>
               <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(PLANS.plus.priceCents)}
+                {formatPriceBRL(catalog.plus.monthlyCents)}
                 <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
                   /mês
                 </span>
@@ -714,7 +732,10 @@ export default function HomePage() {
             NexoBarber © {new Date().getFullYear()}
           </span>
           <div className="flex gap-6">
-            <Link href="/login" className="transition-colors hover:text-stone-300">
+            <Link
+              href="/login"
+              className="transition-colors hover:text-stone-300"
+            >
               Entrar
             </Link>
             <Link
@@ -723,7 +744,10 @@ export default function HomePage() {
             >
               Criar conta
             </Link>
-            <Link href="/aurora" className="transition-colors hover:text-stone-300">
+            <Link
+              href="/aurora"
+              className="transition-colors hover:text-stone-300"
+            >
               Demonstração
             </Link>
             <Link
@@ -738,7 +762,10 @@ export default function HomePage() {
             >
               Termos
             </Link>
-            <Link href="/salao" className="transition-colors hover:text-stone-300">
+            <Link
+              href="/salao"
+              className="transition-colors hover:text-stone-300"
+            >
               É salão de beleza? Conheça o NexoBeleza →
             </Link>
           </div>

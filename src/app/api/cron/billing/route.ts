@@ -23,7 +23,10 @@ const DAY_MS = 86_400_000;
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    return Response.json({ error: "CRON_SECRET não configurado." }, { status: 503 });
+    return Response.json(
+      { error: "CRON_SECRET não configurado." },
+      { status: 503 },
+    );
   }
   if (request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "Não autorizado." }, { status: 401 });
@@ -35,13 +38,16 @@ export async function GET(request: Request) {
   const lockCutoff = new Date(now - LOCK_AFTER_DAYS * DAY_MS).toISOString();
   const cancelCutoff = new Date(now - CANCEL_AFTER_DAYS * DAY_MS).toISOString();
 
-  const counts = { canceled: 0, suspended: 0, pastDue: 0 };
+  const counts = { canceled: 0, suspended: 0, pastDue: 0, normalized: 0 };
   const failures: string[] = [];
 
   const run = async (
     step: string,
     bucket: keyof typeof counts,
-    query: PromiseLike<{ data: { id: string }[] | null; error: unknown }>,
+    query: PromiseLike<{
+      data: { id: string; barbershop_id?: string }[] | null;
+      error: unknown;
+    }>,
   ) => {
     const { data, error } = await query;
     if (error) {
@@ -53,9 +59,39 @@ export async function GET(request: Request) {
       return;
     }
     counts[bucket] += data?.length ?? 0;
+    // Transições automáticas também são auditadas (Fase 2B) — mesmas regras
+    // de rastreabilidade das ações manuais.
+    if (data?.length) {
+      await supabase.from("audit_logs").insert(
+        data
+          .filter((row) => row.barbershop_id)
+          .map((row) => ({
+            barbershop_id: row.barbershop_id,
+            action: `billing.cron_${bucket}`,
+            entity_type: "subscription",
+            entity_id: row.id,
+            metadata: { step },
+          })),
+      );
+    }
   };
 
   try {
+    // Higiene: assinatura ativa sem fim de período nunca transiciona (e
+    // vira acesso perpétuo). Normaliza para 30 dias a partir de agora.
+    await run(
+      "normalize_missing_period",
+      "normalized",
+      supabase
+        .from("subscriptions")
+        .update({
+          current_period_end: new Date(now + 30 * DAY_MS).toISOString(),
+        })
+        .eq("status", "active")
+        .is("current_period_end", null)
+        .select("id,barbershop_id"),
+    );
+
     // Ordem do maior atraso para o menor, para cada linha cair na regra certa.
     await run(
       "cancel_trials",
@@ -65,7 +101,7 @@ export async function GET(request: Request) {
         .update({ status: "canceled", canceled_at: nowIso })
         .eq("status", "trialing")
         .lt("trial_ends_at", cancelCutoff)
-        .select("id"),
+        .select("id,barbershop_id"),
     );
     await run(
       "cancel_paid",
@@ -75,7 +111,7 @@ export async function GET(request: Request) {
         .update({ status: "canceled", canceled_at: nowIso })
         .in("status", ["active", "past_due", "suspended"])
         .lt("current_period_end", cancelCutoff)
-        .select("id"),
+        .select("id,barbershop_id"),
     );
     await run(
       "suspend_trials",
@@ -85,7 +121,7 @@ export async function GET(request: Request) {
         .update({ status: "suspended" })
         .eq("status", "trialing")
         .lt("trial_ends_at", lockCutoff)
-        .select("id"),
+        .select("id,barbershop_id"),
     );
     await run(
       "suspend_paid",
@@ -95,7 +131,7 @@ export async function GET(request: Request) {
         .update({ status: "suspended" })
         .in("status", ["active", "past_due"])
         .lt("current_period_end", lockCutoff)
-        .select("id"),
+        .select("id,barbershop_id"),
     );
     await run(
       "mark_past_due",
@@ -105,7 +141,7 @@ export async function GET(request: Request) {
         .update({ status: "past_due" })
         .eq("status", "active")
         .lt("current_period_end", nowIso)
-        .select("id"),
+        .select("id,barbershop_id"),
     );
   } catch (error) {
     logError("cron.billing.crashed", { message: errorMessage(error) });
