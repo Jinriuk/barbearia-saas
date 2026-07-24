@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/types/domain";
 
 const idSchema = z.uuid();
+const paymentMethodSchema = z.enum(["cash", "card", "pix", "other"]);
 
 function revalidate() {
   revalidatePath("/produtos");
@@ -15,7 +16,12 @@ function revalidate() {
   revalidatePath("/dashboard");
 }
 
-/** Confirma a venda de um produto reservado: baixa no estoque + receita. */
+/**
+ * Confirma a venda de um produto reservado: baixa no estoque + receita, na
+ * mesma transação do banco. A receita nasce pendente ("a receber"); se o
+ * operador informar a forma de pagamento na própria confirmação, ela já
+ * entra como recebida.
+ */
 export async function confirmProductSale(
   _prev: ActionState,
   formData: FormData,
@@ -26,10 +32,12 @@ export async function confirmProductSale(
   }
   const parsed = idSchema.safeParse(formData.get("id"));
   if (!parsed.success) return { success: false, message: "Reserva inválida." };
+  const method = paymentMethodSchema.safeParse(formData.get("paymentMethod"));
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("confirm_product_sale", {
     p_appointment_product_id: parsed.data,
+    p_payment_method: method.success ? method.data : null,
   });
   if (error) {
     return {

@@ -13,6 +13,8 @@ const billSchema = z.object({
   dueDate: z.iso.date(),
 });
 
+const paymentMethodSchema = z.enum(["cash", "card", "pix", "other"]);
+
 type BillKind = "payable" | "receivable";
 
 const config: Record<
@@ -80,6 +82,11 @@ async function settleBill(kind: BillKind, formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
+  // Dinheiro recebido sempre tem forma de pagamento (regra da Fase 0 —
+  // o banco também bloqueia receita paga sem método).
+  const method = paymentMethodSchema.safeParse(formData.get("paymentMethod"));
+  if (config[kind].transactionType === "income" && !method.success) return;
+
   const supabase = await createSupabaseServerClient();
   const { data: bill } = await supabase
     .from(config[kind].table)
@@ -99,6 +106,7 @@ async function settleBill(kind: BillKind, formData: FormData) {
       description: bill.description,
       amount: bill.amount,
       paid_at: new Date().toISOString(),
+      payment_method: method.success ? method.data : null,
       created_by: tenant.profileId,
     })
     .select("id")

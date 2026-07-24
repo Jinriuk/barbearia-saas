@@ -297,6 +297,10 @@ export async function setProfessionalAvailability(formData: FormData) {
     .eq("barbershop_id", tenant.id);
   revalidatePath("/profissionais");
   revalidatePath("/agenda");
+  // A vitrine pública muda junto (Fase 1: antes o profissional continuava
+  // aparecendo na página até outra revalidação qualquer).
+  revalidatePath(`/${tenant.slug}`);
+  revalidatePath(`/${tenant.slug}/agendar`);
 }
 
 export async function toggleProfessional(formData: FormData) {

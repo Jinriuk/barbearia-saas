@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MetaPixel } from "@/components/platform/meta-pixel";
@@ -7,8 +7,9 @@ import { ConsentBanner } from "@/components/platform/consent-banner";
 import { APP_URL } from "@/lib/app-url";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Fonte do design system (Fase 1): Inter em todo o app; mono continua Geist.
+const interSans = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -42,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${interSans.variable} ${geistMono.variable}`}
     >
       <body className="flex min-h-full flex-col antialiased">
         <TooltipProvider>{children}</TooltipProvider>

@@ -86,3 +86,28 @@ export function reminderWhatsAppHref(
   if (!base) return null;
   return `${base}?text=${encodeURIComponent(message)}`;
 }
+
+/**
+ * Mensagem de retorno (Fase 3): convite educado para o cliente que passou do
+ * retorno previsto. O texto abre no WhatsApp EDITÁVEL — a equipe ajusta antes
+ * de enviar. Usa nome, último serviço e profissional quando fizer sentido.
+ */
+export function returnMessage(input: {
+  clientName: string;
+  topService?: string | null;
+  topProfessional?: string | null;
+  businessTerm: string;
+}): string {
+  const firstName = input.clientName.split(" ")[0];
+  const servicePart = input.topService
+    ? ` Que tal agendar outro ${input.topService.toLowerCase()}`
+    : " Que tal agendar um horário";
+  const professionalPart = input.topProfessional
+    ? ` com ${input.topProfessional}`
+    : "";
+  return (
+    `Oi, ${firstName}! Aqui é ${input.businessTerm}. ` +
+    `Sentimos sua falta por aqui.${servicePart}${professionalPart}? ` +
+    `É só responder esta mensagem que a gente encontra o melhor horário para você.`
+  );
+}

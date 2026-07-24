@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus, MessageCircle, ShoppingBag } from "lucide-react";
+import { CalendarPlus, MessageCircle, Search, ShoppingBag } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import {
   formatShortDateInTz,
@@ -7,6 +7,7 @@ import {
   getDateInTz,
   getUtcDayRange,
   getUtcNextDayRange,
+  zonedDateTimeToUtc,
 } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { formatBRL } from "@/lib/financial";
@@ -17,6 +18,7 @@ import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentActions } from "@/components/dashboard/appointment-actions";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import { ManualAppointmentSheet } from "@/components/dashboard/manual-appointment-sheet";
+import { RescheduleSheet } from "@/components/dashboard/reschedule-sheet";
 import { ReservationActions } from "@/components/dashboard/reservation-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,12 +28,27 @@ function first<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
+const STATUS_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "", label: "Todos" },
+  { value: "pending", label: "Pendentes" },
+  { value: "confirmed", label: "Confirmados" },
+  { value: "completed", label: "Concluídos" },
+  { value: "canceled", label: "Cancelados" },
+  { value: "no_show", label: "Faltas" },
+];
+
 export default async function AgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ prof?: string }>;
+  searchParams: Promise<{
+    prof?: string;
+    status?: string;
+    q?: string;
+    dia?: string;
+    view?: string;
+  }>;
 }) {
-  const { prof } = await searchParams;
+  const { prof, status, q, dia, view } = await searchParams;
   const tenant = await requireTenant();
   const canManage = can(tenant.role, "appointments:manage");
   // O profissional vê apenas a própria agenda (a RLS já garante isso), então
@@ -41,9 +58,29 @@ export default async function AgendaPage({
     tenant.role === "manager" ||
     tenant.role === "receptionist";
   const supabase = await createSupabaseServerClient();
-  const { start } = getUtcDayRange(tenant.timezone);
+  const { start: todayStart } = getUtcDayRange(tenant.timezone);
   // Fim de amanhã no fuso do tenant: janela dos lembretes de WhatsApp.
   const { end: tomorrowEnd } = getUtcNextDayRange(tenant.timezone);
+
+  // Visões (Fase 2): "próximos" (padrão), "dia" (data escolhida) e "semana"
+  // (7 dias a partir da data escolhida/hoje).
+  const validDay = dia && /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : null;
+  const activeView =
+    view === "semana" ? "semana" : validDay ? "dia" : "proximos";
+  const DAY_MS = 86_400_000;
+  const rangeStart = validDay
+    ? zonedDateTimeToUtc(validDay, "00:00", tenant.timezone)
+    : todayStart;
+  const rangeEnd =
+    activeView === "semana"
+      ? new Date(rangeStart.getTime() + 7 * DAY_MS)
+      : activeView === "dia"
+        ? new Date(rangeStart.getTime() + DAY_MS)
+        : null;
+  const statusFilter = STATUS_FILTERS.some((item) => item.value === status)
+    ? (status ?? "")
+    : "";
+  const search = (q ?? "").trim().slice(0, 60);
 
   const { data: professionalData } = await supabase
     .from("professionals")
@@ -64,7 +101,6 @@ export default async function AgendaPage({
             .select("id,name,duration_minutes")
             .eq("barbershop_id", tenant.id)
             .eq("active", true)
-            .eq("public_visible", true)
             .order("name"),
           supabase
             .from("professional_services")
@@ -114,23 +150,63 @@ export default async function AgendaPage({
   let query = supabase
     .from("appointments")
     .select(
-      "id,starts_at,ends_at,status,client:clients(name,phone),service:services(name),professional:professionals(id,name)",
+      "id,starts_at,ends_at,status,client:clients(name,phone),service:services(id,name),professional:professionals(id,name)",
     )
     .eq("barbershop_id", tenant.id)
-    .gte("starts_at", start.toISOString())
+    .gte("starts_at", rangeStart.toISOString())
     .order("starts_at")
-    .limit(100);
+    .limit(300);
+  if (rangeEnd) query = query.lt("starts_at", rangeEnd.toISOString());
+  if (statusFilter) query = query.eq("status", statusFilter);
   if (activeProfessional)
     query = query.eq("professional_id", activeProfessional.id);
   const { data: appointmentData } = await query;
-  const data = appointmentData ?? [];
+  const normalized = search
+    ? search.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    : "";
+  const data = (appointmentData ?? []).filter((item) => {
+    if (!normalized) return true;
+    const name = (first(item.client)?.name ?? "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase();
+    const phone = first(item.client)?.phone ?? "";
+    return name.includes(normalized) || phone.includes(search);
+  });
+
+  // Preserva os demais filtros ao navegar.
+  const buildQuery = (patch: Record<string, string | undefined>) => {
+    const params = new URLSearchParams();
+    const merged: Record<string, string | undefined> = {
+      prof,
+      status: statusFilter || undefined,
+      q: search || undefined,
+      dia: validDay ?? undefined,
+      view: activeView === "proximos" ? undefined : activeView,
+      ...patch,
+    };
+    for (const [key, value] of Object.entries(merged)) {
+      if (value) params.set(key, value);
+    }
+    const qs = params.toString();
+    return qs ? `/agenda?${qs}` : "/agenda";
+  };
+
+  const todayInTz = getDateInTz(tenant.timezone);
+  const dayGroups = new Map<string, typeof data>();
+  for (const item of data) {
+    const key = getDateInTz(tenant.timezone, new Date(item.starts_at));
+    const list = dayGroups.get(key) ?? [];
+    list.push(item);
+    dayGroups.set(key, list);
+  }
 
   return (
     <>
       <PageHeader
         eyebrow="Operação"
         title="Agenda"
-        description="Confirme, conclua ou cancele os próximos atendimentos."
+        description="Confirme, conclua, remarque ou cancele os atendimentos."
         action={
           canSeeAllAgendas ? (
             <ManualAppointmentSheet
@@ -138,7 +214,7 @@ export default async function AgendaPage({
               services={bookableServices}
               professionals={bookableProfessionals}
               timezone={tenant.timezone}
-              todayInTz={getDateInTz(tenant.timezone)}
+              todayInTz={todayInTz}
             />
           ) : (
             <Button asChild>
@@ -149,6 +225,88 @@ export default async function AgendaPage({
           )
         }
       />
+
+      {/* Visão + dia + busca */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex rounded-lg border p-0.5">
+          <Button
+            asChild
+            size="sm"
+            variant={activeView === "proximos" ? "default" : "ghost"}
+          >
+            <Link href={buildQuery({ dia: undefined, view: undefined })}>
+              Próximos
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            variant={activeView === "dia" ? "default" : "ghost"}
+          >
+            <Link
+              href={buildQuery({ dia: validDay ?? todayInTz, view: undefined })}
+            >
+              Dia
+            </Link>
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            variant={activeView === "semana" ? "default" : "ghost"}
+          >
+            <Link
+              href={buildQuery({ dia: validDay ?? todayInTz, view: "semana" })}
+            >
+              Semana
+            </Link>
+          </Button>
+        </div>
+        <form action="/agenda" className="flex items-center gap-2">
+          {prof ? <input type="hidden" name="prof" value={prof} /> : null}
+          {statusFilter ? (
+            <input type="hidden" name="status" value={statusFilter} />
+          ) : null}
+          {activeView === "semana" ? (
+            <input type="hidden" name="view" value="semana" />
+          ) : null}
+          <input
+            type="date"
+            name="dia"
+            defaultValue={validDay ?? todayInTz}
+            aria-label="Escolher dia"
+            className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+          />
+          <input
+            type="search"
+            name="q"
+            defaultValue={search}
+            placeholder="Buscar cliente…"
+            aria-label="Buscar cliente por nome ou telefone"
+            className="border-input bg-background h-9 w-40 rounded-lg border px-3 text-sm sm:w-56"
+          />
+          <Button size="sm" variant="outline" type="submit">
+            <Search className="size-3.5" />
+            <span className="sr-only sm:not-sr-only">Filtrar</span>
+          </Button>
+        </form>
+      </div>
+
+      {/* Status */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((item) => (
+          <Button
+            key={item.value || "all"}
+            asChild
+            size="sm"
+            variant={statusFilter === item.value ? "default" : "outline"}
+          >
+            <Link href={buildQuery({ status: item.value || undefined })}>
+              {item.label}
+            </Link>
+          </Button>
+        ))}
+      </div>
+
       {canSeeAllAgendas && professionals.length ? (
         <div className="mb-5 flex flex-wrap gap-2">
           <Button
@@ -156,7 +314,7 @@ export default async function AgendaPage({
             size="sm"
             variant={activeProfessional ? "outline" : "default"}
           >
-            <Link href="/agenda">Todos</Link>
+            <Link href={buildQuery({ prof: undefined })}>Todos</Link>
           </Button>
           {professionals.map((professional) => (
             <Button
@@ -169,15 +327,16 @@ export default async function AgendaPage({
                   : "outline"
               }
             >
-              <Link href={`/agenda?prof=${professional.id}`}>
+              <Link href={buildQuery({ prof: professional.id })}>
                 {professional.name}
               </Link>
             </Button>
           ))}
         </div>
       ) : null}
+
       {reservations.length ? (
-        <Card className="mb-5 border-amber-300 dark:border-amber-900">
+        <Card className="border-warning/50 mb-5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingBag className="size-4" /> Vendas de produto a confirmar
@@ -216,99 +375,128 @@ export default async function AgendaPage({
         <CardContent className="pt-6">
           {data.length ? (
             <div className="space-y-3">
-              {data.map((item) => {
-                const client = Array.isArray(item.client)
-                  ? item.client[0]
-                  : item.client;
-                const service = Array.isArray(item.service)
-                  ? item.service[0]
-                  : item.service;
-                const professional = Array.isArray(item.professional)
-                  ? item.professional[0]
-                  : item.professional;
-                // Lembrete de WhatsApp: só para horários de hoje e amanhã
-                // ainda de pé (pendentes/confirmados) e com telefone.
-                const startsAt = new Date(item.starts_at);
-                const reminderHref =
-                  startsAt < tomorrowEnd &&
-                  (item.status === "pending" || item.status === "confirmed")
-                    ? reminderWhatsAppHref(
-                        client?.phone,
-                        reminderMessage(
-                          {
-                            clientName: client?.name ?? "cliente",
-                            serviceName: service?.name ?? "seu atendimento",
-                            startsAt,
-                          },
-                          tenant,
-                        ),
-                      )
-                    : null;
-                return (
-                  <div
-                    key={item.id}
-                    className="grid items-center gap-3 rounded-xl border p-4 sm:grid-cols-[90px_1fr_1fr_auto]"
-                  >
-                    <div>
-                      <p className="font-mono text-sm font-semibold">
-                        {formatTimeInTz(item.starts_at, tenant.timezone)}
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        {formatShortDateInTz(item.starts_at, tenant.timezone)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {client?.name ?? "Cliente"}
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        {client?.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm">{service?.name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        com {professional?.name ?? "profissional"}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-start gap-2 sm:items-end">
-                      <AppointmentStatusBadge status={item.status} />
-                      {reminderHref ? (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="outline"
-                          className="text-emerald-700 dark:text-emerald-400"
-                        >
-                          <a
-                            href={reminderHref}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <MessageCircle className="size-3.5" />
-                            Lembrar no WhatsApp
-                          </a>
-                        </Button>
-                      ) : null}
-                      {canManage ? (
-                        <AppointmentActions
-                          appointmentId={item.id}
-                          status={item.status}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+              {[...dayGroups.entries()].map(([dayKey, items]) => (
+                <div key={dayKey} className="space-y-3">
+                  {activeView === "semana" ? (
+                    <p className="text-muted-foreground pt-2 text-xs font-semibold tracking-wide uppercase first:pt-0">
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        timeZone: tenant.timezone,
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "short",
+                      }).format(new Date(items[0].starts_at))}
+                      {dayKey === todayInTz ? " · hoje" : ""}
+                    </p>
+                  ) : null}
+                  {items.map((item) => {
+                    const client = first(item.client);
+                    const service = first(item.service);
+                    const professional = first(item.professional);
+                    // Lembrete de WhatsApp: só para horários de hoje e amanhã
+                    // ainda de pé (pendentes/confirmados) e com telefone.
+                    const startsAt = new Date(item.starts_at);
+                    const reminderHref =
+                      startsAt < tomorrowEnd &&
+                      (item.status === "pending" || item.status === "confirmed")
+                        ? reminderWhatsAppHref(
+                            client?.phone,
+                            reminderMessage(
+                              {
+                                clientName: client?.name ?? "cliente",
+                                serviceName: service?.name ?? "seu atendimento",
+                                startsAt,
+                              },
+                              tenant,
+                            ),
+                          )
+                        : null;
+                    return (
+                      <div
+                        key={item.id}
+                        className="grid items-center gap-3 rounded-xl border p-4 sm:grid-cols-[90px_1fr_1fr_auto]"
+                      >
+                        <div>
+                          <p className="font-mono text-sm font-semibold">
+                            {formatTimeInTz(item.starts_at, tenant.timezone)}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {formatShortDateInTz(
+                              item.starts_at,
+                              tenant.timezone,
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {client?.name ?? "Cliente"}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {client?.phone}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm">{service?.name}</p>
+                          <p className="text-muted-foreground text-xs">
+                            com {professional?.name ?? "profissional"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-start gap-2 sm:items-end">
+                          <AppointmentStatusBadge status={item.status} />
+                          {reminderHref ? (
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="text-emerald-700 dark:text-emerald-400"
+                            >
+                              <a
+                                href={reminderHref}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <MessageCircle className="size-3.5" />
+                                Lembrar no WhatsApp
+                              </a>
+                            </Button>
+                          ) : null}
+                          {canManage ? (
+                            <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                              <AppointmentActions
+                                appointmentId={item.id}
+                                status={item.status}
+                                startsAt={item.starts_at}
+                              />
+                              {(item.status === "pending" ||
+                                item.status === "confirmed") &&
+                              service?.id &&
+                              professional?.id ? (
+                                <RescheduleSheet
+                                  appointmentId={item.id}
+                                  serviceId={service.id}
+                                  professionalId={professional.id}
+                                  todayInTz={todayInTz}
+                                  timezone={tenant.timezone}
+                                />
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           ) : (
             <EmptyState
               title={
-                activeProfessional
-                  ? `Sem horários para ${activeProfessional.name}`
-                  : "Agenda livre"
+                search
+                  ? `Nada encontrado para "${search}"`
+                  : activeProfessional
+                    ? `Sem horários para ${activeProfessional.name}`
+                    : "Agenda livre"
               }
-              description="Os próximos atendimentos aparecerão aqui."
+              description="Ajuste os filtros ou o período para ver outros atendimentos."
             />
           )}
         </CardContent>

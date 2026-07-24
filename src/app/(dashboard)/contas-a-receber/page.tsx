@@ -55,6 +55,7 @@ export default async function ReceivablesPage() {
           settleLabel="Receber"
           settleAction={settleReceivable}
           deleteAction={deleteReceivable}
+          askPaymentMethod
         />
       </div>
     </>

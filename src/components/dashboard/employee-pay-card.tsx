@@ -24,6 +24,7 @@ export type EmployeePaySettings = {
   base_salary: number;
   payment_period: "weekly" | "biweekly" | "monthly";
   payment_day: number | null;
+  commission_rate?: number | null;
 };
 
 export function EmployeePayCard({
@@ -118,6 +119,24 @@ export function EmployeePayCard({
                 placeholder="ex.: 5"
               />
             </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor={`commission-${professionalId}`}>
+                Comissão padrão (%)
+              </Label>
+              <Input
+                id={`commission-${professionalId}`}
+                name="commissionRate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                defaultValue={settings?.commission_rate ?? 0}
+              />
+              <p className="text-muted-foreground text-xs">
+                Vale quando o serviço não define comissão própria — a taxa do
+                serviço, quando maior que zero, tem precedência.
+              </p>
+            </div>
           </div>
           {settingsState.message ? (
             <Alert variant={settingsState.success ? "default" : "destructive"}>
@@ -161,7 +180,9 @@ export function EmployeePayCard({
                 type="number"
                 min="0.01"
                 step="0.01"
-                defaultValue={monthCommission > 0 ? monthCommission.toFixed(2) : ""}
+                defaultValue={
+                  monthCommission > 0 ? monthCommission.toFixed(2) : ""
+                }
                 required
               />
             </div>

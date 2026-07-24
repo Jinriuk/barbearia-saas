@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard, LogOut, Settings, ShieldCheck, UserCog } from "lucide-react";
+import {
+  CreditCard,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  UserCog,
+} from "lucide-react";
 import { signOut } from "@/modules/auth/actions";
 import {
   DropdownMenu,

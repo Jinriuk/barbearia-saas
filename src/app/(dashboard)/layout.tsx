@@ -1,6 +1,7 @@
 import { getSessionUser, requireTenant } from "@/lib/auth/dal";
 import { isPlatformAdmin } from "@/lib/platform-admin";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { PanelTheme } from "@/components/layout/panel-theme";
 
 export default async function ProtectedLayout({
   children,
@@ -13,11 +14,15 @@ export default async function ProtectedLayout({
   const tenant = await requireTenant({ allowLocked: true });
   const user = await getSessionUser();
   return (
-    <DashboardShell
-      tenant={tenant}
-      isPlatformAdmin={isPlatformAdmin(user?.email)}
-    >
-      {children}
-    </DashboardShell>
+    <>
+      {/* Painel dark-first (Fase 1); páginas públicas seguem claras. */}
+      <PanelTheme />
+      <DashboardShell
+        tenant={tenant}
+        isPlatformAdmin={isPlatformAdmin(user?.email)}
+      >
+        {children}
+      </DashboardShell>
+    </>
   );
 }

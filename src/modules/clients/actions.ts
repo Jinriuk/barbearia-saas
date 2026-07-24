@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -158,7 +159,10 @@ export async function restoreClient(
   if (!id) return { success: false, message: "Cliente inválido." };
   const tenant = await requireTenant();
   if (!can(tenant.role, "clients:manage")) {
-    return { success: false, message: "Sem permissão para restaurar clientes." };
+    return {
+      success: false,
+      message: "Sem permissão para restaurar clientes.",
+    };
   }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -171,4 +175,87 @@ export async function restoreClient(
   }
   revalidatePath("/clientes");
   return { success: true, message: "Cliente restaurado." };
+}
+
+const contactOutcomeSchema = z.enum([
+  "sem_resposta",
+  "respondeu",
+  "agendou",
+  "nao_quer_contato",
+]);
+
+/**
+ * Registra que um contato de retorno foi iniciado (Fase 3). O conteúdo da
+ * conversa NÃO é registrado — apenas canal, momento e, depois, o resultado.
+ * Um contato por clique; o segmento "para chamar" aplica carência de 14 dias.
+ */
+export async function logClientContact(formData: FormData) {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) return;
+  const clientId = z.uuid().safeParse(formData.get("clientId"));
+  if (!clientId.success) return;
+
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("client_contacts").insert({
+    barbershop_id: tenant.id,
+    client_id: clientId.data,
+    channel: "whatsapp",
+    created_by: tenant.profileId,
+  });
+  revalidatePath("/clientes");
+  revalidatePath("/dashboard");
+}
+
+/** Marca o resultado do último contato do cliente. */
+export async function setContactOutcome(formData: FormData) {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) return;
+  const clientId = z.uuid().safeParse(formData.get("clientId"));
+  const outcome = contactOutcomeSchema.safeParse(formData.get("outcome"));
+  if (!clientId.success || !outcome.success) return;
+
+  const supabase = await createSupabaseServerClient();
+  const { data: last } = await supabase
+    .from("client_contacts")
+    .select("id")
+    .eq("barbershop_id", tenant.id)
+    .eq("client_id", clientId.data)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!last) return;
+
+  await supabase
+    .from("client_contacts")
+    .update({ outcome: outcome.data })
+    .eq("id", last.id)
+    .eq("barbershop_id", tenant.id);
+
+  // "Não quer contato" é opt-out: interrompe régua e sai de "para chamar".
+  if (outcome.data === "nao_quer_contato") {
+    await supabase
+      .from("clients")
+      .update({ contact_opt_out: true })
+      .eq("id", clientId.data)
+      .eq("barbershop_id", tenant.id);
+  }
+  revalidatePath("/clientes");
+  revalidatePath("/dashboard");
+}
+
+/** Liga/desliga o opt-out de contato do cliente. */
+export async function toggleClientOptOut(formData: FormData) {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "clients:manage")) return;
+  const clientId = z.uuid().safeParse(formData.get("clientId"));
+  if (!clientId.success) return;
+  const optOut = String(formData.get("optOut")) === "true";
+
+  const supabase = await createSupabaseServerClient();
+  await supabase
+    .from("clients")
+    .update({ contact_opt_out: !optOut })
+    .eq("id", clientId.data)
+    .eq("barbershop_id", tenant.id);
+  revalidatePath("/clientes");
 }

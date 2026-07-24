@@ -13,6 +13,9 @@ const settingsSchema = z.object({
   baseSalary: z.coerce.number().min(0).max(9999999),
   paymentPeriod: z.enum(["weekly", "biweekly", "monthly"]),
   paymentDay: z.coerce.number().int().min(1).max(31).optional(),
+  // Taxa padrão do profissional (Fase 4): usada quando o serviço não define
+  // uma comissão específica (precedência do serviço quando > 0).
+  commissionRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 const paymentSchema = z.object({
@@ -34,7 +37,10 @@ export async function saveEmployeePaySettings(
 ): Promise<ActionState> {
   const tenant = await requireTenant();
   if (!can(tenant.role, "finance:view")) {
-    return { success: false, message: "Apenas o proprietário pode configurar." };
+    return {
+      success: false,
+      message: "Apenas o proprietário pode configurar.",
+    };
   }
   const parsed = settingsSchema.safeParse({
     professionalId: formData.get("professionalId"),
@@ -42,6 +48,7 @@ export async function saveEmployeePaySettings(
     baseSalary: formData.get("baseSalary") || 0,
     paymentPeriod: formData.get("paymentPeriod"),
     paymentDay: formData.get("paymentDay") || undefined,
+    commissionRate: formData.get("commissionRate") || undefined,
   });
   if (!parsed.success) {
     return { success: false, message: "Revise os dados do pagamento." };
@@ -56,6 +63,7 @@ export async function saveEmployeePaySettings(
       base_salary: parsed.data.baseSalary,
       payment_period: parsed.data.paymentPeriod,
       payment_day: parsed.data.paymentDay ?? null,
+      commission_rate: parsed.data.commissionRate ?? 0,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "professional_id" },
@@ -108,7 +116,10 @@ export async function registerEmployeePayment(
     created_by: tenant.profileId,
   });
   if (error) {
-    return { success: false, message: "Não foi possível registrar o pagamento." };
+    return {
+      success: false,
+      message: "Não foi possível registrar o pagamento.",
+    };
   }
 
   // Integra com o financeiro como despesa paga.

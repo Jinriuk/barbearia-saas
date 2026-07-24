@@ -9,6 +9,17 @@ import type { ActionState } from "@/types/domain";
 
 const statusSchema = z.enum(["confirmed", "completed", "canceled", "no_show"]);
 
+const RESCHEDULE_ERRORS: Record<string, string> = {
+  APPOINTMENT_CONFLICT:
+    "Esse horário acabou de ser ocupado. O horário anterior foi mantido.",
+  SCHEDULE_BLOCKED: "O profissional está bloqueado nesse horário.",
+  NOT_AUTHORIZED: "Sem permissão para remarcar este atendimento.",
+  INVALID_STATUS_TRANSITION:
+    "Só é possível remarcar horários pendentes ou confirmados.",
+  INVALID_START: "Escolha um horário no futuro.",
+  APPOINTMENT_NOT_FOUND: "Atendimento não encontrado. Atualize a página.",
+};
+
 const manualAppointmentSchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -127,11 +138,56 @@ export async function getManualSlots(
   return { slots: (data ?? []) as Array<{ starts_at: string }> };
 }
 
-// Transições válidas a partir do status atual.
+// Transições válidas a partir do status atual (espelho da máquina de
+// estados do banco — trigger enforce_appointment_transition, Fase 2).
+// completed/no_show → confirmed são correções explícitas de engano.
 const allowedTransitions: Record<string, string[]> = {
   pending: ["confirmed", "canceled"],
   confirmed: ["completed", "canceled", "no_show"],
+  completed: ["confirmed"],
+  no_show: ["confirmed"],
 };
+
+/**
+ * Remarcação transacional (Fase 2): RPC valida bloqueios e deixa a exclusion
+ * constraint arbitrar conflito — em falha, o horário anterior fica de pé.
+ * O histórico é preservado (mesma linha + audit_log com os horários antigos).
+ */
+export async function rescheduleAppointment(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "appointments:manage")) {
+    return { success: false, message: "Sem permissão para remarcar." };
+  }
+  const parsed = z
+    .object({ id: z.uuid(), startsAt: z.iso.datetime({ offset: true }) })
+    .safeParse({ id: formData.get("id"), startsAt: formData.get("startsAt") });
+  if (!parsed.success) {
+    return { success: false, message: "Escolha o novo dia e horário." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("reschedule_appointment", {
+    p_appointment_id: parsed.data.id,
+    p_starts_at: parsed.data.startsAt,
+  });
+  if (error) {
+    const known = Object.keys(RESCHEDULE_ERRORS).find((code) =>
+      error.message.includes(code),
+    );
+    return {
+      success: false,
+      message: known
+        ? RESCHEDULE_ERRORS[known]
+        : "Não foi possível remarcar. Tente novamente.",
+    };
+  }
+  revalidatePath("/agenda");
+  revalidatePath("/dashboard");
+  return { success: true, message: "Atendimento remarcado." };
+}
 
 export async function updateAppointmentStatus(formData: FormData) {
   const tenant = await requireTenant();

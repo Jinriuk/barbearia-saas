@@ -39,12 +39,7 @@ export default async function FinancialReportPage({
   const tenant = await requireTenant();
   if (!can(tenant.role, "finance:view")) notFound();
 
-  const {
-    start,
-    end,
-    year,
-    month,
-  } = getUtcMonthRange(tenant.timezone, mes);
+  const { start, end, year, month } = getUtcMonthRange(tenant.timezone, mes);
 
   const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: tenant.timezone,
@@ -114,10 +109,22 @@ export default async function FinancialReportPage({
 
   const byProfessional = new Map<
     string,
-    { name: string; count: number; service: number; product: number; total: number }
+    {
+      name: string;
+      count: number;
+      service: number;
+      product: number;
+      total: number;
+    }
   >();
-  const byService = new Map<string, { name: string; count: number; revenue: number }>();
-  const byProduct = new Map<string, { name: string; qty: number; revenue: number }>();
+  const byService = new Map<
+    string,
+    { name: string; count: number; revenue: number }
+  >();
+  const byProduct = new Map<
+    string,
+    { name: string; qty: number; revenue: number }
+  >();
   const byMethod = new Map<string, number>();
   const clientSet = new Set<string>();
   let serviceRevenue = 0;
@@ -140,9 +147,10 @@ export default async function FinancialReportPage({
 
   for (const row of incomeRows ?? []) {
     const total = Number(row.amount);
+    // Sem método registrado (dados anteriores à Fase 0) → "Não informado".
     byMethod.set(
-      row.payment_method ?? "other",
-      (byMethod.get(row.payment_method ?? "other") ?? 0) + total,
+      row.payment_method ?? "",
+      (byMethod.get(row.payment_method ?? "") ?? 0) + total,
     );
     const appt = first(row.appointment);
     if (!appt) {
@@ -207,9 +215,15 @@ export default async function FinancialReportPage({
     product: monthBuckets.get(m.key)?.product ?? 0,
   }));
 
-  const professionals = [...byProfessional.values()].sort((a, b) => b.total - a.total);
-  const services = [...byService.values()].sort((a, b) => b.revenue - a.revenue);
-  const products = [...byProduct.values()].sort((a, b) => b.revenue - a.revenue);
+  const professionals = [...byProfessional.values()].sort(
+    (a, b) => b.total - a.total,
+  );
+  const services = [...byService.values()].sort(
+    (a, b) => b.revenue - a.revenue,
+  );
+  const products = [...byProduct.values()].sort(
+    (a, b) => b.revenue - a.revenue,
+  );
   const methods = [...byMethod.entries()].sort((a, b) => b[1] - a[1]);
   const grandTotal = serviceRevenue + productRevenue + otherRevenue;
   const serviceShare =
@@ -284,7 +298,7 @@ export default async function FinancialReportPage({
       </section>
 
       <section className="mt-7">
-        <h2 className="mb-2 text-sm font-bold tracking-wide uppercase text-neutral-500">
+        <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-500 uppercase">
           Evolução da receita (6 meses)
         </h2>
         <MonthlyRevenueChart data={chartData} />
@@ -306,7 +320,11 @@ export default async function FinancialReportPage({
       <ReportTable
         title="Receitas por serviço"
         head={["Serviço", "Qtd.", "Receita"]}
-        rows={services.map((s) => [s.name, String(s.count), formatBRL(s.revenue)])}
+        rows={services.map((s) => [
+          s.name,
+          String(s.count),
+          formatBRL(s.revenue),
+        ])}
         empty="Nenhum serviço faturado."
       />
 
@@ -360,7 +378,8 @@ export default async function FinancialReportPage({
       </section>
 
       <footer className="mt-10 border-t pt-4 text-center text-xs text-neutral-400">
-        {shopName} · Relatório gerado automaticamente pelo painel · {generatedAt}
+        {shopName} · Relatório gerado automaticamente pelo painel ·{" "}
+        {generatedAt}
       </footer>
     </div>
   );
@@ -379,7 +398,7 @@ function ReportTable({
 }) {
   return (
     <section className="mt-7 break-inside-avoid">
-      <h2 className="mb-2 text-sm font-bold tracking-wide uppercase text-neutral-500">
+      <h2 className="mb-2 text-sm font-bold tracking-wide text-neutral-500 uppercase">
         {title}
       </h2>
       {rows.length ? (

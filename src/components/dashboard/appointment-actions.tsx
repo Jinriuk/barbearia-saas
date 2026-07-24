@@ -1,4 +1,4 @@
-import { Check, CheckCheck, UserX, X } from "lucide-react";
+import { Check, CheckCheck, RotateCcw, UserX, X } from "lucide-react";
 import { updateAppointmentStatus } from "@/modules/appointments/actions";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,8 @@ const actionsByStatus: Record<
     icon: typeof Check;
     variant?: "outline" | "ghost";
     className?: string;
+    /** Concluir não pode acontecer no futuro (máquina de estados, Fase 2). */
+    notInFuture?: boolean;
   }>
 > = {
   pending: [
@@ -35,6 +37,7 @@ const actionsByStatus: Record<
       label: "Concluir",
       icon: CheckCheck,
       variant: "outline",
+      notInFuture: true,
       className:
         "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900 dark:text-emerald-400",
     },
@@ -43,6 +46,7 @@ const actionsByStatus: Record<
       label: "Não veio",
       icon: UserX,
       variant: "ghost",
+      notInFuture: true,
       className: "text-rose-600 dark:text-rose-400",
     },
     {
@@ -53,17 +57,42 @@ const actionsByStatus: Record<
       className: "text-muted-foreground",
     },
   ],
+  // Correções explícitas de engano do balcão (voltam para confirmado).
+  completed: [
+    {
+      status: "confirmed",
+      label: "Desfazer conclusão",
+      icon: RotateCcw,
+      variant: "ghost",
+      className: "text-muted-foreground",
+    },
+  ],
+  no_show: [
+    {
+      status: "confirmed",
+      label: "Desfazer falta",
+      icon: RotateCcw,
+      variant: "ghost",
+      className: "text-muted-foreground",
+    },
+  ],
 };
 
 export function AppointmentActions({
   appointmentId,
   status,
+  startsAt,
 }: {
   appointmentId: string;
   status: string;
+  /** ISO do início — usado para esconder "Concluir" de horários futuros. */
+  startsAt?: string;
 }) {
-  const actions = actionsByStatus[status];
-  if (!actions?.length) return null;
+  const inFuture = startsAt ? new Date(startsAt) > new Date() : false;
+  const actions = (actionsByStatus[status] ?? []).filter(
+    (action) => !(action.notInFuture && inFuture),
+  );
+  if (!actions.length) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">

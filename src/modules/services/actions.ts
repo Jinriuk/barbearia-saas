@@ -20,6 +20,9 @@ export async function saveService(
     category: formData.get("category") || undefined,
     imageUrl: formData.get("imageUrl") ?? "",
     active: formData.get("active") === "on",
+    audience: formData.get("audience") || undefined,
+    returnDays: formData.get("returnDays") || undefined,
+    commissionRate: formData.get("commissionRate") || undefined,
     professionalIds: formData.getAll("professionalIds").map(String),
   });
   if (!parsed.success) {
@@ -39,6 +42,9 @@ export async function saveService(
     category: parsed.data.category || null,
     image_url: parsed.data.imageUrl || null,
     active: parsed.data.active ?? true,
+    audience: parsed.data.audience ?? "public",
+    return_days: parsed.data.returnDays ?? null,
+    commission_rate: parsed.data.commissionRate ?? 0,
   };
 
   let serviceId = parsed.data.id ?? null;

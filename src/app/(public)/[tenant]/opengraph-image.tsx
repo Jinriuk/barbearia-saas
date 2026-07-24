@@ -68,73 +68,71 @@ export default async function OpengraphImage({
   const name = data?.barbershop.name ?? theme.brand;
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: 72,
+        background: theme.background,
+        color: theme.text,
+        fontFamily: "sans-serif",
+      }}
+    >
       <div
         style={{
-          width: "100%",
-          height: "100%",
           display: "flex",
-          flexDirection: "column",
+          width: 64,
+          height: 64,
+          borderRadius: 999,
+          background: theme.accent,
+          color: theme.accentText,
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 34,
+        }}
+      >
+        {theme.glyph}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div
+          style={{
+            fontSize: 72,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: -2,
+            maxWidth: 1000,
+          }}
+        >
+          {name}
+        </div>
+        <div style={{ fontSize: 32, color: theme.muted }}>
+          Agende seu horário online — rápido, sem ligação.
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
           justifyContent: "space-between",
-          padding: 72,
-          background: theme.background,
-          color: theme.text,
-          fontFamily: "sans-serif",
         }}
       >
         <div
           style={{
             display: "flex",
-            width: 64,
-            height: 64,
+            height: 10,
+            width: 220,
             borderRadius: 999,
             background: theme.accent,
-            color: theme.accentText,
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 34,
           }}
-        >
-          {theme.glyph}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div
-            style={{
-              fontSize: 72,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: -2,
-              maxWidth: 1000,
-            }}
-          >
-            {name}
-          </div>
-          <div style={{ fontSize: 32, color: theme.muted }}>
-            Agende seu horário online — rápido, sem ligação.
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              height: 10,
-              width: 220,
-              borderRadius: 999,
-              background: theme.accent,
-            }}
-          />
-          <div style={{ fontSize: 24, color: theme.muted }}>
-            {`Reserva online · ${theme.brand}`}
-          </div>
+        />
+        <div style={{ fontSize: 24, color: theme.muted }}>
+          {`Reserva online · ${theme.brand}`}
         </div>
       </div>
-    ),
+    </div>,
     size,
   );
 }

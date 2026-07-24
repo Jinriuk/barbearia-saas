@@ -28,8 +28,29 @@ type ServiceInput = {
   category: string | null;
   image_url: string | null;
   active: boolean;
+  audience?: string | null;
+  return_days?: number | null;
+  commission_rate?: number | null;
   professionalIds: string[];
 };
+
+const AUDIENCES = [
+  {
+    value: "public",
+    label: "Público geral",
+    hint: "Aparece na página e no agendamento online.",
+  },
+  {
+    value: "members",
+    label: "Exclusivo de assinantes",
+    hint: "Não aparece ao público geral (planos de clientes).",
+  },
+  {
+    value: "internal",
+    label: "Interno (balcão)",
+    hint: "Só a equipe lança, nunca aparece na página.",
+  },
+] as const;
 
 /**
  * Formulário de serviço em painel lateral, usado tanto para criar quanto para
@@ -128,6 +149,39 @@ export function ServiceFormSheet({
             </div>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="service-commission">Comissão do serviço (%)</Label>
+            <Input
+              id="service-commission"
+              name="commissionRate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              defaultValue={service?.commission_rate ?? 0}
+            />
+            <p className="text-muted-foreground text-xs">
+              Maior que zero sobrepõe a comissão padrão do profissional
+              (Financeiro → Comissões).
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="service-return-days">
+              Retorno recomendado (dias)
+            </Label>
+            <Input
+              id="service-return-days"
+              name="returnDays"
+              type="number"
+              min="0"
+              max="365"
+              placeholder="Ex.: 21"
+              defaultValue={service?.return_days ?? ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Usado para prever o retorno de clientes com pouco histórico.
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="service-category">Categoria</Label>
             <Input
               id="service-category"
@@ -180,6 +234,22 @@ export function ServiceFormSheet({
               </div>
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="service-audience">Quem pode ver e agendar</Label>
+            <select
+              id="service-audience"
+              name="audience"
+              defaultValue={service?.audience ?? "public"}
+              className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm"
+            >
+              {AUDIENCES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label} — {item.hint}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <label className="flex items-center gap-2 text-sm">
             <input

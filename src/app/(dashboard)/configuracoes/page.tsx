@@ -10,6 +10,10 @@ import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { AppearanceEditor } from "@/components/dashboard/appearance-editor";
 import { SharePageCard } from "@/components/dashboard/share-page-card";
 import { ContactSettingsForm } from "@/components/dashboard/contact-settings-form";
+import {
+  BookingRulesForm,
+  OpeningHoursForm,
+} from "@/components/dashboard/booking-rules-form";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
@@ -40,9 +44,9 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="White label"
-        title="Identidade Visual"
-        description={`Sua barbearia está no plano ${planLabel(tenant.plan)}. Ajuste a logo, as cores, o fundo e as informações da página pública.`}
+        eyebrow="Configurações"
+        title="Configurações"
+        description={`Plano ${planLabel(tenant.plan)}. Dados da barbearia, regras de agendamento, horários e a aparência da página pública.`}
         action={
           <div className="flex items-center gap-3">
             <PlanBadge plan={tenant.plan} />
@@ -84,6 +88,20 @@ export default async function SettingsPage() {
             address: data?.address ?? "",
             whatsappRemindersEnabled: data?.whatsapp_reminders_enabled ?? true,
           }}
+        />
+        <BookingRulesForm
+          initial={{
+            bookingNoticeMinutes: data?.booking_notice_minutes ?? 60,
+            cancellationNoticeMinutes: data?.cancellation_notice_minutes ?? 120,
+            bookingHorizonDays: data?.booking_horizon_days ?? 60,
+            bookingConfirmationMode:
+              (data?.booking_confirmation_mode as "manual" | "auto") ??
+              "manual",
+            maxPendingPerClient: data?.max_pending_per_client ?? 3,
+          }}
+        />
+        <OpeningHoursForm
+          initial={(data?.opening_hours as Record<string, string>) ?? {}}
         />
       </div>
     </>

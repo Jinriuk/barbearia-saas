@@ -1,5 +1,23 @@
 -- Seed público e sem credenciais. Use apenas em desenvolvimento.
 -- A demonstração usa o plano Plus para exercitar white label e upsell de produtos.
+
+-- Trava de produção (Fase 0): se o banco já tem tenants reais (fora das
+-- demos deste seed), aborta antes de inserir qualquer coisa. Em um banco
+-- recém-resetado de desenvolvimento a checagem passa sem atrito.
+do $$
+begin
+  if exists (
+    select 1 from public.barbershops
+    where id not in (
+      '10000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000002'
+    )
+  ) then
+    raise exception
+      'seed.sql bloqueado: o banco contém tenants reais. Este seed é apenas para desenvolvimento.';
+  end if;
+end;
+$$;
 insert into public.barbershops (id, name, slug, status, plan)
 values ('10000000-0000-4000-8000-000000000001', 'Barbearia Aurora', 'aurora', 'active', 'plus')
 on conflict (id) do nothing;

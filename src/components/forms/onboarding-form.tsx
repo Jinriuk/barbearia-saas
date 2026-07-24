@@ -12,9 +12,12 @@ import { cn } from "@/lib/utils";
 export function OnboardingForm({
   defaultPlan = "starter",
   vertical = "barber",
+  monthlyPrices,
 }: {
   defaultPlan?: PlanKey;
   vertical?: "barber" | "salon";
+  /** Preços do catálogo do banco (Fase 2B); ausente = fallback local. */
+  monthlyPrices?: Record<PlanKey, number>;
 }) {
   const [plan, setPlan] = useState<PlanKey>(defaultPlan);
   const [name, setName] = useState("");
@@ -32,7 +35,9 @@ export function OnboardingForm({
         <Input
           id="name"
           name="name"
-          placeholder={vertical === "salon" ? "Studio Aurora" : "Barbearia Aurora"}
+          placeholder={
+            vertical === "salon" ? "Studio Aurora" : "Barbearia Aurora"
+          }
           value={name}
           onChange={(event) => {
             setName(event.target.value);
@@ -93,7 +98,7 @@ export function OnboardingForm({
                   {item.label}
                 </span>
                 <span className="text-muted-foreground block text-xs">
-                  {formatPriceBRL(item.priceCents)}/mês
+                  {formatPriceBRL(monthlyPrices?.[key] ?? item.priceCents)}/mês
                 </span>
               </label>
             );
