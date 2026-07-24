@@ -14,6 +14,9 @@ export const serviceSchema = z.object({
   // Regra de público (Fase 0): serviço de assinante ou interno não aparece
   // na página nem no agendamento público.
   audience: z.enum(["public", "members", "internal"]).optional(),
+  // Fallback do retorno previsto (Fase 3) quando o cliente tem pouco
+  // histórico. Vazio = usa o padrão de 30 dias.
+  returnDays: z.coerce.number().int().min(0).max(365).optional(),
   professionalIds: z.array(uuid).max(200).optional(),
 });
 

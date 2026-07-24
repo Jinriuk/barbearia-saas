@@ -124,3 +124,24 @@ Regras:
 "Oculto" continua sendo `public_visible = false`. As RPCs públicas
 (`get_public_barbershop`, `get_public_availability`,
 `create_public_appointment`) filtram `audience = 'public'`.
+
+## Retorno previsto do cliente (Fase 3)
+
+Hierarquia (documentada também na migration 0026):
+
+1. **≥3 visitas concluídas** → mediana dos intervalos entre visitas,
+   limitada a 5–180 dias (confiança **alta**);
+2. senão → `services.return_days` do último serviço concluído (confiança
+   **baixa** — a interface sinaliza "poucas visitas");
+3. senão → fallback de **30 dias**.
+
+Cancelamento e falta nunca contam como visita. Cliente sem visita concluída
+fica **sem previsão** (nunca é classificado como atrasado/perdido).
+
+Segmentos (limites): **Para chamar** = retorno previsto já passou + sem
+contato nos últimos 14 dias + sem opt-out; **Próximos do retorno** =
+previsto para os próximos 7 dias; **Em atraso** = previsto já passou;
+**Sem voltar há 60 dias** = última visita concluída há ≥60 dias.
+Contato registrado em `client_contacts` (canal + resultado, nunca o
+conteúdo da conversa); resultado "não quer contato" liga o opt-out do
+cliente e interrompe qualquer régua.

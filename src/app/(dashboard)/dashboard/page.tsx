@@ -18,6 +18,7 @@ import { requireTenant } from "@/lib/auth/dal";
 import { can, type Permission } from "@/lib/permissions";
 import {
   formatTimeInTz,
+  getDateInTz,
   getUtcDayRange,
   getUtcMonthRange,
   getUtcNextDayRange,
@@ -171,6 +172,48 @@ export default async function DashboardPage({
         })
       : Promise.resolve({ data: null }),
   ]);
+
+  // Dashboard orientado a ação (Fase 3 §9.5): cada alerta tem um destino.
+  const canClients = can(tenant.role, "clients:manage");
+  const [toCallRes, pendingRes, overdueRes] = await Promise.all([
+    canClients
+      ? supabase.rpc("count_clients_to_call", { p_barbershop: tenant.id })
+      : Promise.resolve({ data: 0 }),
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "pending")
+      .gte("starts_at", new Date().toISOString()),
+    canFinance
+      ? supabase
+          .from("accounts_payable")
+          .select("id", { count: "exact", head: true })
+          .eq("barbershop_id", tenant.id)
+          .eq("status", "pending")
+          .lt("due_date", getDateInTz(tenant.timezone))
+      : Promise.resolve({ count: 0 }),
+  ]);
+  const actionItems = [
+    {
+      label: "Clientes para chamar",
+      count: Number(toCallRes.data ?? 0),
+      href: "/clientes?segmento=para_chamar",
+      cta: "Chamar no WhatsApp",
+    },
+    {
+      label: "Reservas aguardando confirmação",
+      count: pendingRes.count ?? 0,
+      href: "/agenda?status=pending",
+      cta: "Confirmar na agenda",
+    },
+    {
+      label: "Contas vencidas",
+      count: overdueRes.count ?? 0,
+      href: "/contas-a-pagar",
+      cta: "Ver despesas",
+    },
+  ].filter((item) => item.count > 0);
 
   // Jornada de ativação (Fase 1): derivada de dados reais — retoma sozinha.
   let activationSteps: ActivationStep[] = [];
@@ -339,6 +382,33 @@ export default async function DashboardPage({
 
       {activationSteps.length ? (
         <ActivationChecklist steps={activationSteps} />
+      ) : null}
+
+      {actionItems.length ? (
+        <Card className="border-warning/40 mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Precisa de atenção hoje</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {actionItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="hover:border-primary/50 hover:bg-muted/40 flex min-h-12 items-center justify-between gap-3 rounded-lg border px-4 py-2.5 transition-colors"
+              >
+                <span className="text-sm font-medium">
+                  {item.label}
+                  <span className="text-warning ml-2 font-mono">
+                    {item.count}
+                  </span>
+                </span>
+                <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+                  {item.cta} <ArrowRight className="size-3.5" />
+                </span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
 
       {revenueCards.length ? (

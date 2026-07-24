@@ -31,7 +31,7 @@ export default async function ServicesPage() {
     supabase
       .from("services")
       .select(
-        "id,name,description,price,duration_minutes,active,category,image_url,audience",
+        "id,name,description,price,duration_minutes,active,category,image_url,audience,return_days",
       )
       .eq("barbershop_id", tenant.id)
       .order("name"),

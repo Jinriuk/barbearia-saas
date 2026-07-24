@@ -195,6 +195,14 @@ export function zonedDateTimeToUtc(
   return new Date(guess - secondOffset);
 }
 
+/**
+ * Instante atual em ms — para server components que derivam estado do relógio
+ * por request (cada render no servidor é uma requisição nova).
+ */
+export function currentEpochMs(): number {
+  return Date.now();
+}
+
 export function getDateInTz(timeZone: string, now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,

@@ -29,6 +29,7 @@ type ServiceInput = {
   image_url: string | null;
   active: boolean;
   audience?: string | null;
+  return_days?: number | null;
   professionalIds: string[];
 };
 
@@ -145,6 +146,23 @@ export function ServiceFormSheet({
                 required
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="service-return-days">
+              Retorno recomendado (dias)
+            </Label>
+            <Input
+              id="service-return-days"
+              name="returnDays"
+              type="number"
+              min="0"
+              max="365"
+              placeholder="Ex.: 21"
+              defaultValue={service?.return_days ?? ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Usado para prever o retorno de clientes com pouco histórico.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="service-category">Categoria</Label>

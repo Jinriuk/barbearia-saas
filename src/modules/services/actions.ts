@@ -21,6 +21,7 @@ export async function saveService(
     imageUrl: formData.get("imageUrl") ?? "",
     active: formData.get("active") === "on",
     audience: formData.get("audience") || undefined,
+    returnDays: formData.get("returnDays") || undefined,
     professionalIds: formData.getAll("professionalIds").map(String),
   });
   if (!parsed.success) {
@@ -41,6 +42,7 @@ export async function saveService(
     image_url: parsed.data.imageUrl || null,
     active: parsed.data.active ?? true,
     audience: parsed.data.audience ?? "public",
+    return_days: parsed.data.returnDays ?? null,
   };
 
   let serviceId = parsed.data.id ?? null;

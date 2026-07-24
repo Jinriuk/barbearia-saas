@@ -41,12 +41,12 @@
 
 ## Clientes
 
-| Funcionalidade                                           | Estado      | Observações |
-| -------------------------------------------------------- | ----------- | ----------- |
-| Cadastro e busca de clientes                             | operacional |             |
-| Arquivar/restaurar cliente                               | operacional |             |
-| Frequência, retorno previsto e segmentos ("para chamar") | planejado   | Fase 3.     |
-| Histórico gerencial (gasto, última visita)               | planejado   | Fase 3.     |
+| Funcionalidade                                           | Estado      | Observações                                                                                  |
+| -------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
+| Cadastro e busca de clientes                             | operacional | Fase 3: busca e paginação no servidor.                                                       |
+| Arquivar/restaurar cliente                               | operacional |                                                                                              |
+| Frequência, retorno previsto e segmentos ("para chamar") | operacional | Fase 3: mediana individual → return_days → 30d; segmentos com carência de contato e opt-out. |
+| Histórico gerencial (gasto, última visita)               | operacional | Fase 3: agregados no banco (RPC paginada), gasto só de transações pagas.                     |
 
 ## Catálogo e estoque
 
