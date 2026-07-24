@@ -18,6 +18,7 @@ import {
 import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
 import { formatPriceBRL } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { LeadCaptureForm } from "@/components/platform/lead-capture-form";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -226,17 +227,16 @@ export default async function HomePage() {
               Plataforma completa para barbearias
             </Badge>
             <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-5xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-7xl">
-              A barbearia que trabalha{" "}
+              Gestão simples para barbearias que querem{" "}
               <span className="animate-gradient-pan bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 bg-clip-text text-transparent">
-                no seu ritmo
+                crescer
               </span>
               .
             </h1>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-stone-400 delay-150 duration-1000">
-              O sistema que cuida do seu negócio inteiro: agenda sem conflito,
-              financeiro que se preenche sozinho, clientes, equipe, estoque e
-              uma página de agendamento deslumbrante com a sua marca. Sem
-              planilha, sem caderninho.
+              Da agenda ao lucro, sua barbearia sob controle: organize agenda,
+              equipe e financeiro, saiba quais clientes precisam voltar e tome
+              decisões com clareza. Sem planilha, sem caderninho.
             </p>
             <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
@@ -718,6 +718,22 @@ export default async function HomePage() {
                 </Link>
               </Button>
             </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ===== Lead: prefere que a gente chame? ===== */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <Reveal>
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Prefere que a gente fale com você?
+            </h2>
+            <p className="mt-2 mb-6 text-sm text-stone-400">
+              Deixe seu contato e te mostramos o NexoBarber funcionando na sua
+              realidade. Sem compromisso.
+            </p>
+            <LeadCaptureForm vertical="barber" />
           </div>
         </Reveal>
       </section>

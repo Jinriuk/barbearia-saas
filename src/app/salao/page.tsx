@@ -18,6 +18,7 @@ import {
 import { SALON_PHOTOS, SALON_STOCK } from "@/lib/assets";
 import { formatPriceBRL } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { LeadCaptureForm } from "@/components/platform/lead-capture-form";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -675,6 +676,20 @@ export default async function SalonLandingPage() {
             </div>
           </div>
         </Reveal>
+      </section>
+
+      {/* ===== Lead: prefere que a gente chame? ===== */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Prefere que a gente fale com você?
+          </h2>
+          <p className="mt-2 mb-6 text-sm text-stone-400">
+            Deixe seu contato e mostramos o NexoBeleza funcionando na sua
+            realidade. Sem compromisso.
+          </p>
+          <LeadCaptureForm vertical="salon" />
+        </div>
       </section>
 
       {/* ===== Footer ===== */}

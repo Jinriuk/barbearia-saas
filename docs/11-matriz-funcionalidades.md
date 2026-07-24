@@ -73,7 +73,7 @@
 | ------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Cadastro + onboarding + trial              | operacional |                                                                                                                             |
 | Catálogo de preços no banco (mensal/anual) | operacional | Fase 2B: plan_prices versionado; landing/onboarding/assinatura leem do banco com fallback.                                  |
-| Captura de lead pré-checkout               | interno     | Fase 2B: tabela + rota com rate limit e consentimento; UI entra na Fase 5.                                                  |
+| Captura de lead pré-checkout               | operacional | Fase 5: formulário nas duas landings com consentimento, UTMs e evento `lead_submitted` (sem PII).                           |
 | Assinatura com registro no banco           | operacional | Régua trial→past_due→suspended→canceled com auditoria no cron.                                                              |
 | Checkout online (mensal/anual)             | planejado   | Bloqueado por decisão de provedor de pagamento; preços mensal/anual já exibidos do catálogo.                                |
 | Webhook de pagamento                       | beta        | Fase 2B: HMAC + anti-replay + idempotência (billing_events) + preço conferido no catálogo; falta contratar o provedor real. |
@@ -81,9 +81,9 @@
 
 ## Plataforma
 
-| Funcionalidade                                | Estado      | Observações                                                                    |
-| --------------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| Isolamento multiempresa (RLS + FKs compostas) | operacional | Vistoria em `supabase/tests/vistoria.sql`.                                     |
-| Rate limit compartilhado (Postgres)           | operacional | Fase 0: reserva pública; demais rotas usam limite em memória como 1ª barreira. |
-| Páginas legais (termos/privacidade)           | operacional |                                                                                |
-| Observabilidade (logs estruturados, alertas)  | planejado   | Fase 6.                                                                        |
+| Funcionalidade                                     | Estado      | Observações                                                                                              |
+| -------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| Isolamento multiempresa (RLS + FKs compostas)      | operacional | Vistoria em `supabase/tests/vistoria.sql`.                                                               |
+| Rate limit compartilhado (Postgres)                | operacional | Fase 0: reserva pública; demais rotas usam limite em memória como 1ª barreira.                           |
+| Páginas legais (termos/privacidade)                | operacional |                                                                                                          |
+| Observabilidade (runbook, monitoramento, métricas) | beta        | Fase 6: runbook + monitoramento via crons/billing_events/logs (docs/12); dashboards dedicados pendentes. |
