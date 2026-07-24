@@ -788,6 +788,14 @@ grant execute on function public.consume_rate_limit(text, integer, integer)
   to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 9b. Higiene de segurança (advisor): sobrecargas antigas de
+--     create_barbershop continuavam executáveis por authenticated e pulavam
+--     as validações novas (assinatura/trial/vertical). Só a versão de 4
+--     argumentos (migration 0019) permanece.
+drop function if exists public.create_barbershop(text, text);
+drop function if exists public.create_barbershop(text, text, text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 10. Estorno e cancelamento de receita com auditoria — nunca apagar o
 --     histórico financeiro. audit_logs só aceita escrita via definer.
 create or replace function public.revert_income_payment(p_transaction_id uuid)
