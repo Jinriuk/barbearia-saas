@@ -99,7 +99,9 @@ export default async function EmployeePaymentsPage({
       .limit(3000),
     supabase
       .from("employee_pay_settings")
-      .select("professional_id,model,base_salary,payment_period,payment_day")
+      .select(
+        "professional_id,model,base_salary,payment_period,payment_day,commission_rate",
+      )
       .eq("barbershop_id", tenant.id),
     supabase
       .from("employee_payments")
@@ -120,16 +122,34 @@ export default async function EmployeePaymentsPage({
         payment_period:
           row.payment_period as EmployeePaySettings["payment_period"],
         payment_day: row.payment_day as number | null,
+        commission_rate: Number(row.commission_rate ?? 0),
       },
     ]),
   );
 
+  // Taxa padrão por profissional (fonte de verdade unificada — Fase 4).
+  const defaultRateByPro = new Map<string, number>(
+    (settingsData ?? []).map((row) => [
+      row.professional_id as string,
+      Number(row.commission_rate ?? 0),
+    ]),
+  );
+
+  // Precedência da comissão (regra única, documentada em docs/05):
+  // 1) taxa específica do SERVIÇO quando > 0; 2) senão, taxa padrão do
+  // PROFISSIONAL. Competência: serviços CONCLUÍDOS no período (vendido).
+  // Estorno/desfazer conclusão recalcula sozinho — a comissão é derivada
+  // dos atendimentos, não persistida.
   const commissionByPro = new Map<string, number>();
   for (const item of appointmentData ?? []) {
     const service = first(item.service);
     if (!service || !item.professional_id) continue;
-    const commission =
-      (Number(service.price) * Number(service.commission_rate)) / 100;
+    const serviceRate = Number(service.commission_rate ?? 0);
+    const rate =
+      serviceRate > 0
+        ? serviceRate
+        : (defaultRateByPro.get(item.professional_id) ?? 0);
+    const commission = (Number(service.price) * rate) / 100;
     commissionByPro.set(
       item.professional_id,
       (commissionByPro.get(item.professional_id) ?? 0) + commission,

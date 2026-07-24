@@ -4,6 +4,8 @@ import {
   FileText,
   HandCoins,
   Package,
+  PiggyBank,
+  ReceiptText,
   Scissors,
   TrendingUp,
   Users,
@@ -164,8 +166,8 @@ export default async function FinanceiroPage() {
       .eq("status", "paid")
       .gte("paid_at", chartStart.toISOString())
       .lt("paid_at", monthEnd.toISOString()),
-    // Verdade financeira (Fase 0): vendido × recebido × a receber, somados
-    // no banco para não esbarrar no teto de linhas do PostgREST.
+    // Verdade financeira (Fase 0/4): vendido × recebido × a receber ×
+    // despesas × lucro, somados no banco.
     supabase.rpc("income_summary", {
       p_barbershop: tenant.id,
       p_from: monthStart.toISOString(),
@@ -194,7 +196,26 @@ export default async function FinanceiroPage() {
   const soldMonth = Number(summary0?.sold ?? 0);
   const receivedMonth = Number(summary0?.received ?? 0);
   const receivableTotal = Number(summary0?.receivable ?? 0);
+  const expensesMonth = Number(summary0?.expenses_paid ?? 0);
+  const profitMonth = Number(summary0?.profit ?? 0);
   const receivables = receivableRows ?? [];
+
+  // Comparação com o período anterior (mês equivalente — §10.1).
+  const prevKey = `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, "0")}`;
+  const prevRange = getUtcMonthRange(tenant.timezone, prevKey);
+  const { data: prevSummaryRows } = await supabase.rpc("income_summary", {
+    p_barbershop: tenant.id,
+    p_from: prevRange.start.toISOString(),
+    p_to: prevRange.end.toISOString(),
+  });
+  const prev0 = Array.isArray(prevSummaryRows)
+    ? prevSummaryRows[0]
+    : prevSummaryRows;
+  const compare = (current: number, previous: number) => {
+    if (!previous) return null;
+    const delta = Math.round(((current - previous) / previous) * 100);
+    return `${delta >= 0 ? "+" : ""}${delta}% vs mês anterior`;
+  };
 
   const byProfessional = new Map<string, ProfessionalAgg>();
   const byService = new Map<string, ServiceAgg>();
@@ -277,31 +298,47 @@ export default async function FinanceiroPage() {
     (a, b) => b.revenue - a.revenue,
   );
 
-  // Verdade financeira (Fase 0): vendido ≠ recebido. "Vendido" soma as
-  // receitas criadas no mês (pagas ou não); "Recebido" soma o que foi pago
-  // no mês; "A receber" é o saldo atual de receitas pendentes.
+  // Verdade financeira (Fase 0/4): vendido ≠ recebido; lucro é regime de
+  // caixa (recebido − despesas pagas no mês). Comparações usam o mês
+  // anterior completo (períodos equivalentes).
   const summary = [
     {
       label: "Vendido no mês",
       value: formatBRL(soldMonth),
       icon: TrendingUp,
       accent: true,
+      hint: compare(soldMonth, Number(prev0?.sold ?? 0)),
     },
     {
       label: "Recebido no mês",
       value: formatBRL(receivedMonth),
       icon: Wallet,
+      hint: compare(receivedMonth, Number(prev0?.received ?? 0)),
     },
     {
       label: "A receber",
       value: formatBRL(receivableTotal),
       icon: HandCoins,
       href: "#a-receber",
+      hint: null,
+    },
+    {
+      label: "Despesas pagas no mês",
+      value: formatBRL(expensesMonth),
+      icon: ReceiptText,
+      hint: compare(expensesMonth, Number(prev0?.expenses_paid ?? 0)),
+    },
+    {
+      label: "Lucro do mês (caixa)",
+      value: formatBRL(profitMonth),
+      icon: PiggyBank,
+      hint: "Recebido − despesas pagas",
     },
     {
       label: "Atendimentos concluídos",
       value: String(completedCount ?? 0),
       icon: Users,
+      hint: null,
     },
   ];
 
@@ -363,7 +400,7 @@ export default async function FinanceiroPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {summary.map((metric) => {
           const content = (
             <Card
@@ -385,6 +422,11 @@ export default async function FinanceiroPage() {
                 <p className="font-mono text-2xl font-semibold">
                   {metric.value}
                 </p>
+                {metric.hint ? (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {metric.hint}
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
           );

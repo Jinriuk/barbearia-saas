@@ -30,6 +30,7 @@ type ServiceInput = {
   active: boolean;
   audience?: string | null;
   return_days?: number | null;
+  commission_rate?: number | null;
   professionalIds: string[];
 };
 
@@ -146,6 +147,22 @@ export function ServiceFormSheet({
                 required
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="service-commission">Comissão do serviço (%)</Label>
+            <Input
+              id="service-commission"
+              name="commissionRate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              defaultValue={service?.commission_rate ?? 0}
+            />
+            <p className="text-muted-foreground text-xs">
+              Maior que zero sobrepõe a comissão padrão do profissional
+              (Financeiro → Comissões).
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="service-return-days">

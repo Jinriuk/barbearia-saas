@@ -145,3 +145,17 @@ previsto para os próximos 7 dias; **Em atraso** = previsto já passou;
 Contato registrado em `client_contacts` (canal + resultado, nunca o
 conteúdo da conversa); resultado "não quer contato" liga o opt-out do
 cliente e interrompe qualquer régua.
+
+## Comissões — fonte única (Fase 4)
+
+Precedência documentada e implementada em uma única regra:
+
+1. `services.commission_rate` **> 0** → vale a taxa do serviço;
+2. senão → `employee_pay_settings.commission_rate` (taxa padrão do
+   profissional, editável em Financeiro → Comissões).
+
+Competência: a comissão é calculada sobre os serviços **concluídos** no
+período (vendido), derivada dos atendimentos — nada é persistido por
+atendimento, então estorno/desfazer conclusão recalcula automaticamente.
+Comissão sobre produto e desconto de taxas: decisão pendente (registrada),
+hoje produto não gera comissão.
