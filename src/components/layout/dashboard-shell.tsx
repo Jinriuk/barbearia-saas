@@ -1,7 +1,9 @@
 import Link from "next/link";
 import {
   Banknote,
+  CalendarClock,
   CalendarDays,
+  ChartNoAxesCombined,
   CircleAlert,
   Contact,
   HandCoins,
@@ -10,10 +12,12 @@ import {
   ReceiptText,
   Scissors,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
   Users,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -27,52 +31,118 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 
-const nav: Array<{
+type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
   permission?: Permission;
-}> = [
-  { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
-  { href: "/agenda", label: "Agenda", icon: CalendarDays },
+};
+
+type NavGroup = {
+  label?: string;
+  items: NavItem[];
+};
+
+// Navegação agrupada (Fase 1 — §6.2 do plano): as rotas existentes
+// continuam, organizadas por área. A filtragem por papel é preservada.
+const navGroups: NavGroup[] = [
   {
-    href: "/financeiro",
+    items: [
+      { href: "/dashboard", label: "Início", icon: LayoutDashboard },
+      { href: "/agenda", label: "Agenda", icon: CalendarDays },
+      {
+        href: "/clientes",
+        label: "Clientes",
+        icon: Contact,
+        permission: "clients:manage",
+      },
+    ],
+  },
+  {
     label: "Financeiro",
-    icon: Banknote,
-    permission: "finance:view",
+    items: [
+      {
+        href: "/financeiro",
+        label: "Resumo e caixa",
+        icon: Banknote,
+        permission: "finance:view",
+      },
+      {
+        href: "/contas-a-pagar",
+        label: "Despesas",
+        icon: ReceiptText,
+        permission: "finance:view",
+      },
+      {
+        href: "/contas-a-receber",
+        label: "A receber",
+        icon: HandCoins,
+        permission: "finance:view",
+      },
+      {
+        href: "/comissoes",
+        label: "Comissões",
+        icon: Wallet,
+        permission: "finance:view",
+      },
+      {
+        href: "/relatorios",
+        label: "Relatórios",
+        icon: ChartNoAxesCombined,
+        permission: "reports:view",
+      },
+    ],
   },
   {
-    href: "/clientes",
-    label: "Clientes",
-    icon: Contact,
-    permission: "clients:manage",
-  },
-  { href: "/servicos", label: "Serviços", icon: Scissors },
-  {
-    href: "/produtos",
-    label: "Produtos e Estoque",
-    icon: ShoppingBag,
-    permission: "catalog:manage",
-  },
-  { href: "/profissionais", label: "Profissionais e Equipe", icon: Users },
-  {
-    href: "/contas-a-pagar",
-    label: "Contas a pagar",
-    icon: ReceiptText,
-    permission: "finance:view",
+    label: "Serviços e produtos",
+    items: [
+      { href: "/servicos", label: "Serviços", icon: Scissors },
+      {
+        href: "/produtos",
+        label: "Produtos e estoque",
+        icon: ShoppingBag,
+        permission: "catalog:manage",
+      },
+    ],
   },
   {
-    href: "/contas-a-receber",
-    label: "Contas a receber",
-    icon: HandCoins,
-    permission: "finance:view",
+    label: "Equipe",
+    items: [
+      { href: "/profissionais", label: "Profissionais", icon: Users },
+      {
+        href: "/equipe/horarios",
+        label: "Horários e folgas",
+        icon: CalendarClock,
+        permission: "appointments:manage",
+      },
+      {
+        href: "/permissoes",
+        label: "Permissões",
+        icon: ShieldCheck,
+        permission: "memberships:manage",
+      },
+    ],
   },
   {
-    href: "/configuracoes",
-    label: "Identidade Visual",
-    icon: Settings,
-    permission: "settings:manage",
+    label: "Configurações",
+    items: [
+      {
+        href: "/configuracoes",
+        label: "Configurações",
+        icon: Settings,
+        permission: "settings:manage",
+      },
+    ],
   },
+];
+
+// Itens fixos da barra inferior do celular (§6.2): Início, Agenda, Clientes,
+// Financeiro — o restante vive no botão Menu.
+const mobilePrimaryHrefs = [
+  "/dashboard",
+  "/agenda",
+  "/clientes",
+  "/financeiro",
 ];
 
 export function DashboardShell({
@@ -84,12 +154,31 @@ export function DashboardShell({
   isPlatformAdmin?: boolean;
   children: React.ReactNode;
 }) {
-  const visibleNav = nav.filter(
-    (item) => !item.permission || can(tenant.role, item.permission),
-  );
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.permission || can(tenant.role, item.permission),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const allVisible = visibleGroups.flatMap((group) => group.items);
+  const mobilePrimary = mobilePrimaryHrefs
+    .map((href) => allVisible.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
+  const mobileMenuGroups = visibleGroups
+    .map((group) => ({
+      label: group.label,
+      items: group.items.filter(
+        (item) => !mobilePrimaryHrefs.includes(item.href),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
-    <div className="bg-muted/30 min-h-screen">
-      <aside className="bg-background fixed inset-y-0 left-0 hidden w-64 border-r lg:flex lg:flex-col">
+    <div className="bg-background min-h-screen">
+      <aside className="bg-sidebar fixed inset-y-0 left-0 hidden w-64 border-r lg:flex lg:flex-col">
         <div className="flex h-16 items-center gap-3 px-5">
           <span className="bg-primary text-primary-foreground grid size-9 place-items-center rounded-xl">
             <Scissors className="size-4" />
@@ -97,7 +186,7 @@ export function DashboardShell({
           <span className="font-semibold tracking-tight">NexoBarber</span>
         </div>
         <div className="px-4 py-3">
-          <div className="bg-muted/40 rounded-xl border p-3">
+          <div className="bg-card rounded-xl border p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-sm font-medium">{tenant.name}</p>
               <PlanBadge plan={tenant.plan} />
@@ -105,12 +194,23 @@ export function DashboardShell({
             <p className="text-muted-foreground mt-1 text-xs">/{tenant.slug}</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-2">
-          {visibleNav.map((item) => (
-            <NavLink key={item.href} href={item.href}>
-              <item.icon className="size-4 shrink-0" />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+          {visibleGroups.map((group, index) => (
+            <div key={group.label ?? index}>
+              {group.label ? (
+                <p className="text-muted-foreground mb-1 px-3 text-[11px] font-semibold tracking-wide uppercase">
+                  {group.label}
+                </p>
+              ) : null}
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink key={item.href} href={item.href}>
+                    <item.icon className="size-4 shrink-0" />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="p-4">
@@ -139,7 +239,7 @@ export function DashboardShell({
               className="hidden sm:inline-flex"
             >
               <Link href={`/${tenant.slug}`} target="_blank">
-                Ver página pública
+                Ver página de agendamento
               </Link>
             </Button>
             <NotificationsBell
@@ -154,27 +254,24 @@ export function DashboardShell({
             />
           </div>
         </header>
-        <nav
-          aria-label="Navegação principal"
-          className="bg-background flex gap-1 overflow-x-auto border-b px-3 py-2 lg:hidden"
-        >
-          {visibleNav.map((item) => (
-            <NavLink key={item.href} href={item.href} size="sm">
-              <item.icon className="size-4 shrink-0" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
         <SubscriptionBanner tenant={tenant} />
         <main className="mx-auto max-w-[1500px] p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8">
           {children}
         </main>
       </div>
       <MobileTabBar
-        items={visibleNav.slice(0, 5).map((item) => ({
+        items={mobilePrimary.map((item) => ({
           href: item.href,
           label: item.label,
           icon: <item.icon className="size-5" />,
+        }))}
+        menuGroups={mobileMenuGroups.map((group) => ({
+          label: group.label,
+          items: group.items.map((item) => ({
+            href: item.href,
+            label: item.label,
+            icon: <item.icon className="size-4" />,
+          })),
         }))}
       />
     </div>
@@ -208,7 +305,7 @@ function SubscriptionBanner({ tenant }: { tenant: TenantContext }) {
     return (
       <Link
         href="/assinatura"
-        className="flex items-center justify-center gap-2 border-b bg-amber-100 px-4 py-2 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-200/70 dark:bg-amber-950/50 dark:text-amber-200"
+        className="border-warning/40 bg-warning/10 text-warning hover:bg-warning/15 flex items-center justify-center gap-2 border-b px-4 py-2 text-sm font-medium transition-colors"
       >
         <CircleAlert className="size-4" />
         Mensalidade em aberto — regularize para não perder o acesso

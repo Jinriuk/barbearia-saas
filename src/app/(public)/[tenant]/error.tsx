@@ -21,8 +21,8 @@ export default function TenantError({
           Não conseguimos carregar a página agora
         </h1>
         <p className="mt-2 text-sm leading-relaxed opacity-60">
-          Pode ser uma instabilidade momentânea. Tente de novo — seu horário
-          não foi perdido.
+          Pode ser uma instabilidade momentânea. Tente de novo — seu horário não
+          foi perdido.
         </p>
         {error.digest ? (
           <p className="mt-3 font-mono text-xs opacity-40">

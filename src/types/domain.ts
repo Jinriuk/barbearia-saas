@@ -80,6 +80,9 @@ export type PublicBarbershop = {
     instagramUrl: string | null;
     address: string | null;
     openingHours: Record<string, string>;
+    /** Modo de confirmação da reserva (Fase 1): a página nunca promete o que
+     *  a barbearia não configurou. Ausente = manual. */
+    bookingConfirmationMode?: "manual" | "auto";
   };
   services: PublicService[];
   professionals: PublicProfessional[];

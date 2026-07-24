@@ -132,7 +132,9 @@ export default async function TenantPublicPage({
               </span>
               <span className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[var(--tenant-primary)]" />
-                {copy.confirmationChip}
+                {data.settings.bookingConfirmationMode === "auto"
+                  ? "Confirmação imediata"
+                  : copy.confirmationChip}
               </span>
             </div>
 

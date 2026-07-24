@@ -79,7 +79,9 @@ export default async function BookingPage({
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-current/10 bg-current/[.04] px-3 py-1.5">
               <Sparkles className="size-3.5 text-[var(--tenant-primary)]" />
-              {copy.confirmationChip}
+              {data.settings.bookingConfirmationMode === "auto"
+                ? "Confirmação imediata"
+                : copy.confirmationChip}
             </span>
           </div>
         </div>

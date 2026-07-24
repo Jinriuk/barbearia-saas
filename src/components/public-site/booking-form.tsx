@@ -102,6 +102,7 @@ export function BookingForm({
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
+  const [finalStatus, setFinalStatus] = useState<string>("pending");
 
   const days = useMemo(() => buildDayOptions(todayInTz), [todayInTz]);
   const availableProfessionals = useMemo(
@@ -269,10 +270,13 @@ export function BookingForm({
       const result = (await response.json().catch(() => null)) as {
         ok?: boolean;
         reference?: string;
+        status?: string;
         error?: string;
       } | null;
       if (response.ok && result?.ok) {
         setReference(result.reference ?? null);
+        // Status realmente persistido: no modo automático nasce confirmada.
+        setFinalStatus(result.status ?? "pending");
         setSuccess(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -302,6 +306,7 @@ export function BookingForm({
 
   if (success) {
     const slotDate = slot ? new Date(slot) : null;
+    const confirmed = finalStatus === "confirmed";
     return (
       <div className="overflow-hidden rounded-3xl border border-black/10 bg-white/60">
         <div className="px-6 pt-12 pb-8 text-center">
@@ -309,10 +314,12 @@ export function BookingForm({
             <Check className="size-8" strokeWidth={2.5} />
           </span>
           <h2 className="mt-6 text-2xl font-semibold tracking-tight">
-            Solicitação enviada!
+            {confirmed ? "Reserva confirmada!" : "Solicitação enviada!"}
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-6 opacity-60">
-            {copy.confirmationNote}
+            {confirmed
+              ? "Seu horário está garantido. Guarde os detalhes:"
+              : copy.confirmationNote}
           </p>
         </div>
         <div className="px-5 pb-6">
@@ -320,7 +327,10 @@ export function BookingForm({
             {reference ? (
               <SummaryRow label="Referência" value={reference} />
             ) : null}
-            <SummaryRow label="Status" value="Aguardando confirmação" />
+            <SummaryRow
+              label="Status"
+              value={confirmed ? "Confirmada" : "Aguardando confirmação"}
+            />
             <SummaryRow label="Serviço" value={selectedService?.name ?? "—"} />
             <SummaryRow
               label="Profissional"

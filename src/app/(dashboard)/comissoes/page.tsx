@@ -91,9 +91,7 @@ export default async function EmployeePaymentsPage({
       .order("name"),
     supabase
       .from("appointments")
-      .select(
-        "id,professional_id,service:services(price,commission_rate)",
-      )
+      .select("id,professional_id,service:services(price,commission_rate)")
       .eq("barbershop_id", tenant.id)
       .eq("status", "completed")
       .gte("starts_at", start.toISOString())

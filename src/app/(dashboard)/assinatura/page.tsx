@@ -17,12 +17,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STATUS_LABEL: Record<string, string> = {
   trialing: "Período de teste",
@@ -48,7 +43,8 @@ export default async function SubscriptionPage() {
   const plan = planConfig(sub?.plan ?? tenant.plan);
   const isOwner = tenant.role === "owner";
 
-  const trialDays = sub?.status === "trialing" ? daysLeft(sub.trialEndsAt) : null;
+  const trialDays =
+    sub?.status === "trialing" ? daysLeft(sub.trialEndsAt) : null;
   const periodEnd = formatDate(sub?.currentPeriodEnd ?? null);
 
   return (
@@ -114,9 +110,10 @@ export default async function SubscriptionPage() {
 
         {sub?.status === "trialing" && state === "ok" ? (
           <Alert>
-            <Sparkles className="size-4 text-primary" />
+            <Sparkles className="text-primary size-4" />
             <AlertTitle>
-              Teste grátis: {trialDays === 1 ? "último dia" : `${trialDays} dias restantes`}
+              Teste grátis:{" "}
+              {trialDays === 1 ? "último dia" : `${trialDays} dias restantes`}
             </AlertTitle>
             <AlertDescription>
               Aproveite tudo do plano {plan.label}. A primeira cobrança só
@@ -165,9 +162,9 @@ export default async function SubscriptionPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-muted-foreground text-sm leading-6">
-              O pagamento online recorrente (cartão e Pix via Mercado Pago)
-              está em configuração. Assim que estiver ativo, você poderá
-              assinar e regularizar por aqui, sem falar com ninguém.
+              O pagamento online recorrente (cartão e Pix via Mercado Pago) está
+              em configuração. Assim que estiver ativo, você poderá assinar e
+              regularizar por aqui, sem falar com ninguém.
             </p>
             <Button disabled title="Disponível em breve">
               <CreditCard className="size-4" /> Pagar com Mercado Pago — em

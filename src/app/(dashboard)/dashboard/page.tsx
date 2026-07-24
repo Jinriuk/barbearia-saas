@@ -28,6 +28,10 @@ import { reminderMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WelcomeConversion } from "@/components/platform/welcome-conversion";
+import {
+  ActivationChecklist,
+  type ActivationStep,
+} from "@/components/dashboard/activation-checklist";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +113,7 @@ export default async function DashboardPage({
   const justOnboarded = params.bemvindo === "1";
   const tenant = await requireTenant();
   const canFinance = can(tenant.role, "finance:view");
+  const canSettings = can(tenant.role, "settings:manage");
   const supabase = await createSupabaseServerClient();
   const { start: dayStart, end: dayEnd } = getUtcDayRange(tenant.timezone);
   const { start: weekStart } = getUtcWeekRange(tenant.timezone);
@@ -166,6 +171,75 @@ export default async function DashboardPage({
         })
       : Promise.resolve({ data: null }),
   ]);
+
+  // Jornada de ativação (Fase 1): derivada de dados reais — retoma sozinha.
+  let activationSteps: ActivationStep[] = [];
+  if (canSettings) {
+    const [settingsRes, servicesRes, professionalsRes, availabilityRes] =
+      await Promise.all([
+        supabase
+          .from("tenant_settings")
+          .select("address,whatsapp_number")
+          .eq("barbershop_id", tenant.id)
+          .maybeSingle(),
+        supabase
+          .from("services")
+          .select("id", { count: "exact", head: true })
+          .eq("barbershop_id", tenant.id)
+          .eq("active", true),
+        supabase
+          .from("professionals")
+          .select("id", { count: "exact", head: true })
+          .eq("barbershop_id", tenant.id)
+          .eq("active", true),
+        supabase
+          .from("professional_availability")
+          .select("professional_id", { count: "exact", head: true })
+          .eq("barbershop_id", tenant.id)
+          .eq("active", true),
+      ]);
+    const hasContact = Boolean(
+      settingsRes.data?.address && settingsRes.data?.whatsapp_number,
+    );
+    const hasService = (servicesRes.count ?? 0) > 0;
+    const hasProfessional = (professionalsRes.count ?? 0) > 0;
+    const hasAvailability = (availabilityRes.count ?? 0) > 0;
+    const basicsDone =
+      hasContact && hasService && hasProfessional && hasAvailability;
+    activationSteps = [
+      {
+        label: "Endereço e WhatsApp",
+        description: "Clientes precisam saber onde e como falar com você.",
+        href: "/configuracoes",
+        done: hasContact,
+      },
+      {
+        label: "Primeiro serviço",
+        description: "Cadastre pelo menos um serviço com preço e duração.",
+        href: "/servicos",
+        done: hasService,
+      },
+      {
+        label: "Primeiro profissional",
+        description: "Quem atende aparece na página de agendamento.",
+        href: "/profissionais",
+        done: hasProfessional,
+      },
+      {
+        label: "Expediente da equipe",
+        description: "Os horários abertos viram os slots da página pública.",
+        href: "/equipe/horarios",
+        done: hasAvailability,
+      },
+      {
+        label: "Regras de agendamento e compartilhamento",
+        description:
+          "Revise antecedência, horizonte e confirmação; o link e o QR Code ficam em Configurações.",
+        href: "/configuracoes",
+        done: basicsDone,
+      },
+    ];
+  }
 
   const appointmentRows = appointmentsRes.data ?? [];
 
@@ -262,6 +336,10 @@ export default async function DashboardPage({
         description="Tudo o que importa hoje, em um lugar só."
         action={<PlanBadge plan={tenant.plan} />}
       />
+
+      {activationSteps.length ? (
+        <ActivationChecklist steps={activationSteps} />
+      ) : null}
 
       {revenueCards.length ? (
         <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

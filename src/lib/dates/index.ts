@@ -157,6 +157,44 @@ export function getUtcMonthRange(
   };
 }
 
+/**
+ * Converte "data + hora locais no fuso do tenant" para o instante UTC
+ * correspondente (Fase 1 — folgas e bloqueios). Usa a mesma resolução
+ * iterativa de offset de zonedMidnightToUtc, então funciona também nos dias
+ * de transição de horário de verão.
+ */
+export function zonedDateTimeToUtc(
+  date: string,
+  time: string,
+  timeZone: string,
+): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const guess = Date.UTC(year, month - 1, day, hour, minute);
+  const firstParts = partsInTimeZone(new Date(guess), timeZone);
+  const firstOffset =
+    Date.UTC(
+      firstParts.year,
+      firstParts.month - 1,
+      firstParts.day,
+      firstParts.hour,
+      firstParts.minute,
+      firstParts.second,
+    ) - guess;
+  const firstResult = guess - firstOffset;
+  const secondParts = partsInTimeZone(new Date(firstResult), timeZone);
+  const secondOffset =
+    Date.UTC(
+      secondParts.year,
+      secondParts.month - 1,
+      secondParts.day,
+      secondParts.hour,
+      secondParts.minute,
+      secondParts.second,
+    ) - firstResult;
+  return new Date(guess - secondOffset);
+}
+
 export function getDateInTz(timeZone: string, now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
