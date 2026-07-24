@@ -7,6 +7,10 @@ export function publicErrorMessage(error: { message?: string } | null) {
     OUTSIDE_AVAILABILITY: "O horário está fora da agenda do profissional.",
     SCHEDULE_BLOCKED: "O profissional está indisponível nesse horário.",
     BOOKING_NOTICE_REQUIRED: "Esse horário não respeita a antecedência mínima.",
+    BOOKING_HORIZON_EXCEEDED:
+      "Esse dia ainda não está aberto para reservas. Escolha uma data mais próxima.",
+    CANCELLATION_NOTICE_REQUIRED:
+      "O prazo para cancelar online já passou. Fale direto com o estabelecimento.",
     TOO_MANY_PENDING:
       "Esse telefone já tem reservas em aberto. Fale com a barbearia para ajustar.",
   };

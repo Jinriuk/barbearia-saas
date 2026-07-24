@@ -11,19 +11,20 @@
 
 ## Agenda e agendamento
 
-| Funcionalidade                                               | Estado      | Observações                                                                                                 |
-| ------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
-| Página pública personalizável por tenant                     | operacional | Cores, textos, fotos, seções.                                                                               |
-| Agendamento público com disponibilidade em tempo real        | operacional | RPC transacional com proteção de conflito.                                                                  |
-| Reserva pública nasce pendente + referência pública          | operacional | Fase 0: a página informa que a barbearia confirma; endpoint retorna `reference` e `status`.                 |
-| Confirmação automática configurável por barbearia            | planejado   | Hoje o modo é sempre confirmação manual.                                                                    |
-| Lançamento manual pela equipe (balcão)                       | operacional | RPC `create_manual_appointment`, mesma disponibilidade da página.                                           |
-| Máquina de estados do atendimento                            | operacional | pending → confirmed → completed / canceled / no_show, validada no app; reforço no banco planejado (Fase 2). |
-| Cancelamento/remarcação pelo cliente com token público       | planejado   | Fase 2.                                                                                                     |
-| "Primeiro profissional disponível"                           | planejado   | Fase 2, via RPC dedicada.                                                                                   |
-| Expediente por dia, folgas, férias e bloqueios (UI completa) | planejado   | Fase 1; hoje existe `professional_availability` + `schedule_blocks` no banco, sem UI completa.              |
-| Lembrete manual por WhatsApp (wa.me)                         | operacional | Um toque no dashboard/agenda.                                                                               |
-| Lembrete automático por WhatsApp (API oficial)               | beta        | Número central; exige configuração de credenciais da plataforma.                                            |
+| Funcionalidade                                               | Estado      | Observações                                                                                                              |
+| ------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Página pública personalizável por tenant                     | operacional | Cores, textos, fotos, seções.                                                                                            |
+| Agendamento público com disponibilidade em tempo real        | operacional | RPC transacional com proteção de conflito.                                                                               |
+| Reserva pública nasce pendente + referência pública          | operacional | Fase 0: a página informa que a barbearia confirma; endpoint retorna `reference` e `status`.                              |
+| Confirmação automática configurável por barbearia            | operacional | Fase 1: modo manual/auto em Configurações; página pública reflete o modo.                                                |
+| Lançamento manual pela equipe (balcão)                       | operacional | RPC `create_manual_appointment`, mesma disponibilidade da página.                                                        |
+| Máquina de estados do atendimento                            | operacional | Fase 2: trigger no banco (transições + conclusão futura bloqueada); `in_progress` não implementado (decisão registrada). |
+| Remarcação transacional pela equipe                          | operacional | Fase 2: RPC `reschedule_appointment`; conflito preserva o horário anterior.                                              |
+| Cancelamento pelo cliente com token público                  | operacional | Fase 2: `/{slug}/reserva/{token}`, respeita antecedência; remarcar = cancelar + reservar (documentado).                  |
+| "Primeiro profissional disponível"                           | operacional | Fase 2: RPC `get_first_available` avalia todos os profissionais de uma vez.                                              |
+| Expediente por dia, folgas, férias e bloqueios (UI completa) | operacional | Fase 1: Equipe → Horários e folgas; RPC transacional com avisos.                                                         |
+| Lembrete manual por WhatsApp (wa.me)                         | operacional | Um toque no dashboard/agenda.                                                                                            |
+| Lembrete automático por WhatsApp (API oficial)               | beta        | Número central; exige configuração de credenciais da plataforma.                                                         |
 
 ## Financeiro
 

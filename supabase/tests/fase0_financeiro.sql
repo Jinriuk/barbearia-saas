@@ -59,8 +59,9 @@ values ('d3000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-0000000
         'd1000000-0000-4000-8000-000000000001', now() - interval '2 hour', now() - interval '90 min', 'confirmed', 'dashboard');
 
 update public.appointments set status = 'completed' where id = 'd3000000-0000-4000-8000-000000000001';
--- repete a transição (simula clique duplo / reprocessamento)
-update public.appointments set status = 'pending' where id = 'd3000000-0000-4000-8000-000000000001';
+-- repete a transição via correção explícita (Fase 2: completed -> confirmed
+-- -> completed) — simula desfazer + concluir de novo; não pode duplicar.
+update public.appointments set status = 'confirmed' where id = 'd3000000-0000-4000-8000-000000000001';
 update public.appointments set status = 'completed' where id = 'd3000000-0000-4000-8000-000000000001';
 
 select '1. Conclusão → pendente e única' as teste,

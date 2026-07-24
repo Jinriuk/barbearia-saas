@@ -22,7 +22,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type Slot = { starts_at: string; ends_at: string };
+type Slot = {
+  starts_at: string;
+  ends_at: string;
+  professional_id?: string;
+  professional_name?: string;
+};
 type Cart = Record<string, number>;
 
 const currency = new Intl.NumberFormat("pt-BR", {
@@ -93,6 +98,9 @@ export function BookingForm({
   const copy = verticalCopy(vertical);
   const [serviceId, setServiceId] = useState(initialServiceId ?? "");
   const [professionalId, setProfessionalId] = useState("");
+  // "Primeiro disponível": consulta todos os profissionais de uma vez; o
+  // profissional real é definido junto com o horário escolhido.
+  const [firstAvailable, setFirstAvailable] = useState(false);
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slot, setSlot] = useState("");
@@ -103,6 +111,7 @@ export function BookingForm({
   const [success, setSuccess] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
   const [finalStatus, setFinalStatus] = useState<string>("pending");
+  const [manageToken, setManageToken] = useState<string | null>(null);
 
   const days = useMemo(() => buildDayOptions(todayInTz), [todayInTz]);
   const availableProfessionals = useMemo(
@@ -158,6 +167,7 @@ export function BookingForm({
     service: string,
     professional: string,
     day: string,
+    anyProfessional = false,
   ) {
     const requestId = ++requestSeq.current;
     setLoadingSlots(true);
@@ -165,20 +175,32 @@ export function BookingForm({
     setSlots([]);
     setMessage("");
     try {
-      const query = new URLSearchParams({
-        serviceId: service,
-        professionalId: professional,
-        date: day,
-      });
-      const response = await fetch(
-        `/api/public/${tenant}/availability?${query}`,
-      );
+      const url = anyProfessional
+        ? `/api/public/${tenant}/first-available?${new URLSearchParams({
+            serviceId: service,
+            date: day,
+          })}`
+        : `/api/public/${tenant}/availability?${new URLSearchParams({
+            serviceId: service,
+            professionalId: professional,
+            date: day,
+          })}`;
+      const response = await fetch(url);
       const result = (await response.json()) as {
         slots?: Slot[];
         error?: string;
       };
       if (requestId !== requestSeq.current) return;
-      setSlots(result.slots ?? []);
+      // No "primeiro disponível" pode haver vários profissionais no mesmo
+      // horário — mostra só o primeiro de cada horário (já vem ordenado).
+      const seen = new Set<string>();
+      const list = (result.slots ?? []).filter((item) => {
+        if (!anyProfessional) return true;
+        if (seen.has(item.starts_at)) return false;
+        seen.add(item.starts_at);
+        return true;
+      });
+      setSlots(list);
       if (result.error) setMessage(result.error);
     } catch {
       if (requestId !== requestSeq.current) return;
@@ -206,6 +228,7 @@ export function BookingForm({
   function selectService(id: string) {
     setServiceId(id);
     setProfessionalId("");
+    setFirstAvailable(false);
     setSlot("");
     setSlots([]);
     scrollToStep("passo-profissional");
@@ -213,7 +236,19 @@ export function BookingForm({
 
   function selectProfessional(id: string) {
     setProfessionalId(id);
+    setFirstAvailable(false);
     if (date) void fetchSlots(serviceId, id, date);
+    else {
+      setSlot("");
+      setSlots([]);
+    }
+    scrollToStep("passo-horario");
+  }
+
+  function selectFirstAvailable() {
+    setFirstAvailable(true);
+    setProfessionalId("");
+    if (date) void fetchSlots(serviceId, "", date, true);
     else {
       setSlot("");
       setSlots([]);
@@ -223,11 +258,15 @@ export function BookingForm({
 
   function selectDate(value: string) {
     setDate(value);
-    void fetchSlots(serviceId, professionalId, value);
+    void fetchSlots(serviceId, professionalId, value, firstAvailable);
   }
 
-  function selectSlot(value: string) {
-    setSlot(value);
+  function selectSlot(item: Slot) {
+    setSlot(item.starts_at);
+    // "Primeiro disponível": o profissional real vem junto com o horário.
+    if (firstAvailable && item.professional_id) {
+      setProfessionalId(item.professional_id);
+    }
     scrollToStep(showUpsell ? "passo-extra" : "passo-dados");
   }
 
@@ -271,12 +310,14 @@ export function BookingForm({
         ok?: boolean;
         reference?: string;
         status?: string;
+        token?: string;
         error?: string;
       } | null;
       if (response.ok && result?.ok) {
         setReference(result.reference ?? null);
         // Status realmente persistido: no modo automático nasce confirmada.
         setFinalStatus(result.status ?? "pending");
+        setManageToken(result.token ?? null);
         setSuccess(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -307,6 +348,20 @@ export function BookingForm({
   if (success) {
     const slotDate = slot ? new Date(slot) : null;
     const confirmed = finalStatus === "confirmed";
+    // Link "Adicionar ao calendário" (Google) — instantes em UTC.
+    const calendarHref =
+      slotDate && selectedService
+        ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+            selectedService.name,
+          )}&dates=${[
+            slotDate,
+            new Date(
+              slotDate.getTime() + selectedService.durationMinutes * 60_000,
+            ),
+          ]
+            .map((d) => d.toISOString().replace(/[-:]|\.\d{3}/g, ""))
+            .join("/")}&ctz=${encodeURIComponent(timezone)}`
+        : null;
     return (
       <div className="overflow-hidden rounded-3xl border border-black/10 bg-white/60">
         <div className="px-6 pt-12 pb-8 text-center">
@@ -361,16 +416,38 @@ export function BookingForm({
               </dd>
             </div>
           </dl>
+          {calendarHref ? (
+            <a
+              href={calendarHref}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
+            >
+              <CalendarCheck2 className="size-4.5" />
+              Adicionar ao calendário
+            </a>
+          ) : null}
           {whatsappHref ? (
             <a
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
+              className="mt-3 flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
             >
               <MessageCircle className="size-4.5" />
               {copy.talkToBusiness}
             </a>
+          ) : null}
+          {manageToken ? (
+            <p className="mt-4 text-center text-xs opacity-60">
+              Precisa mudar?{" "}
+              <a
+                href={`/${tenant}/reserva/${manageToken}`}
+                className="underline underline-offset-2"
+              >
+                Cancelar ou remarcar esta reserva
+              </a>
+            </p>
           ) : null}
         </div>
       </div>
@@ -431,6 +508,31 @@ export function BookingForm({
         <section id="passo-profissional" className="scroll-mt-24">
           <StepTitle number={2} title="Escolha o profissional" />
           <div className="mt-4 flex flex-wrap gap-2.5">
+            {availableProfessionals.length > 1 ? (
+              <button
+                type="button"
+                aria-pressed={firstAvailable}
+                onClick={selectFirstAvailable}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-full border py-2 pr-5 pl-2 transition-all active:scale-[.98]",
+                  firstAvailable
+                    ? "border-transparent bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-md shadow-black/10"
+                    : "border-black/10 bg-white/50 hover:border-black/25",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-8 place-items-center rounded-full text-sm font-semibold",
+                    firstAvailable
+                      ? "bg-[var(--tenant-on-secondary)]/15"
+                      : "bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)]",
+                  )}
+                >
+                  ⚡
+                </span>
+                <span className="text-sm font-medium">Primeiro disponível</span>
+              </button>
+            ) : null}
             {availableProfessionals.map((professional) => {
               const selected = professionalId === professional.id;
               return (
@@ -467,7 +569,7 @@ export function BookingForm({
       ) : null}
 
       {/* 3. Data e horário */}
-      {serviceId && professionalId ? (
+      {serviceId && (professionalId || firstAvailable) ? (
         <section id="passo-horario" className="scroll-mt-24">
           <StepTitle number={3} title="Escolha o dia e o horário" />
           <div className="-mx-5 mt-4 flex snap-x gap-2 overflow-x-auto px-5 pb-1">
@@ -520,23 +622,41 @@ export function BookingForm({
                   <p className="text-xs font-semibold tracking-wide uppercase opacity-45">
                     {group.label}
                   </p>
-                  <div className="mt-2.5 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  <div
+                    className={cn(
+                      "mt-2.5 grid gap-2",
+                      firstAvailable
+                        ? "grid-cols-3 sm:grid-cols-4"
+                        : "grid-cols-4 sm:grid-cols-6",
+                    )}
+                  >
                     {group.items.map((item) => {
                       const selected = slot === item.starts_at;
                       return (
                         <button
-                          key={item.starts_at}
+                          key={`${item.starts_at}-${item.professional_id ?? ""}`}
                           type="button"
                           aria-pressed={selected}
-                          onClick={() => selectSlot(item.starts_at)}
+                          onClick={() => selectSlot(item)}
                           className={cn(
-                            "h-11 rounded-xl border font-mono text-sm transition-all active:scale-[.96]",
+                            "rounded-xl border font-mono text-sm transition-all active:scale-[.96]",
+                            firstAvailable ? "min-h-11 py-1.5" : "h-11",
                             selected
                               ? "border-transparent bg-[var(--tenant-secondary)] font-semibold text-[var(--tenant-on-secondary)] shadow-md shadow-black/10"
                               : "border-black/10 bg-white/50 hover:border-black/25",
                           )}
                         >
                           {timeFormat.format(new Date(item.starts_at))}
+                          {firstAvailable && item.professional_name ? (
+                            <span
+                              className={cn(
+                                "block truncate px-1 font-sans text-[10px]",
+                                selected ? "opacity-75" : "opacity-50",
+                              )}
+                            >
+                              {item.professional_name}
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })}
@@ -687,7 +807,7 @@ export function BookingForm({
                 {selectedService?.name}
                 {slot
                   ? ` · ${timeFormat.format(new Date(slot))}`
-                  : professionalId
+                  : professionalId || firstAvailable
                     ? " · escolha o horário"
                     : " · escolha o profissional"}
                 {cartItems.length ? ` · ${cartItems.length} produto(s)` : ""}

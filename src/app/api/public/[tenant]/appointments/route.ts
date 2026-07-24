@@ -40,14 +40,19 @@ export async function POST(
   });
   if (error) return Response.json({ error: publicErrorMessage(error) }, { status: 409 });
 
-  // Contrato público: status realmente persistido + referência curta da
-  // reserva. Nenhum dado privado e nenhum UUID interno.
-  const result = (data ?? {}) as { reference?: string; status?: string };
+  // Contrato público: status realmente persistido + referência curta +
+  // token de autogestão (cancelar/consultar). Nenhum UUID interno.
+  const result = (data ?? {}) as {
+    reference?: string;
+    status?: string;
+    token?: string;
+  };
   return Response.json(
     {
       ok: true,
       reference: result.reference ?? null,
       status: result.status ?? "pending",
+      token: result.token ?? null,
     },
     { status: 201 },
   );
