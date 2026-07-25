@@ -6,6 +6,7 @@ import {
   ChartNoAxesCombined,
   CircleAlert,
   Contact,
+  Crown,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -97,6 +98,12 @@ const navGroups: NavGroup[] = [
     label: "Serviços e produtos",
     items: [
       { href: "/servicos", label: "Serviços", icon: Scissors },
+      {
+        href: "/planos",
+        label: "Planos de clientes",
+        icon: Crown,
+        permission: "clients:manage",
+      },
       {
         href: "/produtos",
         label: "Produtos e estoque",

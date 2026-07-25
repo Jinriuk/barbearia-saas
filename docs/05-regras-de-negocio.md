@@ -159,3 +159,33 @@ período (vendido), derivada dos atendimentos — nada é persistido por
 atendimento, então estorno/desfazer conclusão recalcula automaticamente.
 Comissão sobre produto e desconto de taxas: decisão pendente (registrada),
 hoje produto não gera comissão.
+
+## Planos vendidos aos clientes (Fase 4B)
+
+Funcionalidade **diferente** da assinatura do SaaS (`subscriptions`): aqui a
+barbearia vende um clube ao cliente final (`customer_membership_plans`,
+`customer_memberships`, `membership_entitlements`, `membership_usage`,
+`membership_payments`).
+
+1. **Pré-pago**: venda e renovação exigem forma de pagamento na hora — não
+   existe plano fiado. A receita entra paga (categoria `membership`) na
+   mesma fonte de verdade do financeiro.
+2. **Inadimplência derivada**: contrato `active` com
+   `current_period_end < now()` é "Vencido" — o benefício deixa de valer
+   sem depender de cron. Cobrança pelo WhatsApp com texto editável.
+3. **Benefício na conclusão**: cliente identificado + plano em dia +
+   serviço incluído + uso disponível → a conclusão consome 1 uso do
+   período e **não** gera nova receita (já foi paga no plano). Esgotou o
+   limite, venceu ou pausou → o atendimento cobra normal (receita
+   pendente da Fase 0). A página pública nunca exibe serviço a R$ 0.
+4. **Desfazer conclusão devolve o uso** (registro derivado, como a
+   comissão).
+5. **Pausa** suspende o benefício sem esticar a vigência (v1 simples;
+   decisão registrada). **Cancelamento é final** e não apaga histórico.
+6. **Preço congelado na venda**: editar o plano não muda contratos
+   vigentes; a renovação cobra o preço do contrato. Renovar antes do
+   vencimento estende a partir do fim vigente; depois, começa agora.
+7. **Um plano em aberto por cliente** (índice único parcial).
+8. Papéis: recepção vende e renova; pausar/cancelar e editar o catálogo
+   de planos são do dono/gerente. RLS de leitura para a equipe; escrita
+   via RPCs auditadas (`membership.sold/renewed/pause/resume/cancel`).

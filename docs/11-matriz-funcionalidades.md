@@ -7,7 +7,7 @@
 > Estados possíveis: `operacional` · `beta` · `interno` · `planejado` ·
 > `desativado`.
 >
-> Última revisão: 2026-07-23 (Fase 0).
+> Última revisão: 2026-07-24 (Fase 4B).
 
 ## Agenda e agendamento
 
@@ -56,7 +56,7 @@
 | Regra de público do serviço (público/assinantes/interno) | operacional | Fase 0: serviço não-público não aparece na página nem no agendamento online.    |
 | Produtos com estoque em ledger                           | operacional | Saldo derivado de `inventory_movements`.                                        |
 | Upsell de produtos no agendamento (Plus)                 | operacional | Reserva → confirmação com baixa.                                                |
-| Planos/assinaturas vendidos aos clientes da barbearia    | planejado   | Fase 4B: não entregue sem controle de uso e inadimplência (decisão registrada). |
+| Planos/assinaturas vendidos aos clientes da barbearia    | operacional | Fase 4B: pré-pago com controle de uso por período, vencimento/inadimplência derivados e cobrança por WhatsApp. |
 
 ## Equipe e acessos
 
@@ -65,7 +65,7 @@
 | Papéis (owner, manager, receptionist, professional) | operacional | RLS + permissões de interface. |
 | Convite de membros                                  | operacional |                                |
 | Agenda restrita do profissional                     | operacional | RLS `is_own_professional`.     |
-| Metas e resultados por profissional                 | planejado   | Fase 4B.                       |
+| Metas e resultados por profissional                 | planejado   | Não entrou na Fase 4B (planos de clientes); segue no backlog. |
 
 ## SaaS (NexoBarber)
 
