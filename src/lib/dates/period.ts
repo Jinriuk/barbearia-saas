@@ -47,12 +47,20 @@ export type ResolvedPeriod = {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-const dayFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "UTC",
-});
+/**
+ * Rótulo de dia SEMPRE no fuso do tenant. Os limites da janela são instantes
+ * UTC que representam meia-noite local: formatá-los em UTC devolve o dia
+ * errado (o fim de 15/07 em São Paulo é 16/07 03:00Z, e em fusos positivos o
+ * início escorrega para o dia anterior).
+ */
+function dayLabel(date: Date, timeZone: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
 
 const monthFmt = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
@@ -89,11 +97,11 @@ function previousWindow(start: Date, end: Date) {
   return { start: new Date(start.getTime() - span), end: new Date(start) };
 }
 
-function labelForRange(start: Date, endExclusive: Date) {
+function labelForRange(start: Date, endExclusive: Date, timeZone: string) {
   // O fim é exclusivo; o rótulo mostra o último dia incluído.
   const lastDay = new Date(endExclusive.getTime() - 1);
-  const first = dayFmt.format(start);
-  const last = dayFmt.format(lastDay);
+  const first = dayLabel(start, timeZone);
+  const last = dayLabel(lastDay, timeZone);
   return first === last ? first : `${first} a ${last}`;
 }
 
@@ -114,7 +122,7 @@ export function resolvePeriod(
     const end = startOfDay(addDays(rangeEnd, 1), timeZone);
     return {
       key: "personalizado",
-      label: labelForRange(start, end),
+      label: labelForRange(start, end, timeZone),
       start,
       end,
       fromInput: rangeStart,
@@ -153,7 +161,7 @@ export function resolvePeriod(
     const range = getUtcWeekRange(timeZone, now);
     return withInputs(
       "semana",
-      labelForRange(range.start, range.end),
+      labelForRange(range.start, range.end, timeZone),
       range.start,
       range.end,
       "semana anterior",
@@ -166,7 +174,7 @@ export function resolvePeriod(
     const start = startOfDay(startIso, timeZone);
     return withInputs(
       "30d",
-      labelForRange(start, today.end),
+      labelForRange(start, today.end, timeZone),
       start,
       today.end,
       "30 dias anteriores",

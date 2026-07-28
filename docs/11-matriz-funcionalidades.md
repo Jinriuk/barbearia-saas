@@ -7,7 +7,7 @@
 > Estados possíveis: `operacional` · `beta` · `interno` · `planejado` ·
 > `desativado`.
 >
-> Última revisão: 2026-07-24 (Fase 4B).
+> Última revisão: 2026-07-28 (Fase 3 do plano de fases — Gestão).
 
 ## Agenda e agendamento
 
@@ -34,10 +34,14 @@
 | Confirmação de pagamento idempotente              | operacional | Índice único por atendimento + categoria service.                                                                   |
 | Estorno auditado (sem apagar histórico)           | operacional | RPC `revert_income_payment` + `audit_logs`.                                                                         |
 | Venda de produto transacional (estoque + receita) | operacional | RPC `confirm_product_sale`; receita nasce pendente, com captura opcional do pagamento.                              |
-| Contas a pagar / a receber manuais                | operacional | Recebimento pede forma de pagamento.                                                                                |
-| Comissões e pagamento de equipe                   | operacional | Fase 4: fonte única com precedência serviço > profissional; competência = concluídos (derivada, estorno recalcula). |
-| Relatórios (tela + PDF)                           | operacional | Derivados de `financial_transactions`.                                                                              |
+| Contas a pagar / a receber manuais                | operacional | Recebimento pede forma de pagamento. Fase 3 (Gestão): despesa progressiva com categoria; recebível com cliente vinculado e cobrança por WhatsApp. |
+| Comissões e pagamento de equipe                   | operacional | Fase 4: fonte única com precedência serviço > profissional; competência = concluídos (derivada, estorno recalcula). Fase 3 (Gestão): fechamento no banco com total produzido, vale e valor a pagar calculado. |
+| Adiantamento / vale para a equipe                 | operacional | Fase 3 (Gestão): sai do caixa na hora e é abatido do fechamento do período.                                          |
+| Relatórios (tela + PDF)                           | operacional | Derivados de `financial_transactions`. Fase 3 (Gestão): respeitam o período escolhido.                              |
+| Filtro de período livre (quinzena, intervalo)     | operacional | Fase 3 (Gestão): atalhos + de/até, com comparação contra janela de mesma duração.                                   |
+| Mapa de calor de dias × horários                  | operacional | Fase 3 (Gestão): agregado no banco, com melhores e piores horários em texto (§6.2).                                 |
 | Lucro (recebido − despesas pagas)                 | operacional | Fase 4: resumo com despesas, lucro (caixa) e comparação com o mês anterior.                                         |
+| Lucro depois da comissão apurada                  | operacional | Fase 3 (Gestão): cartão separado do lucro de caixa; devolve a comissão já paga para não descontar duas vezes.        |
 
 ## Clientes
 
@@ -63,9 +67,10 @@
 | Funcionalidade                                      | Estado      | Observações                    |
 | --------------------------------------------------- | ----------- | ------------------------------ |
 | Papéis (owner, manager, receptionist, professional) | operacional | RLS + permissões de interface. |
-| Convite de membros                                  | operacional |                                |
+| Convite de membros por e-mail                       | operacional | Fase 3 (Gestão): §7.7 — o dono NÃO cria a senha; a pessoa define a própria ao aceitar. Situação do convite na tela. |
+| Ficha do profissional (5 abas)                      | operacional | Fase 3 (Gestão): `/profissionais/[id]` — dados, serviços e comissões, horários, clientes e resultados. |
 | Agenda restrita do profissional                     | operacional | RLS `is_own_professional`.     |
-| Metas e resultados por profissional                 | planejado   | Não entrou na Fase 4B (planos de clientes); segue no backlog. |
+| Metas por profissional                              | planejado   | Resultados já aparecem na ficha (Fase 3 — Gestão); definir e acompanhar META segue no backlog. |
 
 ## SaaS (NexoBarber)
 

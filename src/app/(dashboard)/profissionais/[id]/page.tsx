@@ -174,6 +174,7 @@ export default async function ProfessionalProfilePage({
           p_barbershop: tenant.id,
           p_from: period.start.toISOString(),
           p_to: period.end.toISOString(),
+          p_timezone: tenant.timezone,
         })
       : Promise.resolve({ data: [] as SummaryRow[] }),
   ]);

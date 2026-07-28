@@ -63,6 +63,7 @@ export async function ComissoesSection({
       p_barbershop: tenantId,
       p_from: period.start.toISOString(),
       p_to: period.end.toISOString(),
+      p_timezone: timezone,
     }),
     supabase
       .from("employee_pay_settings")

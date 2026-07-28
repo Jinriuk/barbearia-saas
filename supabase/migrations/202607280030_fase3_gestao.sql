@@ -199,7 +199,13 @@ create index if not exists accounts_receivable_client_idx
 create or replace function public.commission_summary(
   p_barbershop uuid,
   p_from timestamptz,
-  p_to timestamptz
+  p_to timestamptz,
+  -- O vale é datado em DIA (reference_date), não em instante. Converter a
+  -- janela no fuso do tenant evita que um vale do último dia do período caia
+  -- fora — ou que o do dia anterior entre — em fusos de offset positivo.
+  -- income_summary chama sem este argumento de propósito: a comissão apurada
+  -- não depende de vale.
+  p_timezone text default 'America/Sao_Paulo'
 ) returns table (
   professional_id uuid,
   professional_name text,
@@ -270,8 +276,8 @@ as $$
            coalesce(sum(adv.amount), 0)::numeric as total
     from public.employee_advances adv
     where adv.barbershop_id = p_barbershop
-      and adv.reference_date >= (p_from at time zone 'utc')::date
-      and adv.reference_date < (p_to at time zone 'utc')::date
+      and adv.reference_date >= (p_from at time zone p_timezone)::date
+      and adv.reference_date < (p_to at time zone p_timezone)::date
     group by adv.professional_id
   ),
   payments_made as (
@@ -315,9 +321,9 @@ as $$
   left join payments_made pm on pm.professional_id = pros.id
   order by (coalesce(sd.produced, 0) + coalesce(pd.produced, 0)) desc, pros.name;
 $$;
-revoke all on function public.commission_summary(uuid, timestamptz, timestamptz)
+revoke all on function public.commission_summary(uuid, timestamptz, timestamptz, text)
   from public, anon;
-grant execute on function public.commission_summary(uuid, timestamptz, timestamptz)
+grant execute on function public.commission_summary(uuid, timestamptz, timestamptz, text)
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────

@@ -162,6 +162,13 @@ de reposição do G5 inerte**.
 
 ## Fase 3 — Gestão
 
+> **Entregue.** Os 12 itens abaixo foram implementados — relatório em
+> [`entregas/fase-3-gestao.md`](entregas/fase-3-gestao.md), banco em
+> `supabase/migrations/202607280030_fase3_gestao.sql`. Os itens da Fase 0
+> que encostam nestas telas (0.7, 0.9, 0.10, 0.12, 0.14) seguem abertos e
+> estão listados no fim do relatório; onde havia corte silencioso de
+> linhas, a tela passou a avisar.
+
 **3.1 Financeiro reorganizado (§7.5)** — hoje são 904 linhas numa página só, mais 4 rotas soltas
 no menu. O guia pede 6 seções internas: Resumo, Caixa e vendas, Despesas, A receber, Comissões,
 Relatórios.
@@ -311,7 +318,7 @@ itens de maior impacto antes de mover a Fase 2.
 | 0 | Correção de risco e de número errado | — |
 | 1 | Fundação visual e de componentes | — (pode correr junto da 0) |
 | 2 | Agenda, Início, perfil do cliente, venda | Fase 1 |
-| 3 | Financeiro, comissões, equipe, configurações | Fase 1 |
+| 3 | Financeiro, comissões, equipe, configurações | Fase 1 — **entregue** |
 | 4 | Página pública e fluxo de agendamento | Fase 1 |
 | 5 | Gateway, plano anual, régua de lead, landing | Fases 0 e 2 |
 
