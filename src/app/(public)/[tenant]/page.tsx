@@ -4,15 +4,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   CalendarCheck2,
-  ChevronDown,
   Clock3,
   MapPin,
   MessageCircle,
   Scissors,
-  ShoppingBag,
   Sparkles,
   Timer,
-  UsersRound,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import {
@@ -20,13 +17,15 @@ import {
   tenantPageMetadata,
 } from "@/modules/barbershops/queries";
 import { verticalCopy } from "@/lib/verticals";
-import { tenantStyle, withAlpha } from "@/lib/colors";
-import { whatsAppHref } from "@/lib/contact";
+import { tenantStyle } from "@/lib/colors";
+import { instagramHandle, whatsAppHref } from "@/lib/contact";
+import { openingHoursList } from "@/lib/opening-hours";
 import { PublicFooter } from "@/components/public-site/public-footer";
 import { PublicHeader } from "@/components/public-site/public-header";
 import { Reveal } from "@/components/public-site/reveal";
-import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
+import { StickyBookCta } from "@/components/public-site/sticky-book-cta";
+import { ProductCard } from "@/components/public-site/product-card";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +42,17 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+/**
+ * Página do cliente final (§7.10). Ordem obrigatória das seções: capa,
+ * serviços, profissionais, produtos, endereço/horário/contato e chamada
+ * final.
+ *
+ * Fase 4: a capa deixou de ocupar quase a tela inteira (era 88svh com orbs
+ * animados, ken-burns e dois chips flutuantes) e passou a ser o que o guia
+ * pede — foto de fundo com camada escura, nome do negócio, benefício e um
+ * botão. A faixa de ambiente, que era uma sétima seção fora da ordem,
+ * virou a foto da seção de endereço e horário.
+ */
 export default async function TenantPublicPage({
   params,
 }: {
@@ -53,12 +63,15 @@ export default async function TenantPublicPage({
   if (!data) notFound();
 
   const whatsapp = whatsAppHref(data.settings.whatsappNumber);
-  const primary = data.settings.primaryColor;
+  const instagram = instagramHandle(data.settings.instagramUrl);
   const copy = verticalCopy(data.barbershop.vertical);
   // Banner enviado pelo dono > foto real padrão da vertical; a arte SVG
   // correspondente fica de fallback.
   const heroImage = data.settings.bannerUrl || copy.heroPhoto;
   const ambienceImage = data.settings.bannerUrl || copy.ambiencePhoto;
+  const autoConfirm = data.settings.bookingConfirmationMode === "auto";
+  const hours = openingHoursList(data.settings.openingHours);
+  const visibleProducts = data.products.slice(0, 6);
 
   return (
     <main
@@ -67,140 +80,72 @@ export default async function TenantPublicPage({
     >
       <PublicHeader data={data} />
 
-      {/* ===== Hero ===== */}
-      <section className="relative flex min-h-[88svh] items-center overflow-hidden">
-        {/* Glows na cor do tenant */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div
-            className="animate-orb absolute -top-32 -left-32 size-[30rem] rounded-full blur-[120px]"
-            style={{ background: withAlpha(primary, 0.2) }}
+      {/* ===== 1. Capa ===== */}
+      <section id="capa" className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <SmartImage
+            src={heroImage}
+            fallbackSrc={copy.heroFallback}
+            alt={`Ambiente da ${data.barbershop.name}`}
+            fill
+            sizes="100vw"
+            className="object-cover"
+            priority
           />
-          <div
-            className="animate-orb-late absolute -right-40 bottom-0 size-[34rem] rounded-full blur-[130px]"
-            style={{ background: withAlpha(primary, 0.12) }}
-          />
+          {/* §7.10: camada escura entre 55% e 70% sobre a foto de fundo. */}
+          <div className="absolute inset-0 bg-black/65" />
         </div>
-        {/* Marca d'água editorial */}
-        <span
-          aria-hidden
-          className="text-outline pointer-events-none absolute -bottom-6 left-1/2 hidden -translate-x-1/2 text-[11rem] leading-none font-bold tracking-tight whitespace-nowrap uppercase opacity-[.05] select-none lg:block"
-        >
-          {data.barbershop.name}
-        </span>
 
-        <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-16">
-          <div>
-            <p className="motion-safe:animate-in motion-safe:fade-in flex items-center gap-2 text-[11px] font-semibold tracking-[0.22em] uppercase opacity-70 duration-700">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--tenant-primary)] opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-[var(--tenant-primary)]" />
-              </span>
-              Agenda aberta
-            </p>
-            <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 mt-6 text-[2.75rem] leading-[1.02] font-semibold tracking-[-0.04em] text-balance duration-700 sm:text-6xl lg:text-7xl">
-              {data.settings.heroTitle}
-            </h1>
-            <p className="motion-safe:animate-in motion-safe:fade-in mt-6 max-w-md text-base leading-7 opacity-70 delay-150 duration-1000 sm:text-lg sm:leading-8">
-              {data.settings.heroSubtitle}
-            </p>
+        <div className="relative mx-auto max-w-6xl px-5 py-14 text-white sm:py-20">
+          <p className="text-[11px] font-semibold tracking-[0.22em] uppercase opacity-80">
+            {data.barbershop.name}
+          </p>
+          <h1 className="mt-4 line-clamp-3 max-w-2xl text-[2.25rem] leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-5xl">
+            {data.settings.heroTitle}
+          </h1>
+          <p className="mt-4 max-w-md text-base leading-7 opacity-85">
+            {data.settings.heroSubtitle}
+          </p>
 
-            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-9 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:items-center">
-              <Link
-                href={`/${tenant}/agendar`}
-                className="btn-shine inline-flex h-13 items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] px-8 text-[15px] font-medium text-[var(--tenant-on-secondary)] shadow-lg shadow-black/15 transition-all hover:opacity-90 active:scale-[.98]"
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href={`/${tenant}/agendar`}
+              className="btn-shine inline-flex h-13 items-center justify-center gap-2 rounded-full bg-[var(--tenant-primary)] px-8 text-[15px] font-semibold text-[var(--tenant-on-primary)] shadow-lg shadow-black/25 transition-all hover:opacity-90 active:scale-[.98]"
+            >
+              <CalendarCheck2 className="size-4.5" />
+              Agendar horário
+            </Link>
+            {whatsapp ? (
+              <a
+                href={whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-white/30 px-7 text-[15px] font-medium transition-colors hover:bg-white/10"
               >
-                <CalendarCheck2 className="size-4.5" />
-                Agendar horário
-              </Link>
-              {whatsapp ? (
-                <a
-                  href={whatsapp}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-current/15 px-7 text-[15px] font-medium transition-all hover:-translate-y-0.5 hover:bg-current/[.05]"
-                >
-                  <MessageCircle className="size-4.5" />
-                  WhatsApp
-                </a>
-              ) : null}
-            </div>
-
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm opacity-70">
-              <span className="flex items-center gap-2">
-                <Timer className="size-4 text-[var(--tenant-primary)]" />
-                Reserva em menos de 1 minuto
-              </span>
-              <span className="flex items-center gap-2">
-                <Sparkles className="size-4 text-[var(--tenant-primary)]" />
-                {data.settings.bookingConfirmationMode === "auto"
-                  ? "Confirmação imediata"
-                  : copy.confirmationChip}
-              </span>
-            </div>
-
-            {data.settings.address ? (
-              <p className="mt-6 flex items-center gap-2 text-sm opacity-60">
-                <MapPin className="size-4 shrink-0" />
-                {data.settings.address}
-              </p>
+                <MessageCircle className="size-4.5" />
+                WhatsApp
+              </a>
             ) : null}
           </div>
 
-          {/* Imagem com ken-burns + chips flutuantes */}
-          <Parallax speed={0.05} className="relative mt-4 lg:mt-0">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] shadow-2xl shadow-black/25 sm:aspect-[16/10] lg:aspect-[4/5]">
-              <SmartImage
-                src={heroImage}
-                fallbackSrc={copy.heroFallback}
-                alt={`Ambiente da ${data.barbershop.name}`}
-                fill
-                sizes="(min-width: 1024px) 42vw, 100vw"
-                className="animate-kenburns object-cover"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              <div className="absolute right-4 bottom-4 left-4 flex items-center gap-3 text-white">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 backdrop-blur-sm">
-                  <CalendarCheck2 className="size-4.5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Horários em tempo real</p>
-                  <p className="truncate text-xs opacity-75">
-                    Escolha o serviço, o profissional e o horário.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="animate-float absolute -top-4 -right-3 hidden items-center gap-2 rounded-2xl border border-current/10 bg-[var(--tenant-bg)]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex">
-              <Scissors className="size-4 text-[var(--tenant-primary)]" />
-              <span className="text-sm font-medium">
-                {data.services.length}{" "}
-                {data.services.length === 1 ? "serviço" : "serviços"}
-              </span>
-            </div>
-            <div className="animate-float absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl border border-current/10 bg-[var(--tenant-bg)]/95 px-4 py-3 shadow-xl backdrop-blur [animation-delay:1.2s] sm:flex">
-              <UsersRound className="size-4 text-[var(--tenant-primary)]" />
-              <span className="text-sm font-medium">
-                {data.professionals.length}{" "}
-                {data.professionals.length === 1
-                  ? "profissional"
-                  : "profissionais"}
-              </span>
-            </div>
-          </Parallax>
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm opacity-85">
+            <span className="flex items-center gap-2">
+              <Timer className="size-4" />
+              Reserva em menos de 1 minuto
+            </span>
+            <span className="flex items-center gap-2">
+              <Sparkles className="size-4" />
+              {autoConfirm ? "Confirmação imediata" : copy.confirmationChip}
+            </span>
+          </div>
         </div>
-
-        <a
-          href="#servicos"
-          aria-label="Descer para os serviços"
-          className="animate-scroll-cue absolute bottom-5 left-1/2 hidden -translate-x-1/2 opacity-60 transition-opacity hover:opacity-100 lg:block"
-        >
-          <ChevronDown className="size-6" />
-        </a>
       </section>
 
-      {/* ===== Serviços ===== */}
-      <section id="servicos" className="mx-auto max-w-6xl scroll-mt-20 px-5">
+      {/* ===== 2. Serviços ===== */}
+      <section
+        id="servicos"
+        className="mx-auto max-w-6xl scroll-mt-20 px-5 py-14 sm:py-20"
+      >
         <Reveal>
           <div className="overflow-hidden rounded-[2rem] bg-[var(--tenant-secondary)] text-[var(--tenant-on-secondary)] shadow-2xl shadow-black/20">
             <div className="p-6 sm:p-10">
@@ -249,8 +194,13 @@ export default async function TenantPublicPage({
                         <span className="font-mono text-sm font-semibold text-[var(--tenant-primary)]">
                           {currency.format(Number(service.price))}
                         </span>
-                        <span className="grid size-9 place-items-center rounded-full border border-current/15 transition-all duration-300 group-hover:translate-x-1 group-hover:border-[var(--tenant-primary)] group-hover:text-[var(--tenant-primary)]">
-                          <ArrowRight className="size-4" />
+                        {/* §7.10: ícone importante sempre com rótulo. */}
+                        <span className="inline-flex h-11 items-center gap-1.5 rounded-full border border-current/15 px-4 text-xs font-medium transition-colors group-hover:border-[var(--tenant-primary)] group-hover:text-[var(--tenant-primary)]">
+                          <span className="hidden sm:inline">
+                            Escolher este serviço
+                          </span>
+                          <span className="sm:hidden">Escolher</span>
+                          <ArrowRight className="size-3.5" />
                         </span>
                       </div>
                     </Link>
@@ -262,10 +212,10 @@ export default async function TenantPublicPage({
         </Reveal>
       </section>
 
-      {/* ===== Profissionais ===== */}
+      {/* ===== 3. Profissionais ===== */}
       <section
         id="profissionais"
-        className="mx-auto max-w-6xl scroll-mt-20 px-5 py-16 sm:py-24"
+        className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-14 sm:pb-20"
       >
         <Reveal>
           <p className="text-[11px] font-semibold tracking-[0.22em] uppercase opacity-50">
@@ -283,15 +233,8 @@ export default async function TenantPublicPage({
               delay={(index % 3) * 100}
               className="min-w-[78%] snap-start sm:min-w-0"
             >
-              <div className="group h-full rounded-[1.75rem] border border-current/10 bg-current/[.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-current/20 hover:shadow-xl hover:shadow-black/10">
-                <span
-                  className="grid size-16 place-items-center overflow-hidden rounded-full text-xl font-semibold ring-2 ring-offset-2 ring-offset-[var(--tenant-bg)] transition-transform duration-300 group-hover:scale-105"
-                  style={{
-                    background: "var(--tenant-secondary)",
-                    color: "var(--tenant-on-secondary)",
-                    ["--tw-ring-color" as string]: withAlpha(primary, 0.6),
-                  }}
-                >
+              <div className="flex h-full flex-col rounded-[1.75rem] border border-current/10 bg-current/[.03] p-6 transition-all duration-300 hover:border-current/20 hover:shadow-xl hover:shadow-black/10">
+                <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-[var(--tenant-secondary)] text-xl font-semibold text-[var(--tenant-on-secondary)]">
                   {professional.avatarUrl ? (
                     <Image
                       src={professional.avatarUrl}
@@ -307,13 +250,15 @@ export default async function TenantPublicPage({
                 <h3 className="mt-5 text-lg font-medium">
                   {professional.name}
                 </h3>
-                <p className="mt-1.5 text-sm leading-6 opacity-60">
+                <p className="mt-1.5 flex-1 text-sm leading-6 opacity-60">
                   {professional.bio ||
                     "Atendimento cuidadoso, do início ao acabamento."}
                 </p>
+                {/* Antes este botão só existia no hover — ou seja, nunca no
+                    celular. Agora é permanente e já leva o profissional. */}
                 <Link
-                  href={`/${tenant}/agendar`}
-                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--tenant-primary)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  href={`/${tenant}/agendar?profissional=${professional.id}`}
+                  className="mt-5 inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-current/15 px-5 text-sm font-medium transition-colors hover:border-[var(--tenant-primary)] hover:text-[var(--tenant-primary)]"
                 >
                   Agendar com {professional.name.split(" ")[0]}
                   <ArrowRight className="size-3.5" />
@@ -324,11 +269,11 @@ export default async function TenantPublicPage({
         </div>
       </section>
 
-      {/* ===== Produtos (Plus) ===== */}
+      {/* ===== 4. Produtos (Plus) ===== */}
       {data.products.length ? (
         <section
           id="produtos"
-          className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-16 sm:pb-24"
+          className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-14 sm:pb-20"
         >
           <Reveal>
             <div className="flex items-end justify-between gap-4">
@@ -340,103 +285,126 @@ export default async function TenantPublicPage({
                   Produtos
                 </h2>
               </div>
-              <Link
-                href={`/${tenant}/produtos`}
-                className="hidden items-center gap-1.5 text-sm font-medium text-[var(--tenant-primary)] transition-transform hover:translate-x-0.5 sm:inline-flex"
-              >
-                Ver todos <ArrowRight className="size-4" />
-              </Link>
+              {/* "Ver todos" só quando existe mais do que já está na tela. */}
+              {data.products.length > visibleProducts.length ? (
+                <Link
+                  href={`/${tenant}/produtos`}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--tenant-primary)] transition-transform hover:translate-x-0.5"
+                >
+                  Ver todos <ArrowRight className="size-4" />
+                </Link>
+              ) : null}
             </div>
           </Reveal>
-          <div className="-mx-5 mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:px-0">
-            {data.products.slice(0, 6).map((product, index) => (
-              <Reveal
-                key={product.id}
-                delay={(index % 4) * 80}
-                className="min-w-[62%] snap-start sm:min-w-[240px]"
-              >
-                <div className="group h-full overflow-hidden rounded-[1.5rem] border border-current/10 bg-current/[.03] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10">
-                  <div className="relative aspect-[4/3] overflow-hidden bg-current/[.05]">
-                    {product.imageUrl ? (
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="(min-width: 640px) 240px, 62vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <span className="grid size-full place-items-center">
-                        <ShoppingBag className="size-8 opacity-30" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <p className="truncate text-sm font-medium">
-                      {product.name}
-                    </p>
-                    <p className="mt-1 font-mono text-sm font-semibold text-[var(--tenant-primary)]">
-                      {currency.format(Number(product.price))}
-                    </p>
-                    <p className="mt-1.5 text-xs opacity-50">
-                      Adicione ao reservar seu horário.
-                    </p>
-                  </div>
-                </div>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleProducts.map((product, index) => (
+              <Reveal key={product.id} delay={(index % 3) * 80}>
+                <ProductCard
+                  name={product.name}
+                  price={product.price}
+                  imageUrl={product.imageUrl}
+                  stock={product.stock}
+                />
               </Reveal>
             ))}
           </div>
         </section>
       ) : null}
 
-      {/* ===== Faixa de ambiente (parallax) ===== */}
-      <section className="relative h-[42vh] min-h-72 overflow-hidden">
-        <Parallax
-          speed={0.14}
-          className="absolute inset-x-0 -top-[30%] -bottom-[30%]"
-        >
-          <div className="relative h-full w-full">
-            <SmartImage
-              src={ambienceImage}
-              fallbackSrc={copy.ambienceFallback}
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover"
-            />
+      {/* ===== 5. Endereço, horário e contato ===== */}
+      <section
+        id="onde"
+        className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-14 sm:pb-20"
+      >
+        <Reveal>
+          <div className="grid overflow-hidden rounded-[2rem] border border-current/10 bg-current/[.03] lg:grid-cols-2">
+            <div className="p-6 sm:p-10">
+              <p className="text-[11px] font-semibold tracking-[0.22em] uppercase opacity-50">
+                Onde e quando
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+                Nos encontre
+              </h2>
+
+              {data.settings.address ? (
+                <p className="mt-6 flex items-start gap-2.5 text-sm leading-6">
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-[var(--tenant-primary)]" />
+                  {data.settings.address}
+                </p>
+              ) : null}
+
+              {hours.length ? (
+                <div className="mt-6">
+                  <p className="text-xs font-semibold tracking-wide uppercase opacity-45">
+                    Horário de funcionamento
+                  </p>
+                  <dl className="mt-3 divide-y divide-current/10 border-y border-current/10">
+                    {hours.map((entry) => (
+                      <div
+                        key={entry.key}
+                        className="flex items-center justify-between gap-4 py-2.5 text-sm"
+                      >
+                        <dt className="opacity-60">{entry.label}</dt>
+                        <dd className="font-medium">{entry.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {whatsapp ? (
+                  <a
+                    href={whatsapp}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-11 items-center gap-2 rounded-full border border-current/15 px-5 text-sm font-medium transition-colors hover:bg-current/[.05]"
+                  >
+                    <MessageCircle className="size-4" />
+                    {data.settings.whatsappNumber}
+                  </a>
+                ) : null}
+                {data.settings.instagramUrl ? (
+                  <a
+                    href={data.settings.instagramUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-11 items-center gap-2 rounded-full border border-current/15 px-5 text-sm font-medium transition-colors hover:bg-current/[.05]"
+                  >
+                    {instagram ?? "Instagram"}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="relative order-first min-h-56 lg:order-last">
+              <SmartImage
+                src={ambienceImage}
+                fallbackSrc={copy.ambienceFallback}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+              />
+            </div>
           </div>
-        </Parallax>
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="relative mx-auto flex h-full max-w-6xl items-center justify-center px-5 text-center text-white">
-          <Reveal>
-            <span
-              className="mx-auto block h-0.5 w-12 rounded-full"
-              style={{ background: primary }}
-            />
-            <p className="mt-6 max-w-xl text-2xl font-medium tracking-tight text-balance sm:text-3xl">
-              {copy.ambienceQuote}
-            </p>
-            <p className="mt-3 text-sm tracking-[0.18em] uppercase opacity-70">
-              {data.barbershop.name}
-            </p>
-          </Reveal>
-        </div>
+        </Reveal>
       </section>
 
-      {/* ===== CTA final ===== */}
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
+      {/* ===== 6. Chamada final ===== */}
+      <section className="mx-auto max-w-6xl px-5 pb-14 sm:pb-20">
         <Reveal>
           <div className="relative overflow-hidden rounded-[2rem] bg-[var(--tenant-primary)] px-6 py-14 text-center text-[var(--tenant-on-primary)] shadow-2xl shadow-black/20 sm:py-20">
-            <div
-              aria-hidden
-              className="animate-gradient-pan absolute inset-0 bg-gradient-to-br from-white/[.12] via-transparent to-black/[.1]"
-            />
             <div className="relative">
               <h2 className="mx-auto max-w-md text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
                 Seu horário te espera.
               </h2>
+              {/* A promessa muda com o modo real de confirmação (§7.11): no
+                  modo manual esta página não promete horário na hora. */}
               <p className="mx-auto mt-4 max-w-sm text-sm leading-6 opacity-80 sm:text-base">
-                Sem fila e sem telefone: reserve agora e chegue na hora certa.
+                {autoConfirm
+                  ? "Sem fila e sem telefone: reserve agora e chegue na hora certa."
+                  : copy.ctaNoteManual}
               </p>
               <Link
                 href={`/${tenant}/agendar`}
@@ -452,16 +420,7 @@ export default async function TenantPublicPage({
 
       <PublicFooter data={data} />
 
-      {/* CTA fixo no polegar (só celular): agendar sempre a um toque. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 px-4 pt-2 pb-[max(env(safe-area-inset-bottom),1rem)] lg:hidden">
-        <Link
-          href={`/${tenant}/agendar`}
-          className="btn-shine flex h-13 w-full items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] text-[15px] font-medium text-[var(--tenant-on-secondary)] shadow-2xl shadow-black/30 transition-transform active:scale-[.98]"
-        >
-          <CalendarCheck2 className="size-4.5" />
-          Agendar horário
-        </Link>
-      </div>
+      <StickyBookCta tenant={tenant} watchId="capa" />
     </main>
   );
 }

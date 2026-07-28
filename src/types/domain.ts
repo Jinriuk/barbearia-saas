@@ -54,6 +54,33 @@ export type PublicProduct = {
   description: string | null;
   price: number;
   imageUrl: string | null;
+  /** Saldo disponível (Fase 4). `null` = produto sem controle de estoque. */
+  stock: number | null;
+};
+
+/** Linha de produto de uma reserva, como ficou gravada. */
+export type PublicAppointmentProduct = {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+/**
+ * Reserva pública como o SERVIDOR a gravou (Fase 4). A tela final e a página
+ * de autogestão leem daqui — nunca do estado do navegador.
+ */
+export type PublicAppointment = {
+  reference: string | null;
+  status: string;
+  token: string | null;
+  startsAt: string;
+  endsAt: string;
+  serviceName: string | null;
+  servicePrice: number | null;
+  professionalName: string | null;
+  paymentPreference: string | null;
+  products: PublicAppointmentProduct[];
+  total: number;
 };
 
 export type PublicBarbershop = {

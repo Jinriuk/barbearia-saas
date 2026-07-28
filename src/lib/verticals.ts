@@ -43,11 +43,13 @@ export const VERTICAL_COPY = {
     servicesEyebrow: "Menu da casa",
     /** Frase da faixa de ambiente (parallax). */
     ambienceQuote: "Tradição no corte, precisão no detalhe.",
-    /** Nota da tela de sucesso do agendamento. */
-    confirmationNote:
-      "A barbearia vai confirmar seu horário. Guarde os detalhes:",
+    /** Nota da reserva pendente: diz por onde vem a resposta (§7.11). */
+    pendingNote: "A barbearia vai responder pelo WhatsApp.",
     /** Chip de promessa de confirmação (a reserva nasce pendente — Fase 0). */
     confirmationChip: "A barbearia confirma seu horário",
+    /** Chamada final da página pública, coerente com o modo de confirmação. */
+    ctaNoteManual:
+      "Escolha o horário: a barbearia confirma e te avisa pelo WhatsApp.",
     /** CTA de contato pós-reserva. */
     talkToBusiness: "Falar com a barbearia",
     /** Assinatura do rodapé público. */
@@ -62,8 +64,10 @@ export const VERTICAL_COPY = {
   salon: {
     servicesEyebrow: "Menu de beleza",
     ambienceQuote: "Beleza no detalhe, cuidado em cada gesto.",
-    confirmationNote: "O salão vai confirmar seu horário. Guarde os detalhes:",
+    pendingNote: "O salão vai responder pelo WhatsApp.",
     confirmationChip: "O salão confirma seu horário",
+    ctaNoteManual:
+      "Escolha o horário: o salão confirma e te avisa pelo WhatsApp.",
     talkToBusiness: "Falar com o salão",
     madeWith: "Feito com NexoBeleza",
     madeWithHref: "/salao",

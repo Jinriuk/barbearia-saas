@@ -54,9 +54,12 @@ export function PublicHeader({
           </Link>
         </nav>
         {hideCta ? null : (
+          // No celular o CTA fica com a capa e com a barra fixa do polegar —
+          // três botões sólidos na mesma tela era a competição que o §10
+          // proíbe.
           <Link
             href={`/${data.barbershop.slug}/agendar`}
-            className="btn-shine inline-flex h-10 shrink-0 items-center rounded-full bg-[var(--tenant-secondary)] px-5 text-sm font-medium text-[var(--tenant-on-secondary)] shadow-md shadow-black/10 transition-all hover:opacity-90 active:scale-[.98]"
+            className="btn-shine hidden h-11 shrink-0 items-center rounded-full bg-[var(--tenant-secondary)] px-5 text-sm font-medium text-[var(--tenant-on-secondary)] shadow-md shadow-black/10 transition-all hover:opacity-90 active:scale-[.98] sm:inline-flex"
           >
             Agendar
           </Link>

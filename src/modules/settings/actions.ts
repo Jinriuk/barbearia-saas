@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
+import { WEEKDAY_KEYS } from "@/lib/opening-hours";
 import { isPlus } from "@/lib/plans";
 import { MAX_TENANT_ASSET_BYTES, uploadPublicImage } from "@/lib/storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -262,16 +263,6 @@ export async function saveBookingRules(
   revalidatePath(`/${tenant.slug}/agendar`);
   return { success: true, message: "Regras de agendamento atualizadas." };
 }
-
-const WEEKDAY_KEYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
 
 /**
  * Horário de funcionamento exibido na página pública (texto informativo por

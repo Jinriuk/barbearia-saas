@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarCheck2, MessageCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarCheck2,
+  CalendarClock,
+  MessageCircle,
+} from "lucide-react";
 import {
   getPublicBarbershop,
   tenantPageMetadata,
 } from "@/modules/barbershops/queries";
 import { tenantStyle } from "@/lib/colors";
 import { whatsAppHref } from "@/lib/contact";
+import { getDateInTz } from "@/lib/dates";
+import { paymentPreferenceLabel } from "@/lib/booking";
 import { verticalCopy } from "@/lib/verticals";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PublicHeader } from "@/components/public-site/public-header";
 import { CancelReservationButton } from "@/components/public-site/cancel-reservation-button";
+import { RescheduleReservation } from "@/components/public-site/reschedule-reservation";
+import type { PublicAppointmentProduct } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +28,21 @@ type PublicReservation = {
   status: string;
   startsAt: string;
   endsAt: string;
+  serviceId: string | null;
   serviceName: string | null;
   servicePrice: number | null;
+  professionalId: string | null;
   professionalName: string | null;
+  paymentPreference: string | null;
   shopName: string;
   shopSlug: string;
   timezone: string;
   whatsappNumber: string | null;
   cancellationNoticeMinutes: number;
   canCancel: boolean;
+  canReschedule: boolean;
+  products: PublicAppointmentProduct[];
+  total: number;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -47,10 +62,13 @@ export async function generateMetadata({
 }
 
 /**
- * Autogestão da reserva pelo cliente (Fase 2): consulta por token limitado —
- * sem login, sem expor UUID interno, sem dados de outros clientes. Cancelar
- * respeita a antecedência configurada; remarcar = cancelar + reservar de
- * novo (decisão documentada; a remarcação assistida fica com a equipe).
+ * Autogestão da reserva pelo cliente: consulta por token limitado — sem
+ * login, sem expor UUID interno, sem dados de outros clientes.
+ *
+ * Fase 4: remarcar deixou de ser um link que mandava cancelar e refazer
+ * tudo — agora move o horário de verdade (RPC própria, mesmas regras da
+ * reserva). Cancelar e remarcar respeitam o mesmo prazo de antecedência, e
+ * quando o prazo passa a página não oferece nenhum dos dois.
  */
 export default async function PublicReservationPage({
   params,
@@ -115,7 +133,7 @@ export default async function PublicReservationPage({
 
         <dl className="mt-6 divide-y divide-black/[.06] rounded-2xl border border-black/10 bg-white/70">
           <Row
-            label="Status"
+            label="Situação"
             value={STATUS_LABEL[reservation.status] ?? reservation.status}
           />
           <Row label="Serviço" value={reservation.serviceName ?? "—"} />
@@ -127,27 +145,60 @@ export default async function PublicReservationPage({
             label="Quando"
             value={whenFormat.format(new Date(reservation.startsAt))}
           />
-          {reservation.servicePrice != null ? (
+          {reservation.products.map((item) => (
             <Row
-              label="Valor estimado"
-              value={currency.format(Number(reservation.servicePrice))}
+              key={item.name}
+              label={`${item.name} × ${item.quantity}`}
+              value={currency.format(Number(item.unitPrice) * item.quantity)}
             />
-          ) : null}
+          ))}
+          <Row
+            label="Pagamento"
+            value={paymentPreferenceLabel(reservation.paymentPreference)}
+          />
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <dt className="text-sm font-semibold">Total</dt>
+            <dd className="font-mono text-base font-semibold">
+              {currency.format(Number(reservation.total))}
+            </dd>
+          </div>
         </dl>
 
         {reservation.status === "pending" ? (
           <p className="mt-4 text-sm leading-6 opacity-60">
-            {copy.confirmationNote}
+            {copy.pendingNote}
           </p>
         ) : null}
 
         <div className="mt-6 space-y-3">
+          {active ? (
+            <a
+              href={`/api/public/${tenant}/reserva/${token}/ics`}
+              className="flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
+            >
+              <CalendarCheck2 className="size-4.5" />
+              Adicionar ao calendário
+            </a>
+          ) : null}
+          {active &&
+          reservation.canReschedule &&
+          reservation.serviceId &&
+          reservation.professionalId ? (
+            <RescheduleReservation
+              tenant={tenant}
+              token={token}
+              serviceId={reservation.serviceId}
+              professionalId={reservation.professionalId}
+              timezone={reservation.timezone}
+              todayInTz={getDateInTz(reservation.timezone)}
+            />
+          ) : null}
           {active && reservation.canCancel ? (
             <CancelReservationButton token={token} />
           ) : null}
           {active && !reservation.canCancel ? (
             <p className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3 text-sm opacity-70">
-              O prazo para cancelar online já passou
+              O prazo para remarcar ou cancelar online já passou
               {whatsapp ? " — fale direto pelo WhatsApp." : "."}
             </p>
           ) : null}
@@ -156,15 +207,7 @@ export default async function PublicReservationPage({
               href={`/${tenant}/agendar`}
               className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--tenant-secondary)] text-[15px] font-medium text-[var(--tenant-on-secondary)] transition-opacity hover:opacity-90"
             >
-              <CalendarCheck2 className="size-4.5" /> Reservar novo horário
-            </Link>
-          ) : null}
-          {active ? (
-            <Link
-              href={`/${tenant}/agendar`}
-              className="flex h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-[15px] font-medium transition-colors hover:bg-black/[.04]"
-            >
-              Remarcar: cancele e reserve um novo horário
+              <CalendarClock className="size-4.5" /> Reservar novo horário
             </Link>
           ) : null}
           {whatsapp ? (
@@ -188,7 +231,9 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3.5">
       <dt className="text-sm opacity-55">{label}</dt>
-      <dd className="text-right text-sm font-medium">{value}</dd>
+      <dd className="text-right text-sm font-medium first-letter:uppercase">
+        {value}
+      </dd>
     </div>
   );
 }

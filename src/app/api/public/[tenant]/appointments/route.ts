@@ -2,6 +2,7 @@ import { publicErrorMessage } from "@/lib/errors";
 import { requestIp, sharedRateLimit } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { publicBookingSchema } from "@/lib/validators/entities";
+import type { PublicAppointment } from "@/types/domain";
 
 export async function POST(
   request: Request,
@@ -37,22 +38,21 @@ export async function POST(
     p_client_email: parsed.data.clientEmail || null,
     p_notes: parsed.data.notes || null,
     p_products: parsed.data.products ?? [],
+    p_payment_preference: parsed.data.paymentPreference || null,
   });
   if (error) return Response.json({ error: publicErrorMessage(error) }, { status: 409 });
 
-  // Contrato público: status realmente persistido + referência curta +
-  // token de autogestão (cancelar/consultar). Nenhum UUID interno.
-  const result = (data ?? {}) as {
-    reference?: string;
-    status?: string;
-    token?: string;
-  };
+  // Contrato público (Fase 4): a tela final é montada com o que o servidor
+  // GRAVOU — serviço, profissional, horário, produtos, pagamento e total —,
+  // e não com o que o navegador lembrava. Nenhum UUID interno sai daqui.
+  const result = (data ?? {}) as Partial<PublicAppointment>;
   return Response.json(
     {
       ok: true,
       reference: result.reference ?? null,
       status: result.status ?? "pending",
       token: result.token ?? null,
+      appointment: result.startsAt ? (result as PublicAppointment) : null,
     },
     { status: 201 },
   );

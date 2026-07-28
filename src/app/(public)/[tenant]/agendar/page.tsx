@@ -28,15 +28,25 @@ export default async function BookingPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ servico?: string }>;
+  searchParams: Promise<{ servico?: string; profissional?: string }>;
 }) {
-  const [{ tenant }, { servico }] = await Promise.all([params, searchParams]);
+  const [{ tenant }, { servico, profissional }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const data = await getPublicBarbershop(tenant);
   if (!data) notFound();
 
   const copy = verticalCopy(data.barbershop.vertical);
   const initialServiceId = data.services.some((item) => item.id === servico)
     ? servico
+    : undefined;
+  // "Agendar com {nome}" na página pública chega por aqui (Fase 4): antes o
+  // botão existia e o profissional não vinha selecionado.
+  const initialProfessionalId = data.professionals.some(
+    (item) => item.id === profissional,
+  )
+    ? profissional
     : undefined;
 
   return (
@@ -53,7 +63,7 @@ export default async function BookingPage({
 
       <PublicHeader data={data} hideCta />
 
-      <div className="relative mx-auto max-w-2xl px-5 pt-8 pb-16">
+      <div className="relative mx-auto max-w-2xl px-5 pt-8 pb-16 lg:max-w-5xl">
         <Link
           href={`/${tenant}`}
           className="inline-flex items-center gap-1.5 text-sm opacity-60 transition-all hover:-translate-x-0.5 hover:opacity-100"
@@ -96,6 +106,7 @@ export default async function BookingPage({
             products={data.products}
             isPlus={isPlus(data.barbershop.plan)}
             initialServiceId={initialServiceId}
+            initialProfessionalId={initialProfessionalId}
             whatsappHref={whatsAppHref(data.settings.whatsappNumber)}
             vertical={data.barbershop.vertical}
           />
