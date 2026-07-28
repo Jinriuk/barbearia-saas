@@ -177,14 +177,28 @@ set local request.jwt.claim.sub = 'cccc1111-1111-1111-1111-111111111111';
 set local request.jwt.claims = '{"sub":"cccc1111-1111-1111-1111-111111111111","role":"authenticated"}';
 
 do $$
-declare ends_at timestamptz;
+declare ends_at timestamptz; stored timestamptz;
 begin
   select public.request_subscription_cancellation(
     'cccc3333-3333-3333-3333-333333333333', 'vencida') into ends_at;
   if ends_at < now() then
     raise exception 'FALHOU: assinatura vencida devolveu data no passado (%)', ends_at;
   end if;
-  raise notice 'OK — cancelar assinatura vencida não promete data que já passou';
+
+  -- A data prometida tem de ser a MESMA que o cron consome: eram duas contas
+  -- diferentes, e a de quem estava em atraso encerrava ~12 dias antes.
+  select cancellation_effective_at into stored from public.subscriptions
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+  if stored is distinct from ends_at then
+    raise exception 'FALHOU: tela promete % e o cron executaria %', ends_at, stored;
+  end if;
+
+  -- Em atraso desde 3 dias atrás: a régua ainda dá tolerância até +15 do
+  -- vencimento. Pedir para sair não pode custar acesso já concedido.
+  if stored < now() + interval '11 days' then
+    raise exception 'FALHOU: cancelamento antecipou a tolerância da régua (%)', stored;
+  end if;
+  raise notice 'OK — a data prometida é a executada, e respeita a tolerância (%)', stored::date;
 end;
 $$;
 

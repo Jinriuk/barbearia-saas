@@ -97,32 +97,21 @@ export async function GET(request: Request) {
     // do banco tira a página pública do ar. Antes das demais regras para não
     // ser sobrescrito por elas.
     //
-    // Duas consultas em vez de um .or(): a data no filtro tem pontos (os
-    // milissegundos do ISO) e o .or() do PostgREST usa ponto para separar
-    // coluna.operador.valor. Duas condições simples não deixam essa dúvida.
+    // A data vem de `cancellation_effective_at`, gravada no pedido — a MESMA
+    // que a tela promete ao dono. Antes o cron decidia por current_period_end
+    // e, para quem estava em atraso, isso já era passado: a tela dizia "acesso
+    // até <data futura>" e o cron encerrava na madrugada seguinte, ~12 dias
+    // antes do que a própria régua concede.
     await run(
-      "cancel_requested_paid",
+      "cancel_requested",
       "canceled",
       supabase
         .from("subscriptions")
         .update({ status: "canceled", canceled_at: nowIso })
         .eq("cancel_at_period_end", true)
         .neq("status", "canceled")
-        .not("current_period_end", "is", null)
-        .lte("current_period_end", nowIso)
-        .select("id,barbershop_id"),
-    );
-    // Pediu cancelamento durante o teste: o fim é o fim do trial.
-    await run(
-      "cancel_requested_trial",
-      "canceled",
-      supabase
-        .from("subscriptions")
-        .update({ status: "canceled", canceled_at: nowIso })
-        .eq("cancel_at_period_end", true)
-        .eq("status", "trialing")
-        .not("trial_ends_at", "is", null)
-        .lte("trial_ends_at", nowIso)
+        .not("cancellation_effective_at", "is", null)
+        .lte("cancellation_effective_at", nowIso)
         .select("id,barbershop_id"),
     );
 

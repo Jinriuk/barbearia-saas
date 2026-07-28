@@ -7,6 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
+import { currentEpochMs } from "@/lib/dates";
 import {
   accessState,
   daysLeft,
@@ -49,12 +50,21 @@ export default async function SubscriptionPage() {
     sub?.status === "trialing" ? daysLeft(sub.trialEndsAt) : null;
   const periodEnd = formatDate(sub?.currentPeriodEnd ?? null);
   // Fim efetivo do acesso: no teste é o fim do trial; assinando, o fim do
-  // período pago. É a data que o cancelamento respeita (§0.2).
-  const accessEndsAt = formatDate(
-    sub?.status === "trialing"
+  // período pago. É a data que o cancelamento respeita (§0.2) — e para uma
+  // assinatura em atraso essa data já passou, então o cartão não pode prometer
+  // "seu acesso continua até <ontem>". Mesma regra do greatest(..., now()) da
+  // RPC: data no passado vira "nenhuma data", e o texto cai no genérico.
+  // Quando já existe pedido de cancelamento, a data é a GRAVADA — a mesma que
+  // o cron consome. Duas contas para o mesmo prazo foi o defeito original.
+  const rawEndsAt =
+    sub?.cancellationEffectiveAt ??
+    (sub?.status === "trialing"
       ? (sub?.trialEndsAt ?? null)
-      : (sub?.currentPeriodEnd ?? null),
-  );
+      : (sub?.currentPeriodEnd ?? null));
+  const accessEndsAt =
+    rawEndsAt && Date.parse(rawEndsAt) > currentEpochMs()
+      ? formatDate(rawEndsAt)
+      : null;
   // A landing de salão se apresenta como NexoBeleza; a tela dizia "NexoBarber"
   // para todo mundo (mesmo defeito do §0.5).
   const brand = brandName(tenant.vertical);

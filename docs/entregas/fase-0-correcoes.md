@@ -141,6 +141,27 @@ caminhos que estendem período: o webhook, o console do super-admin e o gateway
 da Fase 5. O discriminador é o período ter sido **estendido**, então o próprio
 pedido de cancelamento não se autoanula.
 
+**A data prometida e a data executada eram duas contas diferentes.** A RPC
+devolvia `greatest(período, agora)` para a tela e o cron decidia por
+`current_period_end <= now()`. Para quem está em atraso as duas divergem — o
+período venceu, mas a régua ainda concede tolerância (bloqueia em +5 dias,
+cancela em +15). O dono lia "seu acesso continua até 09/08" e o cron encerrava
+na madrugada seguinte, tirando a página pública do ar ~12 dias antes. Agora o
+fim efetivo é gravado em `cancellation_effective_at` no momento do pedido, e é
+essa coluna que a tela mostra e o cron consome. Pedir para sair deixou de custar
+acesso que a régua já tinha dado.
+
+**Anular uma venda e reconcluir o atendimento zerava tudo.** A guarda de
+idempotência de `sync_completed_appointment_income` olhava qualquer receita do
+atendimento, inclusive a anulada: reconcluir não gerava receita nova — e, agora
+que a comissão acompanha a receita anulada, também não gerava comissão. O
+serviço prestado ficava valendo zero para sempre.
+
+**O descadastro dava baixa na linha, não na pessoa.** O mesmo contato pode ter
+preenchido o formulário mais de uma vez (duas landings, duas campanhas), e cada
+envio tem seu token: sair por um link deixava a pessoa contatável pelos outros
+registros — enquanto ela entendeu que tinha pedido para sair.
+
 **Mais duas listas de plano mentindo** (mesma classe do 0.3): produtos e
 controle de estoque funcionam no Padrão — `/produtos` só bloqueia o upsell no
 agendamento, e a própria tela diz isso ao dono — mas apareciam só como

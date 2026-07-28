@@ -12,6 +12,8 @@ export type SubscriptionInfo = {
   currentPeriodEnd: string | null;
   /** Cancelamento pedido pelo dono; encerra no fim do período (Fase 0 §0.2). */
   cancelAtPeriodEnd: boolean;
+  /** Quando o cancelamento pedido passa a valer — o que o cron consome. */
+  cancellationEffectiveAt: string | null;
 };
 
 export type TenantContext = {

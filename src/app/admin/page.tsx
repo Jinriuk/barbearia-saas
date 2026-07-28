@@ -122,6 +122,7 @@ export default async function AdminPage() {
               // O super-admin lê o estado de acesso, que não depende do
               // pedido de cancelamento (Fase 0 §0.2 — o efeito é do cron).
               cancelAtPeriodEnd: false,
+              cancellationEffectiveAt: null,
             }
           : null,
       ),

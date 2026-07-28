@@ -13,6 +13,7 @@ function sub(partial: Partial<SubscriptionInfo>): SubscriptionInfo {
     trialEndsAt: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
+    cancellationEffectiveAt: null,
     ...partial,
   };
 }

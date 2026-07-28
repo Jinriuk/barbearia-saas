@@ -57,7 +57,7 @@ export const getTenantContext = cache(
     const { data: sub } = await supabase
       .from("subscriptions")
       .select(
-        "status, plan, price_cents, trial_ends_at, current_period_end, cancel_at_period_end",
+        "status, plan, price_cents, trial_ends_at, current_period_end, cancel_at_period_end, cancellation_effective_at",
       )
       .eq("barbershop_id", barbershop.id)
       .maybeSingle();
@@ -71,6 +71,8 @@ export const getTenantContext = cache(
         // Cancelamento pedido pelo dono, com efeito no fim do período pago
         // (Fase 0 §0.2). Defensivo: base sem a coluna vira false.
         cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+        // Fonte única da data de encerramento: é o que o cron executa.
+        cancellationEffectiveAt: sub.cancellation_effective_at ?? null,
       };
     }
 
