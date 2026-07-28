@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   AlertTriangle,
   Boxes,
@@ -5,6 +6,7 @@ import {
   EyeOff,
   Package,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -61,6 +63,7 @@ export default async function ProductsPage() {
     { data: productData },
     { data: movementData },
     { data: reservationData },
+    { data: stockData },
   ] = await Promise.all([
     supabase
       .from("products")
@@ -85,68 +88,77 @@ export default async function ProductsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(100),
+    // Saldo somado NO BANCO, sobre o ledger inteiro. A soma no navegador
+    // usava as 400 movimentações mais recentes: passando disso, as entradas
+    // antigas sumiam da conta e o estoque exibido virava ficção.
+    supabase.rpc("get_product_stock", { p_barbershop: tenant.id }),
   ]);
 
   const products = productData ?? [];
   const movements = movementData ?? [];
   const reservations = reservationData ?? [];
 
-  const reservedByProduct = new Map<string, number>();
-  for (const reservation of reservations) {
-    reservedByProduct.set(
-      reservation.product_id,
-      (reservedByProduct.get(reservation.product_id) ?? 0) +
-        Number(reservation.quantity),
-    );
-  }
-  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
-
-  const stockByProduct = new Map<string, number>();
-  for (const movement of movements) {
-    const signal = IN_TYPES.has(movement.type) ? 1 : -1;
-    stockByProduct.set(
-      movement.product_id,
-      (stockByProduct.get(movement.product_id) ?? 0) +
-        signal * Number(movement.quantity),
-    );
-  }
+  const stockRows = (stockData ?? []) as Array<{
+    product_id: string;
+    balance: number;
+    reserved: number;
+    last_movement_at: string | null;
+  }>;
+  const stockByProduct = new Map(
+    stockRows.map((row) => [
+      row.product_id,
+      {
+        balance: Number(row.balance),
+        reserved: Number(row.reserved),
+        lastMovementAt: row.last_movement_at,
+      },
+    ]),
+  );
   const productNames = new Map(products.map((item) => [item.id, item.name]));
 
-  const stockOf = (id: string) => stockByProduct.get(id) ?? 0;
+  const stockOf = (id: string) => stockByProduct.get(id)?.balance ?? 0;
+  const reservedOf = (id: string) => stockByProduct.get(id)?.reserved ?? 0;
+  const lastMovementOf = (id: string) =>
+    stockByProduct.get(id)?.lastMovementAt ?? null;
   const activeProducts = products.filter((product) => product.active);
-  const totalUnits = activeProducts.reduce(
-    (total, product) => total + stockOf(product.id),
-    0,
-  );
   const stockValue = activeProducts.reduce(
     (total, product) =>
       total + stockOf(product.id) * Number(product.sale_price),
     0,
   );
   const lowStock = activeProducts.filter(
-    (product) => stockOf(product.id) < Number(product.minimum_stock),
+    (product) =>
+      Number(product.minimum_stock) > 0 &&
+      stockOf(product.id) < Number(product.minimum_stock),
+  );
+  const zeroStock = activeProducts.filter(
+    (product) => stockOf(product.id) <= 0,
+  );
+  const reservedUnits = activeProducts.reduce(
+    (total, product) => total + reservedOf(product.id),
+    0,
   );
 
   const totals = [
     {
-      label: "Produtos ativos",
-      value: String(activeProducts.length),
+      label: "Abaixo do mínimo",
+      value: String(lowStock.length),
+      icon: AlertTriangle,
+    },
+    {
+      label: "Produtos zerados",
+      value: String(zeroStock.length),
       icon: Package,
     },
     {
-      label: "Unidades em estoque",
-      value: totalUnits.toLocaleString("pt-BR"),
-      icon: Boxes,
-    },
-    {
-      label: "Valor estimado",
+      label: "Valor em estoque",
       value: formatBRL(stockValue),
       icon: Wallet,
     },
     {
-      label: "Baixo estoque",
-      value: String(lowStock.length),
-      icon: AlertTriangle,
+      label: "Reservas atuais",
+      value: reservedUnits.toLocaleString("pt-BR"),
+      icon: Boxes,
     },
   ];
 
@@ -157,11 +169,20 @@ export default async function ProductsPage() {
         title="Produtos e Estoque"
         description="Catálogo, saldo, reservas e movimentações num só lugar."
         action={
-          canCatalog ? (
-            <div className="w-full sm:w-56">
-              <ProductFormSheet />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {canInventory ? (
+              <Button asChild variant="outline">
+                <Link href="/vendas">
+                  <ShoppingCart className="size-4" /> Nova venda
+                </Link>
+              </Button>
+            ) : null}
+            {canCatalog ? (
+              <div className="w-full sm:w-48">
+                <ProductFormSheet />
+              </div>
+            ) : null}
+          </div>
         }
       />
 
@@ -277,7 +298,9 @@ export default async function ProductsPage() {
                       <TableHead className="text-right">Estoque</TableHead>
                       <TableHead className="text-right">Reservado</TableHead>
                       <TableHead className="text-right">Disponível</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Mínimo</TableHead>
+                      <TableHead>Última movimentação</TableHead>
+                      <TableHead>Situação</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -286,8 +309,11 @@ export default async function ProductsPage() {
                       const stock = stockOf(product.id);
                       const reserved = reservedOf(product.id);
                       const available = stock - reserved;
+                      const lastMovement = lastMovementOf(product.id);
                       const low =
-                        product.active && stock < Number(product.minimum_stock);
+                        product.active &&
+                        Number(product.minimum_stock) > 0 &&
+                        stock < Number(product.minimum_stock);
                       return (
                         <TableRow key={product.id}>
                           <TableCell>
@@ -309,6 +335,18 @@ export default async function ProductsPage() {
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {available.toLocaleString("pt-BR")}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-right font-mono">
+                            {Number(product.minimum_stock) > 0
+                              ? Number(product.minimum_stock).toLocaleString(
+                                  "pt-BR",
+                                )
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {lastMovement
+                              ? `${formatShortDateInTz(lastMovement, tenant.timezone)} ${formatTimeInTz(lastMovement, tenant.timezone)}`
+                              : "Nunca"}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">

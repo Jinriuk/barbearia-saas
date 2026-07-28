@@ -38,10 +38,15 @@ type OverviewRow = {
   period: string;
   price: number;
   status: "active" | "paused";
-  effective_status: "active" | "paused" | "past_due";
+  effective_status: "active" | "due_soon" | "paused" | "past_due";
   current_period_start: string;
   current_period_end: string;
-  usage: { serviceId: string; serviceName: string; limit: number; used: number }[];
+  usage: {
+    serviceId: string;
+    serviceName: string;
+    limit: number;
+    used: number;
+  }[];
 };
 
 function money(value: number) {
@@ -84,7 +89,10 @@ export default async function MembershipPlansPage() {
       .eq("active", true)
       .order("name")
       .limit(500),
-    supabase.rpc("get_membership_overview", { p_barbershop: tenant.id }),
+    supabase.rpc("get_membership_overview", {
+      p_barbershop: tenant.id,
+      p_client_id: null,
+    }),
   ]);
 
   const services = serviceData ?? [];
@@ -193,8 +201,20 @@ export default async function MembershipPlansPage() {
                           <Badge variant="destructive">Vencido</Badge>
                         ) : membership.effective_status === "paused" ? (
                           <Badge variant="secondary">Pausado</Badge>
+                        ) : membership.effective_status === "due_soon" ? (
+                          <Badge
+                            variant="outline"
+                            className="border-warning/50 text-warning"
+                          >
+                            Vence em breve
+                          </Badge>
                         ) : (
-                          <Badge>Em dia</Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-success/50 text-success"
+                          >
+                            Em dia
+                          </Badge>
                         )}
                         <span className="text-muted-foreground text-xs">
                           até {periodEndLabel}
@@ -207,11 +227,7 @@ export default async function MembershipPlansPage() {
                           variant="outline"
                           className="mt-1.5"
                         >
-                          <a
-                            href={chargeHref}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
+                          <a href={chargeHref} target="_blank" rel="noreferrer">
                             <MessageCircle className="size-3.5" /> Cobrar no
                             WhatsApp
                           </a>

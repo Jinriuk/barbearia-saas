@@ -25,6 +25,7 @@ type ProductInput = {
   description: string | null;
   sale_price: number;
   cost_price: number | null;
+  minimum_stock?: number | null;
   public_visible: boolean;
   image_url?: string | null;
 };
@@ -117,6 +118,21 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
                 defaultValue={product?.cost_price ?? undefined}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-minimum">Estoque mínimo</Label>
+            <Input
+              id="product-minimum"
+              name="minimumStock"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={product?.minimum_stock ?? 0}
+            />
+            <p className="text-muted-foreground text-xs">
+              Abaixo desse saldo o produto entra no alerta de reposição do
+              Início e da lista de estoque. Zero desliga o alerta.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="product-description">Descrição</Label>

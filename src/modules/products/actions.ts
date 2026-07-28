@@ -14,6 +14,9 @@ const productSchema = z.object({
   description: z.string().trim().max(500).optional(),
   salePrice: z.coerce.number().min(0).max(999999),
   costPrice: z.coerce.number().min(0).max(999999).optional(),
+  // Sem este campo no formulário, o alerta de reposição do G5 nunca
+  // disparava: a coluna existia no banco travada no default 0.
+  minimumStock: z.coerce.number().min(0).max(999999).optional(),
   publicVisible: z.coerce.boolean().optional(),
 });
 
@@ -36,6 +39,7 @@ export async function saveProduct(
     description: formData.get("description"),
     salePrice: formData.get("salePrice"),
     costPrice: formData.get("costPrice") || 0,
+    minimumStock: formData.get("minimumStock") || 0,
     publicVisible: formData.get("publicVisible") === "on",
   });
   if (!parsed.success) {
@@ -49,6 +53,7 @@ export async function saveProduct(
     description: string | null;
     sale_price: number;
     cost_price: number;
+    minimum_stock: number;
     public_visible: boolean;
     image_url?: string;
   } = {
@@ -57,6 +62,7 @@ export async function saveProduct(
     description: parsed.data.description || null,
     sale_price: parsed.data.salePrice,
     cost_price: parsed.data.costPrice ?? 0,
+    minimum_stock: parsed.data.minimumStock ?? 0,
     public_visible: parsed.data.publicVisible ?? false,
   };
 

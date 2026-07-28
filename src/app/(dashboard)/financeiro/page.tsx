@@ -124,6 +124,8 @@ export default async function FinanceiroPage() {
     { data: summaryRows },
     { data: receivableRows },
     { count: completedCount },
+    { data: productSalesRows },
+    { data: counterSaleRows },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -190,6 +192,22 @@ export default async function FinanceiroPage() {
       .eq("status", "completed")
       .gte("starts_at", monthStart.toISOString())
       .lt("starts_at", monthEnd.toISOString()),
+    // Produtos vendidos no mês pelas DUAS portas: reserva do agendamento e
+    // venda de balcão. Somado no banco — antes a tabela lia só a primeira,
+    // então uma venda avulsa entrava no total do mês e sumia do relatório.
+    supabase.rpc("get_product_sales", {
+      p_barbershop: tenant.id,
+      p_from: monthStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+    }),
+    // Atribuição da venda de balcão ao vendedor.
+    supabase
+      .from("counter_sales")
+      .select("total,professional:professionals(id,name)")
+      .eq("barbershop_id", tenant.id)
+      .gte("created_at", monthStart.toISOString())
+      .lt("created_at", monthEnd.toISOString())
+      .limit(1000),
   ]);
 
   const summary0 = Array.isArray(summaryRows) ? summaryRows[0] : summaryRows;
@@ -257,19 +275,35 @@ export default async function FinanceiroPage() {
     }
   }
 
+  // A tabela de produtos vem agregada do banco (as duas fontes de venda).
+  for (const row of (productSalesRows ?? []) as Array<{
+    product_name: string;
+    units: number;
+    revenue: number;
+  }>) {
+    byProduct.set(row.product_name, {
+      name: row.product_name,
+      qty: Number(row.units),
+      revenue: Number(row.revenue),
+    });
+  }
+
+  // A atribuição por profissional continua item a item: a reserva conhece o
+  // profissional do atendimento; a venda de balcão, o vendedor escolhido.
   for (const row of saleRows ?? []) {
-    const revenue = Number(row.quantity) * Number(row.unit_price);
-    const name = first(row.product)?.name ?? "Produto";
-    const current = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
-    current.qty += Number(row.quantity);
-    current.revenue += revenue;
-    byProduct.set(name, current);
     const professional = first(first(row.appointment)?.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.product += revenue;
-      entry.total += revenue;
-    }
+    if (!professional) continue;
+    const entry = professionalEntry(professional.id, professional.name);
+    const revenue = Number(row.quantity) * Number(row.unit_price);
+    entry.product += revenue;
+    entry.total += revenue;
+  }
+  for (const row of counterSaleRows ?? []) {
+    const professional = first(row.professional);
+    if (!professional) continue;
+    const entry = professionalEntry(professional.id, professional.name);
+    entry.product += Number(row.total);
+    entry.total += Number(row.total);
   }
 
   const monthBuckets = new Map<string, { service: number; product: number }>(

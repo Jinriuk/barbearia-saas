@@ -35,7 +35,7 @@ export function MembershipActions({
 }: {
   membershipId: string;
   clientName: string;
-  status: "active" | "paused" | "past_due";
+  status: "active" | "due_soon" | "paused" | "past_due";
   canManage: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -64,7 +64,10 @@ export function MembershipActions({
                 Registra o pagamento do próximo período de {clientName}.
               </SheetDescription>
             </SheetHeader>
-            <form action={formAction} className="flex flex-1 flex-col gap-4 p-4">
+            <form
+              action={formAction}
+              className="flex flex-1 flex-col gap-4 p-4"
+            >
               {state.message && !state.success ? (
                 <Alert variant="destructive">
                   <AlertDescription>{state.message}</AlertDescription>
