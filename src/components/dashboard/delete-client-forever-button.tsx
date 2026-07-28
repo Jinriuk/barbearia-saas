@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -34,6 +35,7 @@ export function DeleteClientForeverButton({
   itemName: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  useActionToast(state);
 
   return (
     <AlertDialog>
@@ -56,10 +58,9 @@ export function DeleteClientForeverButton({
             Excluir {itemName} definitivamente?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Ação irreversível, pensada para pedidos de exclusão de dados
-            (LGPD). Se o cliente tiver atendimentos registrados, os dados
-            pessoais (nome, telefone e e-mail) são removidos e o histórico
-            fica anônimo.
+            Ação irreversível, pensada para pedidos de exclusão de dados (LGPD).
+            Se o cliente tiver atendimentos registrados, os dados pessoais
+            (nome, telefone e e-mail) são removidos e o histórico fica anônimo.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {state.message && !state.success ? (

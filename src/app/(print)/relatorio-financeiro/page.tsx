@@ -10,10 +10,30 @@ import {
 } from "@/components/dashboard/monthly-revenue-chart";
 import { PrintButton } from "@/components/dashboard/print-button";
 
-function first<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
-}
+/**
+ * Retorno de `financial_report` e `income_by_day` (Fase 0 §0.7). Os valores
+ * `numeric` do Postgres chegam como string no JSON, daí `number | string`.
+ */
+type Num = number | string;
+type FinancialReport = {
+  serviceRevenue?: Num;
+  productRevenue?: Num;
+  otherRevenue?: Num;
+  attended?: Num;
+  productUnits?: Num;
+  clients?: Num;
+  byMethod?: Array<{ method: string | null; total: Num }>;
+  byProfessional?: Array<{
+    name: string;
+    count: Num;
+    service: Num;
+    product: Num;
+    total: Num;
+  }>;
+  byService?: Array<{ name: string; count: Num; revenue: Num }>;
+  byProduct?: Array<{ name: string; qty: Num; revenue: Num }>;
+};
+type IncomeByDayRow = { paid_on: string; category: string; total: Num };
 
 const monthNames = [
   "Janeiro",
@@ -41,11 +61,6 @@ export default async function FinancialReportPage({
 
   const { start, end, year, month } = getUtcMonthRange(tenant.timezone, mes);
 
-  const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tenant.timezone,
-    year: "numeric",
-    month: "2-digit",
-  });
   const monthShortFmt = new Intl.DateTimeFormat("pt-BR", {
     month: "short",
     timeZone: "UTC",
@@ -63,151 +78,55 @@ export default async function FinancialReportPage({
   );
 
   const supabase = await createSupabaseServerClient();
-  const [
-    { data: shopData },
-    { data: incomeRows },
-    { data: saleRows },
-    { data: chartRows },
-  ] = await Promise.all([
-    supabase
-      .from("barbershops")
-      .select("name,logo_url")
-      .eq("id", tenant.id)
-      .maybeSingle(),
-    supabase
-      .from("financial_transactions")
-      .select(
-        "amount,payment_method,category,appointment:appointments(client_id,professional:professionals(id,name),service:services(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .eq("status", "paid")
-      .neq("category", "product")
-      .gte("paid_at", start.toISOString())
-      .lt("paid_at", end.toISOString()),
-    supabase
-      .from("appointment_products")
-      .select(
-        "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(client_id,professional:professionals(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("status", "confirmed")
-      .gte("confirmed_at", start.toISOString())
-      .lt("confirmed_at", end.toISOString()),
-    supabase
-      .from("financial_transactions")
-      .select("amount,category,paid_at")
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .eq("status", "paid")
-      .gte("paid_at", chartStart.toISOString())
-      .lt("paid_at", end.toISOString()),
-  ]);
+  // Tudo somado no banco (Fase 0 §0.7). As três varreduras que ficavam aqui
+  // não tinham limite: o PostgREST corta em ~1000 linhas e o PDF saía com o
+  // número menor, impresso e arquivado sem nenhum aviso de corte.
+  const [{ data: shopData }, { data: reportData }, { data: chartRows }] =
+    await Promise.all([
+      supabase
+        .from("barbershops")
+        .select("name,logo_url")
+        .eq("id", tenant.id)
+        .maybeSingle(),
+      supabase.rpc("financial_report", {
+        p_barbershop: tenant.id,
+        p_from: start.toISOString(),
+        p_to: end.toISOString(),
+      }),
+      supabase.rpc("income_by_day", {
+        p_barbershop: tenant.id,
+        p_from: chartStart.toISOString(),
+        p_to: end.toISOString(),
+        p_timezone: tenant.timezone,
+      }),
+    ]);
 
   const shopName = shopData?.name ?? tenant.name;
   const logoUrl = shopData?.logo_url ?? null;
 
-  const byProfessional = new Map<
-    string,
-    {
-      name: string;
-      count: number;
-      service: number;
-      product: number;
-      total: number;
-    }
-  >();
-  const byService = new Map<
-    string,
-    { name: string; count: number; revenue: number }
-  >();
-  const byProduct = new Map<
-    string,
-    { name: string; qty: number; revenue: number }
-  >();
-  const byMethod = new Map<string, number>();
-  const clientSet = new Set<string>();
-  let serviceRevenue = 0;
-  let productRevenue = 0;
-  let otherRevenue = 0;
-  let attended = 0;
-  let productUnits = 0;
+  const report = (reportData ?? {}) as FinancialReport;
+  const serviceRevenue = Number(report.serviceRevenue ?? 0);
+  const productRevenue = Number(report.productRevenue ?? 0);
+  const otherRevenue = Number(report.otherRevenue ?? 0);
+  const attended = Number(report.attended ?? 0);
+  const productUnits = Number(report.productUnits ?? 0);
+  const clientCount = Number(report.clients ?? 0);
 
-  const professionalEntry = (id: string, name: string) => {
-    const cur = byProfessional.get(id) ?? {
-      name,
-      count: 0,
-      service: 0,
-      product: 0,
-      total: 0,
-    };
-    byProfessional.set(id, cur);
-    return cur;
-  };
-
-  for (const row of incomeRows ?? []) {
-    const total = Number(row.amount);
-    // Sem método registrado (dados anteriores à Fase 0) → "Não informado".
-    byMethod.set(
-      row.payment_method ?? "",
-      (byMethod.get(row.payment_method ?? "") ?? 0) + total,
-    );
-    const appt = first(row.appointment);
-    if (!appt) {
-      otherRevenue += total;
-      continue;
-    }
-    attended += 1;
-    serviceRevenue += total;
-    if (appt.client_id) clientSet.add(appt.client_id as string);
-    const professional = first(appt.professional);
-    if (professional) {
-      const cur = professionalEntry(professional.id, professional.name);
-      cur.count += 1;
-      cur.service += total;
-      cur.total += total;
-    }
-    const service = first(appt.service);
-    if (service) {
-      const cur = byService.get(service.id) ?? {
-        name: service.name,
-        count: 0,
-        revenue: 0,
-      };
-      cur.count += 1;
-      cur.revenue += total;
-      byService.set(service.id, cur);
-    }
-  }
-
-  for (const row of saleRows ?? []) {
-    const revenue = Number(row.quantity) * Number(row.unit_price);
-    productRevenue += revenue;
-    productUnits += Number(row.quantity);
-    const appt = first(row.appointment);
-    if (appt?.client_id) clientSet.add(appt.client_id as string);
-    const name = first(row.product)?.name ?? "Produto";
-    const cur = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
-    cur.qty += Number(row.quantity);
-    cur.revenue += revenue;
-    byProduct.set(name, cur);
-    const professional = first(appt?.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.product += revenue;
-      entry.total += revenue;
-    }
-  }
+  // Sem método registrado (dados anteriores à Fase 0) → "Não informado".
+  const byMethod = new Map<string, number>(
+    (report.byMethod ?? []).map((row) => [row.method ?? "", Number(row.total)]),
+  );
 
   const monthBuckets = new Map<string, { service: number; product: number }>(
     chartMonths.map((m) => [m.key, { service: 0, product: 0 }]),
   );
-  for (const row of chartRows ?? []) {
-    if (!row.paid_at) continue;
-    const bucket = monthBuckets.get(monthKeyFmt.format(new Date(row.paid_at)));
+  for (const row of (chartRows ?? []) as IncomeByDayRow[]) {
+    if (!row.paid_on) continue;
+    // paid_on é `date` no fuso da barbearia: a chave sai do texto, sem Date.
+    const bucket = monthBuckets.get(row.paid_on.slice(0, 7));
     if (!bucket) continue;
-    if (row.category === "product") bucket.product += Number(row.amount);
-    else bucket.service += Number(row.amount);
+    if (row.category === "product") bucket.product += Number(row.total);
+    else bucket.service += Number(row.total);
   }
   const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
     label: m.label,
@@ -215,15 +134,25 @@ export default async function FinancialReportPage({
     product: monthBuckets.get(m.key)?.product ?? 0,
   }));
 
-  const professionals = [...byProfessional.values()].sort(
-    (a, b) => b.total - a.total,
-  );
-  const services = [...byService.values()].sort(
-    (a, b) => b.revenue - a.revenue,
-  );
-  const products = [...byProduct.values()].sort(
-    (a, b) => b.revenue - a.revenue,
-  );
+  // Já vêm ordenados do banco; o Number() normaliza o numeric do Postgres,
+  // que chega como string no JSON.
+  const professionals = (report.byProfessional ?? []).map((row) => ({
+    name: row.name,
+    count: Number(row.count),
+    service: Number(row.service),
+    product: Number(row.product),
+    total: Number(row.total),
+  }));
+  const services = (report.byService ?? []).map((row) => ({
+    name: row.name,
+    count: Number(row.count),
+    revenue: Number(row.revenue),
+  }));
+  const products = (report.byProduct ?? []).map((row) => ({
+    name: row.name,
+    qty: Number(row.qty),
+    revenue: Number(row.revenue),
+  }));
   const methods = [...byMethod.entries()].sort((a, b) => b[1] - a[1]);
   const grandTotal = serviceRevenue + productRevenue + otherRevenue;
   const serviceShare =
@@ -243,7 +172,7 @@ export default async function FinancialReportPage({
     { label: "Receita de serviços", value: formatBRL(serviceRevenue) },
     { label: "Receita de produtos", value: formatBRL(productRevenue) },
     { label: "Atendimentos concluídos", value: String(attended) },
-    { label: "Clientes atendidos", value: String(clientSet.size) },
+    { label: "Clientes atendidos", value: String(clientCount) },
     { label: "Produtos vendidos", value: productUnits.toLocaleString("pt-BR") },
   ];
 
@@ -356,7 +285,7 @@ export default async function FinancialReportPage({
         {grandTotal > 0 ? (
           <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
             <li>
-              Ticket médio por atendimento: {formatBRL(ticketMedio)} ({attended}{" "}
+              Gasto médio por atendimento: {formatBRL(ticketMedio)} ({attended}{" "}
               atendimento{attended === 1 ? "" : "s"}).
             </li>
             <li>

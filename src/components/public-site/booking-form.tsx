@@ -29,7 +29,7 @@ import {
   PAYMENT_PREFERENCES,
   paymentPreferenceLabel,
 } from "@/lib/booking";
-import { formatPhoneBR } from "@/lib/contact";
+import { formatPhone } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -782,7 +782,7 @@ export function BookingForm({
                     required
                     value={phone}
                     onChange={(event) =>
-                      setPhone(formatPhoneBR(event.target.value))
+                      setPhone(formatPhone(event.target.value))
                     }
                     className={inputClass}
                   />

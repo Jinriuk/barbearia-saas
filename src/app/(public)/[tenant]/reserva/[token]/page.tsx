@@ -48,6 +48,7 @@ type PublicReservation = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Aguardando confirmação",
   confirmed: "Confirmada",
+  in_progress: "Em atendimento",
   completed: "Concluída",
   canceled: "Cancelada",
   no_show: "Não compareceu",

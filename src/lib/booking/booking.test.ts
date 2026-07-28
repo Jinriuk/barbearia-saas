@@ -8,7 +8,6 @@ import {
   isSoldOut,
   paymentPreferenceLabel,
 } from ".";
-import { formatPhoneBR } from "../contact";
 import { openingHoursList } from "../opening-hours";
 
 // 2026-07-14T18:00:00Z = terça-feira, 14 de julho, 15:00 em São Paulo (UTC-3).
@@ -132,19 +131,6 @@ describe("arquivo de calendário (.ics)", () => {
     for (const line of long.split("\r\n")) {
       expect(line.length).toBeLessThanOrEqual(75);
     }
-  });
-});
-
-describe("máscara de telefone", () => {
-  it("formata celular e fixo enquanto se digita", () => {
-    expect(formatPhoneBR("11987654321")).toBe("(11) 98765-4321");
-    expect(formatPhoneBR("1187654321")).toBe("(11) 8765-4321");
-    expect(formatPhoneBR("119876")).toBe("(11) 9876");
-    expect(formatPhoneBR("11")).toBe("11");
-  });
-
-  it("aceita colar já formatado sem duplicar pontuação", () => {
-    expect(formatPhoneBR("(11) 98765-4321")).toBe("(11) 98765-4321");
   });
 });
 

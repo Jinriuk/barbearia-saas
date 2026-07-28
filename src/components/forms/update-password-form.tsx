@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { changePassword } from "@/modules/account/actions";
+import { setNewPassword } from "@/modules/account/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ const initialState: ActionState = { success: false, message: "" };
 
 export function UpdatePasswordForm() {
   const [state, formAction, pending] = useActionState(
-    changePassword,
+    setNewPassword,
     initialState,
   );
 

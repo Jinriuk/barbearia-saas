@@ -3,21 +3,42 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { ExternalLink } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
 import { isPlus, planLabel } from "@/lib/plans";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/feedback/empty-state";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
-import { AppearanceEditor } from "@/components/dashboard/appearance-editor";
 import { SharePageCard } from "@/components/dashboard/share-page-card";
-import { ContactSettingsForm } from "@/components/dashboard/contact-settings-form";
 import {
-  BookingRulesForm,
-  OpeningHoursForm,
-} from "@/components/dashboard/booking-rules-form";
+  SettingsWorkspace,
+  type SettingsValues,
+} from "@/components/dashboard/settings-workspace";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Configurações (Fase 3 — item 3.10 / §7.8): seis seções internas, prévia ao
+ * vivo com alternador Celular|Computador e um único "Salvar alterações".
+ */
 export default async function SettingsPage() {
   const tenant = await requireTenant();
+
+  if (!can(tenant.role, "settings:manage")) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Configurações"
+          title="Configurações"
+          description="Dados da barbearia, regras de agendamento e aparência da página."
+        />
+        <EmptyState
+          title="Acesso restrito"
+          description="Apenas o proprietário pode alterar as configurações."
+        />
+      </>
+    );
+  }
+
   const host = (await headers()).get("host");
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? (host ? `https://${host}` : "");
@@ -27,6 +48,7 @@ export default async function SettingsPage() {
     margin: 2,
     color: { dark: "#191816", light: "#ffffff" },
   });
+
   const supabase = await createSupabaseServerClient();
   const [{ data }, { data: shop }] = await Promise.all([
     supabase
@@ -36,72 +58,65 @@ export default async function SettingsPage() {
       .single(),
     supabase
       .from("barbershops")
-      .select("logo_url")
+      .select("name,logo_url")
       .eq("id", tenant.id)
       .maybeSingle(),
   ]);
+
+  const initial: SettingsValues = {
+    businessName: shop?.name ?? tenant.name,
+    heroTitle: data?.hero_title ?? "Seu estilo, no seu tempo",
+    heroSubtitle:
+      data?.hero_subtitle ?? "Escolha o serviço e reserve seu horário.",
+    primaryColor: data?.primary_color ?? "#b8893e",
+    secondaryColor: data?.secondary_color ?? "#171717",
+    backgroundColor: data?.background_color ?? "#faf8f4",
+    backgroundType: (data?.background_type as "color" | "image") ?? "color",
+    backgroundImageUrl: data?.background_image_url ?? "",
+    logoUrl: shop?.logo_url ?? "",
+    whatsappNumber: data?.whatsapp_number ?? "",
+    instagramUrl: data?.instagram_url ?? "",
+    address: data?.address ?? "",
+    whatsappRemindersEnabled: data?.whatsapp_reminders_enabled ?? true,
+    bookingNoticeMinutes: data?.booking_notice_minutes ?? 60,
+    cancellationNoticeMinutes: data?.cancellation_notice_minutes ?? 120,
+    bookingHorizonDays: data?.booking_horizon_days ?? 60,
+    bookingConfirmationMode:
+      (data?.booking_confirmation_mode as "manual" | "auto") ?? "manual",
+    maxPendingPerClient: data?.max_pending_per_client ?? 3,
+    openingHours: (data?.opening_hours as Record<string, string>) ?? {},
+  };
 
   return (
     <>
       <PageHeader
         eyebrow="Configurações"
         title="Configurações"
-        description={`Plano ${planLabel(tenant.plan)}. Dados da barbearia, regras de agendamento, horários e a aparência da página pública.`}
+        description={`Plano ${planLabel(tenant.plan)}. Dados do negócio, aparência, horário, regras de agendamento e lembretes — tudo salvo de uma vez.`}
         action={
           <div className="flex items-center gap-3">
             <PlanBadge plan={tenant.plan} />
             <Button asChild variant="outline">
               <Link href={`/${tenant.slug}`} target="_blank">
-                <ExternalLink /> Ver página
+                <ExternalLink /> Ver página de agendamento
               </Link>
             </Button>
           </div>
         }
       />
-      <div className="max-w-5xl space-y-6">
+
+      <div className="space-y-6">
         <SharePageCard
           publicUrl={publicUrl}
           qrDataUrl={qrDataUrl}
           slug={tenant.slug}
         />
-        <AppearanceEditor
-          key={`${shop?.logo_url ?? ""}|${data?.background_type ?? "color"}|${data?.background_image_url ?? ""}`}
+        <SettingsWorkspace
+          key={`${initial.logoUrl}|${initial.backgroundImageUrl}`}
+          initial={initial}
           isPlus={isPlus(tenant.plan)}
           slug={tenant.slug}
-          initial={{
-            heroTitle: data?.hero_title ?? "Seu estilo, no seu tempo",
-            heroSubtitle:
-              data?.hero_subtitle ?? "Escolha o serviço e reserve seu horário.",
-            primaryColor: data?.primary_color ?? "#b8893e",
-            secondaryColor: data?.secondary_color ?? "#171717",
-            backgroundColor: data?.background_color ?? "#faf8f4",
-            backgroundType:
-              (data?.background_type as "color" | "image") ?? "color",
-            backgroundImageUrl: data?.background_image_url ?? "",
-            logoUrl: shop?.logo_url ?? "",
-          }}
-        />
-        <ContactSettingsForm
-          initial={{
-            whatsappNumber: data?.whatsapp_number ?? "",
-            instagramUrl: data?.instagram_url ?? "",
-            address: data?.address ?? "",
-            whatsappRemindersEnabled: data?.whatsapp_reminders_enabled ?? true,
-          }}
-        />
-        <BookingRulesForm
-          initial={{
-            bookingNoticeMinutes: data?.booking_notice_minutes ?? 60,
-            cancellationNoticeMinutes: data?.cancellation_notice_minutes ?? 120,
-            bookingHorizonDays: data?.booking_horizon_days ?? 60,
-            bookingConfirmationMode:
-              (data?.booking_confirmation_mode as "manual" | "auto") ??
-              "manual",
-            maxPendingPerClient: data?.max_pending_per_client ?? 3,
-          }}
-        />
-        <OpeningHoursForm
-          initial={(data?.opening_hours as Record<string, string>) ?? {}}
+          publicUrl={publicUrl}
         />
       </div>
     </>

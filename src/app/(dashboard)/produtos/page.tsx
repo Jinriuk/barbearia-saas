@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   AlertTriangle,
   Boxes,
@@ -5,6 +6,7 @@ import {
   EyeOff,
   Package,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import {
   toggleProductVisible,
 } from "@/modules/products/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { ProductFormSheet } from "@/components/dashboard/product-form-sheet";
@@ -59,8 +62,10 @@ export default async function ProductsPage() {
 
   const [
     { data: productData },
+    { data: balanceData },
     { data: movementData },
     { data: reservationData },
+    { count: reservationCount },
   ] = await Promise.all([
     supabase
       .from("products")
@@ -69,12 +74,21 @@ export default async function ProductsPage() {
       )
       .eq("barbershop_id", tenant.id)
       .order("name"),
+    // Saldo somado no banco (Fase 0 §0.6). Antes o ledger era somado aqui
+    // sobre as 400 movimentações mais recentes: da 401ª em diante o estoque
+    // exibido era ficção, e ninguém via que estava errado.
+    supabase
+      .from("product_stock_balances")
+      .select("product_id,on_hand,reserved,last_movement_at")
+      .eq("barbershop_id", tenant.id),
+    // A lista abaixo é só o histórico visível na tela (12 linhas); nenhuma
+    // conta depende dela.
     supabase
       .from("inventory_movements")
       .select("id,product_id,type,quantity,reason,created_at")
       .eq("barbershop_id", tenant.id)
       .order("created_at", { ascending: false })
-      .limit(400),
+      .limit(20),
     // Reservas pendentes (produtos escolhidos no agendamento, ainda não vendidos).
     supabase
       .from("appointment_products")
@@ -85,68 +99,71 @@ export default async function ProductsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(100),
+    // Contagem real das reservas pendentes: a lista acima é uma página de 100
+    // e o selo anunciava o tamanho da página como se fosse o total.
+    supabase
+      .from("appointment_products")
+      .select("id", { count: "exact", head: true })
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "pending"),
   ]);
 
   const products = productData ?? [];
   const movements = movementData ?? [];
   const reservations = reservationData ?? [];
 
-  const reservedByProduct = new Map<string, number>();
-  for (const reservation of reservations) {
-    reservedByProduct.set(
-      reservation.product_id,
-      (reservedByProduct.get(reservation.product_id) ?? 0) +
-        Number(reservation.quantity),
-    );
-  }
-  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
-
   const stockByProduct = new Map<string, number>();
-  for (const movement of movements) {
-    const signal = IN_TYPES.has(movement.type) ? 1 : -1;
-    stockByProduct.set(
-      movement.product_id,
-      (stockByProduct.get(movement.product_id) ?? 0) +
-        signal * Number(movement.quantity),
-    );
+  const reservedByProduct = new Map<string, number>();
+  const lastMovementByProduct = new Map<string, string | null>();
+  for (const balance of balanceData ?? []) {
+    stockByProduct.set(balance.product_id, Number(balance.on_hand));
+    reservedByProduct.set(balance.product_id, Number(balance.reserved));
+    lastMovementByProduct.set(balance.product_id, balance.last_movement_at);
   }
   const productNames = new Map(products.map((item) => [item.id, item.name]));
 
   const stockOf = (id: string) => stockByProduct.get(id) ?? 0;
+  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
+  const lastMovementOf = (id: string) => lastMovementByProduct.get(id) ?? null;
   const activeProducts = products.filter((product) => product.active);
-  const totalUnits = activeProducts.reduce(
-    (total, product) => total + stockOf(product.id),
-    0,
-  );
   const stockValue = activeProducts.reduce(
     (total, product) =>
       total + stockOf(product.id) * Number(product.sale_price),
     0,
   );
   const lowStock = activeProducts.filter(
-    (product) => stockOf(product.id) < Number(product.minimum_stock),
+    (product) =>
+      Number(product.minimum_stock) > 0 &&
+      stockOf(product.id) < Number(product.minimum_stock),
+  );
+  const zeroStock = activeProducts.filter(
+    (product) => stockOf(product.id) <= 0,
+  );
+  const reservedUnits = activeProducts.reduce(
+    (total, product) => total + reservedOf(product.id),
+    0,
   );
 
   const totals = [
     {
-      label: "Produtos ativos",
-      value: String(activeProducts.length),
+      label: "Abaixo do mínimo",
+      value: String(lowStock.length),
+      icon: AlertTriangle,
+    },
+    {
+      label: "Produtos zerados",
+      value: String(zeroStock.length),
       icon: Package,
     },
     {
-      label: "Unidades em estoque",
-      value: totalUnits.toLocaleString("pt-BR"),
-      icon: Boxes,
-    },
-    {
-      label: "Valor estimado",
+      label: "Valor em estoque",
       value: formatBRL(stockValue),
       icon: Wallet,
     },
     {
-      label: "Baixo estoque",
-      value: String(lowStock.length),
-      icon: AlertTriangle,
+      label: "Reservas atuais",
+      value: reservedUnits.toLocaleString("pt-BR"),
+      icon: Boxes,
     },
   ];
 
@@ -157,19 +174,29 @@ export default async function ProductsPage() {
         title="Produtos e Estoque"
         description="Catálogo, saldo, reservas e movimentações num só lugar."
         action={
-          canCatalog ? (
-            <div className="w-full sm:w-56">
-              <ProductFormSheet />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {canInventory ? (
+              <Button asChild variant="outline">
+                <Link href="/vendas">
+                  <ShoppingCart className="size-4" /> Nova venda
+                </Link>
+              </Button>
+            ) : null}
+            {canCatalog ? (
+              <div className="w-full sm:w-48">
+                <ProductFormSheet />
+              </div>
+            ) : null}
+          </div>
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
 
       {!plus ? (
         <Alert className="mb-6">
           <Sparkles className="size-4" />
           <AlertDescription>
-            O upsell de produtos no checkout é exclusivo do plano{" "}
+            Oferecer produtos ao cliente no agendamento é exclusivo do plano{" "}
             <strong>Plus</strong>. No Padrão você ainda gerencia o catálogo e o
             estoque, mas ele não aparece no agendamento do cliente.
           </AlertDescription>
@@ -193,15 +220,23 @@ export default async function ProductsPage() {
       </div>
 
       {reservations.length ? (
-        <Card className="mb-6 border-amber-300 dark:border-amber-900">
+        <Card className="border-warning/40 mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingBag className="size-4" /> Reservas de produtos pendentes
-              <Badge variant="secondary">{reservations.length}</Badge>
+              <Badge variant="secondary">
+                {reservationCount ?? reservations.length}
+              </Badge>
             </CardTitle>
+            {(reservationCount ?? 0) > reservations.length ? (
+              <p className="text-muted-foreground text-sm">
+                Mostrando as {reservations.length} mais recentes de{" "}
+                {reservationCount}.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -227,16 +262,25 @@ export default async function ProductsPage() {
                         <TableCell className="font-medium">
                           {clientName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-label="Produto">
                           {first(reservation.product)?.name ?? "Produto"}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Qtd."
+                          className="text-right font-mono"
+                        >
                           {reservation.quantity}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Total"
+                          className="text-right font-mono"
+                        >
                           {formatBRL(total)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell
+                          data-label="Profissional"
+                          className="text-muted-foreground"
+                        >
                           {professionalName}
                         </TableCell>
                         <TableCell className="text-right">
@@ -259,7 +303,7 @@ export default async function ProductsPage() {
       {!products.length ? (
         <EmptyState
           title="Nenhum produto ainda"
-          description="Cadastre produtos para vender no balcão e no checkout do agendamento."
+          description="Cadastre produtos para vender no balcão e oferecer ao cliente no agendamento."
         />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -268,7 +312,7 @@ export default async function ProductsPage() {
               <CardTitle className="text-base">Catálogo e saldo</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -277,7 +321,9 @@ export default async function ProductsPage() {
                       <TableHead className="text-right">Estoque</TableHead>
                       <TableHead className="text-right">Reservado</TableHead>
                       <TableHead className="text-right">Disponível</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Mínimo</TableHead>
+                      <TableHead>Última movimentação</TableHead>
+                      <TableHead>Situação</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -286,8 +332,11 @@ export default async function ProductsPage() {
                       const stock = stockOf(product.id);
                       const reserved = reservedOf(product.id);
                       const available = stock - reserved;
+                      const lastMovement = lastMovementOf(product.id);
                       const low =
-                        product.active && stock < Number(product.minimum_stock);
+                        product.active &&
+                        Number(product.minimum_stock) > 0 &&
+                        stock < Number(product.minimum_stock);
                       return (
                         <TableRow key={product.id}>
                           <TableCell>
@@ -296,31 +345,61 @@ export default async function ProductsPage() {
                               {product.description || "Sem descrição"}
                             </p>
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Preço"
+                            className="text-right font-mono"
+                          >
                             {formatBRL(Number(product.sale_price))}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            <span className={low ? "text-amber-600" : ""}>
+                          <TableCell
+                            data-label="Estoque"
+                            className="text-right font-mono"
+                          >
+                            <span className={low ? "text-warning" : ""}>
                               {stock.toLocaleString("pt-BR")}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right font-mono">
+                          <TableCell
+                            data-label="Reservado"
+                            className="text-muted-foreground text-right font-mono"
+                          >
                             {reserved.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Disponível"
+                            className="text-right font-mono"
+                          >
                             {available.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            data-label="Mínimo"
+                            className="text-muted-foreground text-right font-mono"
+                          >
+                            {Number(product.minimum_stock) > 0
+                              ? Number(product.minimum_stock).toLocaleString(
+                                  "pt-BR",
+                                )
+                              : "—"}
+                          </TableCell>
+                          <TableCell
+                            data-label="Última movimentação"
+                            className="text-muted-foreground text-xs"
+                          >
+                            {lastMovement
+                              ? `${formatShortDateInTz(lastMovement, tenant.timezone)} ${formatTimeInTz(lastMovement, tenant.timezone)}`
+                              : "Nunca"}
+                          </TableCell>
+                          <TableCell data-label="Situação">
                             <div className="flex flex-wrap gap-1">
                               <Badge
-                                variant={
-                                  product.active ? "default" : "secondary"
-                                }
+                                variant={product.active ? "success" : "neutral"}
                               >
                                 {product.active ? "Ativo" : "Oculto"}
                               </Badge>
                               {product.public_visible ? (
-                                <Badge variant="outline">Checkout</Badge>
+                                <Badge variant="outline">
+                                  Oferecido no agendamento
+                                </Badge>
                               ) : null}
                             </div>
                           </TableCell>
@@ -349,10 +428,10 @@ export default async function ProductsPage() {
                                     }
                                     title={
                                       product.public_visible
-                                        ? "Tirar do checkout do agendamento"
-                                        : "Oferecer no checkout do agendamento"
+                                        ? "Parar de oferecer no agendamento"
+                                        : "Oferecer ao cliente no agendamento"
                                     }
-                                    aria-label="Alternar checkout"
+                                    aria-label="Alternar oferta no agendamento"
                                   >
                                     <ShoppingBag className="size-4" />
                                   </Button>
@@ -417,9 +496,9 @@ export default async function ProductsPage() {
                 }))}
               />
               {lowStock.length ? (
-                <Card className="border-amber-300 dark:border-amber-900">
+                <Card className="border-warning/40">
                   <CardContent className="flex items-center gap-3 pt-6 text-sm">
-                    <AlertTriangle className="size-4 shrink-0 text-amber-600" />
+                    <AlertTriangle className="text-warning size-4 shrink-0" />
                     <span>
                       <strong>{lowStock.length}</strong> produto(s) abaixo do
                       estoque mínimo:{" "}
@@ -445,7 +524,7 @@ export default async function ProductsPage() {
                             className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm"
                           >
                             <span
-                              className={`font-mono ${isIn ? "text-emerald-600" : "text-rose-600"}`}
+                              className={`font-mono ${isIn ? "text-success" : "text-destructive"}`}
                             >
                               {isIn ? "+" : "−"}
                               {Number(movement.quantity).toLocaleString(
@@ -478,7 +557,7 @@ export default async function ProductsPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-6 text-center text-sm">
-                      Nenhuma movimentação registrada ainda.
+                      Nenhuma entrada ou saída registrada ainda.
                     </p>
                   )}
                 </CardContent>

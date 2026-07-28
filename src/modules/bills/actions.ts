@@ -11,6 +11,12 @@ const billSchema = z.object({
   description: z.string().trim().min(2).max(200),
   amount: z.coerce.number().positive().max(9999999),
   dueDate: z.iso.date(),
+  // Campos do "Adicionar detalhes" (Fase 3 — itens 3.5 e 3.6). Todos
+  // opcionais: a primeira linha do formulário continua sendo descrição,
+  // valor e vencimento.
+  category: z.string().trim().max(40).optional(),
+  notes: z.string().trim().max(500).optional(),
+  clientId: z.union([z.uuid(), z.literal("")]).optional(),
 });
 
 const paymentMethodSchema = z.enum(["cash", "card", "pix", "other"]);
@@ -52,10 +58,20 @@ async function createBill(
     description: formData.get("description"),
     amount: formData.get("amount"),
     dueDate: formData.get("dueDate"),
+    category: formData.get("category") ?? undefined,
+    notes: formData.get("notes") ?? undefined,
+    clientId: formData.get("clientId") ?? undefined,
   });
   if (!parsed.success) {
     return { success: false, message: "Revise descrição, valor e vencimento." };
   }
+
+  // Despesa carrega categoria; recebível carrega o dono da dívida. Cada
+  // tabela só recebe o que a sua tela realmente coleta.
+  const extra =
+    kind === "payable"
+      ? { category: parsed.data.category || null }
+      : { client_id: parsed.data.clientId || null };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from(config[kind].table).insert({
@@ -64,6 +80,8 @@ async function createBill(
     amount: parsed.data.amount,
     due_date: parsed.data.dueDate,
     status: "pending",
+    notes: parsed.data.notes || null,
+    ...extra,
   });
   if (error) {
     return {
@@ -88,6 +106,23 @@ async function settleBill(kind: BillKind, formData: FormData) {
   if (config[kind].transactionType === "income" && !method.success) return;
 
   const supabase = await createSupabaseServerClient();
+
+  // Recebível: a receita pendente já existe desde a criação do lançamento
+  // (Fase 0 §0.10 — o fiado passou a nascer visível para o Financeiro).
+  // Baixar é LIQUIDAR essa receita, não criar uma segunda: inserir aqui
+  // dobraria o faturamento do mês. A RPC faz os dois lados numa transação.
+  if (kind === "receivable") {
+    const { error } = await supabase.rpc("settle_receivable", {
+      p_receivable_id: id,
+      p_payment_method: method.success ? method.data : null,
+    });
+    if (error) return;
+    revalidatePath(config[kind].path);
+    revalidatePath("/financeiro");
+    revalidatePath("/relatorios");
+    return;
+  }
+
   const { data: bill } = await supabase
     .from(config[kind].table)
     .select("id,description,amount,status")
@@ -130,12 +165,14 @@ async function deleteBill(kind: BillKind, formData: FormData) {
   if (!id) return;
 
   const supabase = await createSupabaseServerClient();
+  // Também apaga o que foi anulado no Financeiro: sem isso um recebível
+  // 'canceled' ficaria preso na tela, sem poder ser cobrado nem removido.
   await supabase
     .from(config[kind].table)
     .delete()
     .eq("id", id)
     .eq("barbershop_id", tenant.id)
-    .eq("status", "pending");
+    .in("status", ["pending", "overdue", "canceled"]);
   revalidatePath(config[kind].path);
 }
 

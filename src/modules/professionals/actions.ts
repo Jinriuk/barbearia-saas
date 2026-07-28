@@ -6,211 +6,7 @@ import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { MAX_PHOTO_BYTES, uploadPublicImage } from "@/lib/storage";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ActionState } from "@/types/domain";
-
-const createAccessSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.email(),
-  password: z.string().min(6).max(72),
-  phone: z.string().trim().max(30).optional(),
-  role: z
-    .enum(["professional", "receptionist", "manager"])
-    .default("professional"),
-  available: z.coerce.boolean().optional(),
-  serviceIds: z.array(z.uuid()).max(200).optional(),
-  commissionRate: z.coerce.number().min(0).max(100).optional(),
-  baseSalary: z.coerce.number().min(0).max(9999999).optional(),
-});
-
-/**
- * Cria um profissional já com acesso ao sistema (login por e-mail e senha).
- * Fluxo: usuário no Auth (admin) → profile (via trigger) → membership
- * (papel professional) → professional → serviços → disponibilidade padrão →
- * regra de pagamento. Exclusivo do dono.
- */
-export async function createProfessionalWithAccess(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const tenant = await requireTenant();
-  if (!can(tenant.role, "memberships:manage")) {
-    return {
-      success: false,
-      message: "Apenas o proprietário pode criar acessos.",
-    };
-  }
-
-  const parsed = createAccessSchema.safeParse({
-    name: formData.get("name"),
-    email: String(formData.get("email") ?? "")
-      .trim()
-      .toLowerCase(),
-    password: formData.get("password"),
-    phone: formData.get("phone"),
-    role: formData.get("role") || "professional",
-    available: formData.get("available") === "on",
-    serviceIds: formData.getAll("serviceIds").map(String),
-    commissionRate: formData.get("commissionRate") || 0,
-    baseSalary: formData.get("baseSalary") || 0,
-  });
-  if (!parsed.success) {
-    return {
-      success: false,
-      message: "Revise os dados. A senha precisa ter ao menos 6 caracteres.",
-    };
-  }
-
-  const admin = createSupabaseAdminClient();
-  const { data: created, error: createError } =
-    await admin.auth.admin.createUser({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      email_confirm: true,
-      user_metadata: { name: parsed.data.name, phone: parsed.data.phone ?? "" },
-    });
-  if (createError || !created.user) {
-    const already = /already|exists|registered/i.test(
-      createError?.message ?? "",
-    );
-    return {
-      success: false,
-      message: already
-        ? "Já existe uma conta com esse e-mail."
-        : "Não foi possível criar o acesso. Tente novamente.",
-    };
-  }
-  const authUserId = created.user.id;
-
-  // O trigger on_auth_user_created cria o profile; buscamos (ou criamos) o id.
-  let profileId: string | null = null;
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("auth_user_id", authUserId)
-    .maybeSingle();
-  profileId = profile?.id ?? null;
-  if (!profileId) {
-    const { data: inserted } = await admin
-      .from("profiles")
-      .insert({ auth_user_id: authUserId, name: parsed.data.name })
-      .select("id")
-      .single();
-    profileId = inserted?.id ?? null;
-  }
-  if (!profileId) {
-    await admin.auth.admin.deleteUser(authUserId);
-    return { success: false, message: "Falha ao vincular o perfil." };
-  }
-
-  const { data: existingMembership } = await admin
-    .from("memberships")
-    .select("id")
-    .eq("profile_id", profileId)
-    .eq("barbershop_id", tenant.id)
-    .maybeSingle();
-  if (existingMembership) {
-    await admin
-      .from("memberships")
-      .update({ role: parsed.data.role, status: "active" })
-      .eq("id", existingMembership.id);
-  } else {
-    await admin.from("memberships").insert({
-      profile_id: profileId,
-      barbershop_id: tenant.id,
-      role: parsed.data.role,
-      status: "active",
-    });
-  }
-
-  const roleLabels: Record<string, string> = {
-    professional: "Profissional",
-    receptionist: "Secretária",
-    manager: "Gerente",
-  };
-
-  // Papéis não-profissionais (secretária/gerente) recebem só o acesso: não há
-  // ficha de barbeiro, serviços, agenda própria ou regra de pagamento.
-  if (parsed.data.role !== "professional") {
-    revalidatePath("/profissionais");
-    return {
-      success: true,
-      message: `${parsed.data.name} (${roleLabels[parsed.data.role]}) já pode acessar com o e-mail e a senha definidos.`,
-    };
-  }
-
-  const { data: professional, error: proError } = await admin
-    .from("professionals")
-    .insert({
-      barbershop_id: tenant.id,
-      profile_id: profileId,
-      name: parsed.data.name,
-      phone: parsed.data.phone || null,
-      active: true,
-      public_visible: parsed.data.available ?? true,
-    })
-    .select("id")
-    .single();
-  if (proError || !professional) {
-    return {
-      success: false,
-      message: "Acesso criado, mas falhou ao criar o profissional.",
-    };
-  }
-
-  const serviceIds = parsed.data.serviceIds ?? [];
-  if (serviceIds.length) {
-    await admin.from("professional_services").insert(
-      serviceIds.map((serviceId) => ({
-        barbershop_id: tenant.id,
-        professional_id: professional.id,
-        service_id: serviceId,
-      })),
-    );
-  }
-
-  await admin.from("professional_availability").insert(
-    [1, 2, 3, 4, 5, 6].map((weekday) => ({
-      barbershop_id: tenant.id,
-      professional_id: professional.id,
-      weekday,
-      starts_at: "09:00",
-      ends_at: "18:00",
-      slot_interval_minutes: 15,
-    })),
-  );
-
-  if (
-    (parsed.data.baseSalary ?? 0) > 0 ||
-    (parsed.data.commissionRate ?? 0) > 0
-  ) {
-    const hasSalary = (parsed.data.baseSalary ?? 0) > 0;
-    const hasCommission = (parsed.data.commissionRate ?? 0) > 0;
-    await admin.from("employee_pay_settings").upsert(
-      {
-        barbershop_id: tenant.id,
-        professional_id: professional.id,
-        model:
-          hasSalary && hasCommission
-            ? "hybrid"
-            : hasSalary
-              ? "fixed"
-              : "commission",
-        base_salary: parsed.data.baseSalary ?? 0,
-        commission_rate: parsed.data.commissionRate ?? 0,
-        payment_period: "monthly",
-      },
-      { onConflict: "professional_id" },
-    );
-  }
-
-  revalidatePath("/profissionais");
-  revalidatePath("/usuarios");
-  return {
-    success: true,
-    message: `${parsed.data.name} pode acessar com o e-mail e a senha definidos.`,
-  };
-}
 
 const profileSchema = z.object({
   id: z.uuid(),
@@ -276,6 +72,137 @@ export async function updateProfessionalProfile(
     success: true,
     message: "Perfil atualizado. Já vale na sua página.",
   };
+}
+
+const detailsSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(2).max(100),
+  phone: z.string().trim().max(30).optional(),
+  bio: z.string().trim().max(200).optional(),
+});
+
+/**
+ * Dados da ficha do profissional (Fase 3 — item 3.9, aba "Dados").
+ *
+ * Antes o nome e o telefone só existiam no cadastro inicial: corrigir um
+ * sobrenome errado exigia excluir e recriar a pessoa, perdendo o histórico.
+ */
+export async function saveProfessionalDetails(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "memberships:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
+  const parsed = detailsSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+    phone: formData.get("phone") ?? undefined,
+    bio: formData.get("bio") ?? undefined,
+  });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Revise o nome (mínimo 2 caracteres) e a apresentação.",
+    };
+  }
+
+  const updates: {
+    name: string;
+    phone: string | null;
+    bio: string | null;
+    avatar_url?: string;
+  } = {
+    name: parsed.data.name,
+    phone: parsed.data.phone || null,
+    bio: parsed.data.bio || null,
+  };
+
+  const avatar = formData.get("avatar");
+  if (avatar instanceof File && avatar.size > 0) {
+    const result = await uploadPublicImage(
+      avatar,
+      `professionals/${tenant.id}/${parsed.data.id}`,
+      MAX_PHOTO_BYTES,
+    );
+    if ("error" in result) return { success: false, message: result.error };
+    updates.avatar_url = result.url;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("professionals")
+    .update(updates)
+    .eq("id", parsed.data.id)
+    .eq("barbershop_id", tenant.id);
+  if (error) {
+    return { success: false, message: "Não foi possível salvar." };
+  }
+
+  revalidatePath("/profissionais");
+  revalidatePath(`/profissionais/${parsed.data.id}`);
+  revalidatePath(`/${tenant.slug}`);
+  revalidatePath(`/${tenant.slug}/agendar`);
+  return { success: true, message: "Ficha atualizada." };
+}
+
+/**
+ * Serviços que o profissional executa (item 3.9, aba "Serviços e
+ * comissões"). Substitui o conjunto inteiro: o formulário manda o estado
+ * final, não um diff.
+ */
+export async function saveProfessionalServices(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "memberships:manage")) {
+    return { success: false, message: "Apenas o proprietário pode alterar." };
+  }
+  const professionalId = String(formData.get("id") ?? "");
+  const parsedId = z.uuid().safeParse(professionalId);
+  if (!parsedId.success) {
+    return { success: false, message: "Profissional inválido." };
+  }
+  const serviceIds = z
+    .array(z.uuid())
+    .max(200)
+    .safeParse(formData.getAll("serviceIds").map(String));
+  if (!serviceIds.success) {
+    return { success: false, message: "Revise os serviços selecionados." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error: deleteError } = await supabase
+    .from("professional_services")
+    .delete()
+    .eq("barbershop_id", tenant.id)
+    .eq("professional_id", parsedId.data);
+  if (deleteError) {
+    return { success: false, message: "Não foi possível salvar." };
+  }
+
+  if (serviceIds.data.length) {
+    const { error } = await supabase.from("professional_services").insert(
+      serviceIds.data.map((serviceId) => ({
+        barbershop_id: tenant.id,
+        professional_id: parsedId.data,
+        service_id: serviceId,
+      })),
+    );
+    if (error) {
+      return {
+        success: false,
+        message: "Não foi possível salvar os serviços. Tente de novo.",
+      };
+    }
+  }
+
+  revalidatePath(`/profissionais/${parsedId.data}`);
+  revalidatePath(`/${tenant.slug}`);
+  revalidatePath(`/${tenant.slug}/agendar`);
+  return { success: true, message: "Serviços atualizados." };
 }
 
 /** Disponibilidade do profissional para novos agendamentos (etapa 3.3). */

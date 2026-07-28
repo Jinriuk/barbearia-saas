@@ -5,6 +5,7 @@ import { Image as ImageIcon, Pencil, Plus } from "lucide-react";
 import { saveProduct } from "@/modules/products/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ type ProductInput = {
   description: string | null;
   sale_price: number;
   cost_price: number | null;
+  minimum_stock?: number | null;
   public_visible: boolean;
   image_url?: string | null;
 };
@@ -47,6 +49,7 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
     },
     initialState,
   );
+  useActionToast(state);
   const editing = Boolean(product);
 
   return (
@@ -119,6 +122,21 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
             </div>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="product-minimum">Estoque mínimo</Label>
+            <Input
+              id="product-minimum"
+              name="minimumStock"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={product?.minimum_stock ?? 0}
+            />
+            <p className="text-muted-foreground text-xs">
+              Abaixo desse saldo o produto entra no alerta de reposição do
+              Início e da lista de estoque. Zero desliga o alerta.
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="product-description">Descrição</Label>
             <Textarea
               id="product-description"
@@ -163,7 +181,7 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
               defaultChecked={product ? product.public_visible : true}
               className="size-4 rounded border"
             />
-            Oferecer no checkout do agendamento (Plus)
+            Oferecer este produto ao cliente no agendamento (Plus)
           </label>
           <SheetFooter className="mt-auto px-0">
             <Button type="submit" className="w-full" disabled={pending}>

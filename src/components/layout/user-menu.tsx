@@ -39,7 +39,7 @@ export function UserMenu({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="focus-visible:ring-ring/50 flex items-center gap-2 rounded-full outline-none focus-visible:ring-3">
+      <DropdownMenuTrigger className="focus-visible:ring-focus-ring/45 flex items-center gap-2 rounded-full outline-none focus-visible:ring-3">
         <div className="hidden text-right sm:block">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-muted-foreground text-xs">
@@ -72,7 +72,7 @@ export function UserMenu({
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/assinatura">
-                <CreditCard /> Assinatura
+                <CreditCard /> Meu plano NexoBarber
               </Link>
             </DropdownMenuItem>
           </>

@@ -1,6 +1,12 @@
 import { formatBRL } from "@/lib/financial";
 
-export type BarItem = { label: string; value: number; hint?: string };
+export type BarItem = {
+  label: string;
+  value: number;
+  hint?: string;
+  /** Chave estável. Sem ela, dois itens de mesmo nome colidem no React. */
+  id?: string;
+};
 
 /**
  * Ranking em barras horizontais (top N). Theme-aware via tokens do design
@@ -28,7 +34,7 @@ export function BarList({
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.label}>
+        <div key={item.id ?? item.label}>
           <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
             <span className="truncate font-medium">{item.label}</span>
             <span className="text-muted-foreground shrink-0 font-mono">

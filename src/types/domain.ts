@@ -10,6 +10,10 @@ export type SubscriptionInfo = {
   priceCents: number;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  /** Cancelamento pedido pelo dono; encerra no fim do período (Fase 0 §0.2). */
+  cancelAtPeriodEnd: boolean;
+  /** Quando o cancelamento pedido passa a valer — o que o cron consome. */
+  cancellationEffectiveAt: string | null;
 };
 
 export type TenantContext = {
@@ -22,6 +26,8 @@ export type TenantContext = {
   role: MembershipRole;
   profileId: string;
   profileName: string;
+  /** Senha provisória criada pelo dono; o painel exige a troca (Fase 0 §0.17). */
+  mustChangePassword: boolean;
   subscription: SubscriptionInfo | null;
 };
 

@@ -5,54 +5,13 @@ import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { ActionState } from "@/types/domain";
 
-const inviteSchema = z.object({
-  email: z.email(),
-  role: z.enum(["manager", "receptionist", "professional"]),
-});
-
-const inviteErrors: Record<string, string> = {
-  USER_NOT_FOUND:
-    "Nenhuma conta encontrada com esse e-mail. Peça para a pessoa criar a conta em /cadastro e convide de novo.",
-  CANNOT_CHANGE_OWNER: "Esse e-mail pertence ao proprietário da barbearia.",
-  NOT_AUTHORIZED: "Apenas o proprietário pode convidar membros.",
-};
-
-export async function inviteMember(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsed = inviteSchema.safeParse({
-    email: String(formData.get("email") ?? "").trim(),
-    role: formData.get("role"),
-  });
-  if (!parsed.success) {
-    return { success: false, message: "Revise o e-mail e o papel." };
-  }
-
-  const tenant = await requireTenant();
-  if (!can(tenant.role, "memberships:manage")) {
-    return { success: false, message: "Apenas o proprietário pode convidar." };
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("invite_member", {
-    p_barbershop_id: tenant.id,
-    p_email: parsed.data.email,
-    p_role: parsed.data.role,
-  });
-  if (error) {
-    return {
-      success: false,
-      message:
-        inviteErrors[error.message] ??
-        "Não foi possível convidar. Tente novamente.",
-    };
-  }
-  revalidatePath("/profissionais");
-  return { success: true, message: "Membro adicionado à equipe." };
-}
+/**
+ * Papéis e remoção de membros. O CONVITE vive em ./invites.ts desde a Fase 3
+ * (item 3.8): a antiga `inviteMember` exigia que a pessoa já tivesse conta —
+ * era ela que obrigava o dono a "pedir por WhatsApp que a pessoa se cadastre
+ * antes", ou a criar a senha dela na mão.
+ */
 
 const roleSchema = z.enum(["manager", "receptionist", "professional"]);
 

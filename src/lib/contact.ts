@@ -18,23 +18,6 @@ export function whatsAppHref(number: string | null | undefined) {
   return normalized ? `https://wa.me/${normalized}` : null;
 }
 
-/**
- * Máscara progressiva de telefone brasileiro, aplicada enquanto se digita
- * (Fase 4): "11987654321" → "(11) 98765-4321". Aceita colar com formatação
- * e nunca bloqueia a digitação — só apresenta. Acima de 11 dígitos devolve
- * o número cru (estrangeiro), porque inventar parênteses ali confunde.
- */
-export function formatPhoneBR(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length > 11) return digits;
-  if (digits.length <= 2) return digits;
-  const area = `(${digits.slice(0, 2)}) `;
-  const rest = digits.slice(2);
-  if (rest.length <= 4) return area + rest;
-  const split = rest.length > 8 ? 5 : 4;
-  return `${area}${rest.slice(0, split)}-${rest.slice(split)}`;
-}
-
 export function instagramHandle(url: string | null | undefined) {
   if (!url) return null;
   const match = url.match(/instagram\.com\/([\w.]+)/i);
