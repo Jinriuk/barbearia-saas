@@ -4,8 +4,9 @@
 --  1) Estado "Em atendimento": confirmed→in_progress→completed vale,
 --     iniciar no futuro é bloqueado, pending→no_show passou a valer e um
 --     atendimento em curso continua ocupando o horário (exclusion).
---  2) Estoque: get_product_stock soma o ledger INTEIRO (não as 400 últimas
---     movimentações) e a trava impede saldo negativo por saída manual.
+--  2) Estoque: a view product_stock_balances (Fase 0.6) soma o ledger
+--     INTEIRO e agora traz a última movimentação; a trava da Fase 0.8
+--     impede saldo negativo por saída manual.
 --  3) Venda de balcão: itens, baixa de estoque e receita numa transação;
 --     estoque insuficiente e desconto maior que o total derrubam a venda.
 --  4) "Finalizar e receber": conclui e marca a receita como paga.
@@ -99,8 +100,10 @@ from generate_series(1, 500);
 set local role authenticated;
 set local request.jwt.claims to '{"sub":"f5000000-0000-4000-8000-000000000001","role":"authenticated"}';
 select '2a. Saldo do ledger inteiro' as teste,
-  (select balance from public.get_product_stock('b0000000-0000-4000-8000-00000000000a')
-    where product_id = 'b4000000-0000-4000-8000-000000000001') = 500 as saldo_ok;
+  (select on_hand from public.product_stock_balances
+    where product_id = 'b4000000-0000-4000-8000-000000000001') = 500 as saldo_ok,
+  (select last_movement_at is not null from public.product_stock_balances
+    where product_id = 'b4000000-0000-4000-8000-000000000001') as ultima_mov_ok;
 reset role;
 
 do $$
@@ -135,7 +138,7 @@ from (
 ) r;
 
 select '3b. Baixa e receita' as teste,
-  (select balance from public.get_product_stock('b0000000-0000-4000-8000-00000000000a')
+  (select on_hand from public.product_stock_balances
     where product_id = 'b4000000-0000-4000-8000-000000000001') = 490 as estoque_ok,
   (select count(*) from public.financial_transactions
     where barbershop_id = 'b0000000-0000-4000-8000-00000000000a'

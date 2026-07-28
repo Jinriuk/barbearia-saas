@@ -2,17 +2,20 @@
 --
 -- Escopo desta migration (docs/14-plano-de-fases.md, itens 2.1 a 2.7):
 --   1. Máquina de estados com "Em atendimento" e falta sem confirmar antes.
---   2. Saldo de estoque somado NO BANCO e trava de estoque negativo — são os
---      itens 0.6 e 0.8 do plano, puxados para cá porque a tela de venda
---      (2.6) e o estoque mínimo (2.7) não fazem sentido sobre um saldo que
---      é ficção a partir da 401ª movimentação.
---   3. Venda de balcão (avulsa, sem agendamento) transacional.
---   4. "Finalizar e receber" num gesto só.
---   5. Inteligência de clientes: segmentos Assinantes/Inadimplentes,
---      situação do plano por cliente e o gasto do assinante deixando de ser
---      R$ 0,00 (item 0.13, pela mesma razão: o perfil do cliente é a
---      vitrine do G2 e não pode abrir mostrando zero no melhor cliente).
---   6. Perfil do cliente: histórico e pagamentos por cliente.
+--   2. Consequências do estado novo no que já existia: exclusion constraint
+--      da agenda, disponibilidade pública e saldo de produto da vitrine.
+--   3. Estoque: a view product_stock_balances (Fase 0.6) ganha a data da
+--      última movimentação, que a lista de produtos passa a exibir.
+--   4. Venda de balcão (avulsa, sem agendamento) transacional, e o relatório
+--      de produtos do Financeiro passando a enxergar as duas portas de venda.
+--   5. "Finalizar e receber" num gesto só.
+--   6. Inteligência de clientes: segmentos Assinantes/Inadimplentes, situação
+--      do plano por cliente, observações e consulta por id.
+--   7. Perfil do cliente: histórico e pagamentos por cliente.
+--
+-- Constrói em cima da Fase 0: o saldo de estoque (view), a trava de estoque
+-- negativo (trigger) e o gasto do assinante já vieram de lá — aqui só entra
+-- o que a Fase 2 acrescenta.
 
 begin;
 
@@ -220,6 +223,70 @@ grant execute on function public.get_agenda_month(uuid, timestamptz, timestamptz
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 2b. Compatibilidade com a Fase 4 (vitrine pública).
+--
+-- product_available_stock conta como reservado o produto de agendamentos
+-- 'pending'/'confirmed'. Com o estado novo, um atendimento EM ANDAMENTO sairia
+-- desse filtro e o produto já reservado voltaria a parecer disponível na
+-- vitrine. O patch é condicional porque a função nasce na Fase 4, que na data
+-- desta migration está aplicada no banco mas ainda não no repositório.
+--
+-- ATENÇÃO para quem trouxer a Fase 4 ao repositório: a lista de situações
+-- desta função precisa continuar incluindo 'in_progress'.
+do $patch$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'product_available_stock'
+  ) then
+    execute $fn$
+      create or replace function public.product_available_stock(
+        p_barbershop_id uuid,
+        p_product_id uuid
+      )
+      returns numeric
+      language sql
+      stable
+      security definer
+      set search_path = ''
+      as $body$
+        select case
+          -- Sem nenhuma movimentação o produto não é controlado por estoque.
+          when not exists (
+            select 1
+            from public.inventory_movements im
+            where im.barbershop_id = p_barbershop_id
+              and im.product_id = p_product_id
+          ) then null
+          else
+            coalesce((
+              select sum(
+                case when im.type in ('purchase', 'adjustment_in', 'return')
+                  then im.quantity else -im.quantity end
+              )
+              from public.inventory_movements im
+              where im.barbershop_id = p_barbershop_id
+                and im.product_id = p_product_id
+            ), 0)
+            - coalesce((
+              select sum(ap.quantity)
+              from public.appointment_products ap
+              join public.appointments a on a.id = ap.appointment_id
+              where ap.barbershop_id = p_barbershop_id
+                and ap.product_id = p_product_id
+                and ap.status = 'pending'
+                and a.status in ('pending', 'confirmed', 'in_progress')
+            ), 0)
+        end
+      $body$;
+    $fn$;
+    execute 'revoke all on function public.product_available_stock(uuid, uuid) from public, anon, authenticated';
+  end if;
+end;
+$patch$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Estoque: a Fase 0 já resolveu o saldo (view product_stock_balances) e a
 --    trava de negativo (trigger trg_enforce_inventory_balance). Aqui a view
 --    só ganha a data da última movimentação, que a lista de produtos passa a
@@ -260,8 +327,8 @@ grant select on public.product_stock_balances to authenticated;
 --
 -- appointment_products exige appointment_id — uma venda de balcão não tem
 -- onde morar nessa tabela. Duas tabelas novas resolvem sem distorcer o
--- modelo do upsell do agendamento, e o relatório de produtos passa a ler as
--- duas fontes (get_product_sales, abaixo).
+-- modelo do upsell do agendamento, e o revenue_breakdown da Fase 0 passa a
+-- ler as duas fontes (reescrito abaixo).
 create table if not exists public.counter_sales (
   id uuid primary key default gen_random_uuid(),
   barbershop_id uuid not null references public.barbershops(id) on delete cascade,
