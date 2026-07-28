@@ -18,7 +18,10 @@ import { changeMemberRole, removeMember } from "@/modules/team/actions";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { ProfessionalForm } from "@/components/dashboard/professional-form";
 import { ProfessionalProfileSheet } from "@/components/dashboard/professional-profile-sheet";
-import { InviteMemberForm } from "@/components/dashboard/invite-member-form";
+import {
+  TeamInvitesCard,
+  type TeamInvite,
+} from "@/components/dashboard/team-invites-card";
 import { TeamTabs } from "@/components/dashboard/team-tabs";
 
 const roleLabels: Record<string, string> = {
@@ -49,6 +52,7 @@ export default async function ProfessionalsPage() {
     { data: professionalData },
     { data: serviceData },
     { data: memberData },
+    { data: inviteData },
   ] = await Promise.all([
     supabase
       .from("professionals")
@@ -69,6 +73,16 @@ export default async function ProfessionalsPage() {
           .eq("status", "active")
           .order("created_at")
       : Promise.resolve({ data: [] as never[] }),
+    canManageAccess
+      ? supabase
+          .from("team_invites")
+          .select(
+            "id,email,name,role,status,created_at,expires_at,accepted_at",
+          )
+          .eq("barbershop_id", tenant.id)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
   const data = professionalData ?? [];
   const services = serviceData ?? [];
@@ -77,6 +91,16 @@ export default async function ProfessionalsPage() {
     role: item.role as string,
     name: first(item.profile)?.name ?? "Sem perfil",
     phone: first(item.profile)?.phone ?? "",
+  }));
+  const invites: TeamInvite[] = (inviteData ?? []).map((item) => ({
+    id: item.id,
+    email: item.email,
+    name: item.name,
+    role: item.role as string,
+    status: item.status as TeamInvite["status"],
+    createdAt: item.created_at,
+    expiresAt: item.expires_at,
+    acceptedAt: item.accepted_at ?? null,
   }));
 
   const professionalsSection = (
@@ -119,6 +143,12 @@ export default async function ProfessionalsPage() {
                     {item.bio || "Sem apresentação pública."}
                   </p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {/* Perfil do profissional (Fase 3 — item 3.9): o G4 já
+                        respondia "quanto deve receber"; a ficha é onde
+                        aparece "quem produziu". */}
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/profissionais/${item.id}`}>Ver ficha</Link>
+                    </Button>
                     {canManageAccess ? (
                       <ProfessionalProfileSheet
                         professional={{
@@ -182,7 +212,10 @@ export default async function ProfessionalsPage() {
 
   const accessSection = (
     <div className="max-w-5xl space-y-6">
-      <InviteMemberForm />
+      {/* O convite vive na aba "Profissionais" e cobre todos os papéis
+          (Fase 3 — item 3.8). Aqui fica o acompanhamento: quem já entrou e
+          quem ainda não respondeu. */}
+      <TeamInvitesCard invites={invites} timezone={tenant.timezone} />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">

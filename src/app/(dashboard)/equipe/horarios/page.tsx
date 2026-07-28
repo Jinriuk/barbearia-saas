@@ -14,11 +14,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-function first<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
-}
-
 /**
  * Expediente, folgas e bloqueios (Fase 1 — §6.4): horários por dia da semana
  * com turnos divididos, dia fechado, folga/férias e bloqueio pontual.
@@ -91,10 +86,15 @@ export default async function TeamSchedulePage({
       .eq("active", true)
       .order("weekday")
       .order("starts_at"),
+    // Item 3.11 da Fase 3: a consulta filtrava só por barbearia, então cada
+    // profissional enxergava a folga de todos os colegas — e o dono via, no
+    // painel de "Expediente de Fulano", bloqueios que não eram de Fulano. O
+    // cartão inteiro passa a ser do profissional selecionado.
     supabase
       .from("schedule_blocks")
-      .select("id,starts_at,ends_at,reason,professional:professionals(name)")
+      .select("id,starts_at,ends_at,reason")
       .eq("barbershop_id", tenant.id)
+      .eq("professional_id", selected.id)
       .gte("ends_at", new Date().toISOString())
       .order("starts_at")
       .limit(100),
@@ -109,7 +109,7 @@ export default async function TeamSchedulePage({
 
   const blocks: ScheduleBlockRow[] = (blockData ?? []).map((block) => ({
     id: block.id,
-    professionalName: first(block.professional)?.name ?? "Profissional",
+    professionalName: selected.name,
     startsAt: block.starts_at,
     endsAt: block.ends_at,
     reason: block.reason,
@@ -161,15 +161,12 @@ export default async function TeamSchedulePage({
         <Card className="h-fit">
           <CardHeader>
             <CardTitle className="text-base">
-              Folgas, férias e bloqueios
+              Folgas, férias e bloqueios de {selected.name}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ScheduleBlocksCard
-              professionals={professionals.map((item) => ({
-                id: item.id,
-                name: item.name,
-              }))}
+              professionals={[{ id: selected.id, name: selected.name }]}
               blocks={blocks}
               timezone={tenant.timezone}
             />

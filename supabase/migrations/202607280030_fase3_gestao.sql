@@ -139,6 +139,41 @@ with check (
   )
 );
 
+-- 2b. Resolver e-mail → perfil, para o caso em que a pessoa convidada JÁ tem
+--     conta (o convite por e-mail do Supabase não funciona para usuário
+--     existente; o acesso é liberado na hora). Restrito a quem administra a
+--     equipe da barbearia informada — o mesmo público que já descobre isso
+--     tentando convidar.
+create or replace function public.profile_id_by_email(
+  p_barbershop uuid,
+  p_email text
+) returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_profile uuid;
+begin
+  if not public.has_barbershop_role(
+    p_barbershop, array['owner', 'manager']::public.membership_role[]
+  ) then
+    raise exception 'NOT_AUTHORIZED' using errcode = 'P0001';
+  end if;
+
+  select p.id into v_profile
+  from public.profiles p
+  join auth.users u on u.id = p.auth_user_id
+  where lower(u.email) = lower(trim(p_email))
+  limit 1;
+
+  return v_profile;
+end;
+$$;
+revoke all on function public.profile_id_by_email(uuid, text) from public, anon;
+grant execute on function public.profile_id_by_email(uuid, text) to authenticated;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Despesa progressiva (item 3.5) e recebível com dono (item 3.6).
 --    A primeira linha do formulário continua sendo descrição, valor e
