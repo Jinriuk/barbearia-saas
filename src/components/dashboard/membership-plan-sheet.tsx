@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { saveMembershipPlan } from "@/modules/memberships/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +60,7 @@ export function MembershipPlanSheet({
     },
     initialState,
   );
+  useActionToast(state);
   const editing = Boolean(plan);
   const included = new Map(
     (plan?.entitlements ?? []).map((item) => [
@@ -89,8 +91,8 @@ export function MembershipPlanSheet({
         <SheetHeader>
           <SheetTitle>{editing ? "Editar plano" : "Novo plano"}</SheetTitle>
           <SheetDescription>
-            O cliente paga o valor por período e usa os serviços incluídos até
-            o limite. Mudar o plano não altera contratos já vendidos.
+            O cliente paga o valor por período e usa os serviços incluídos até o
+            limite. Mudar o plano não altera contratos já vendidos.
           </SheetDescription>
         </SheetHeader>
         <form action={formAction} className="flex flex-1 flex-col gap-4 p-4">
@@ -129,7 +131,7 @@ export function MembershipPlanSheet({
                 id="plan-period"
                 name="period"
                 defaultValue={plan?.period ?? "monthly"}
-                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
               >
                 {PERIODS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -159,11 +161,7 @@ export function MembershipPlanSheet({
                     key={service.id}
                     className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
                   >
-                    <input
-                      type="hidden"
-                      name="serviceIds"
-                      value={service.id}
-                    />
+                    <input type="hidden" name="serviceIds" value={service.id} />
                     <label className="flex min-w-0 items-center gap-2 text-sm">
                       <input
                         type="checkbox"

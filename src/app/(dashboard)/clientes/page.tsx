@@ -70,21 +70,18 @@ type InsightRow = {
   total_count: number;
 };
 
+// Fase 1.9: os tons vêm do Badge, para "situação" ter uma fonte de cor só
+// em todo o painel.
 function returnBadge(row: InsightRow, nowMs: number) {
   if (!row.expected_return_at) {
-    return { label: "Sem previsão", className: "text-muted-foreground" };
+    return { label: "Sem previsão", tone: "neutral" as const };
   }
   const expected = Date.parse(row.expected_return_at);
   const overdue = expected < nowMs;
   const soon = !overdue && expected < nowMs + 7 * 86_400_000;
-  if (overdue)
-    return {
-      label: "Em atraso",
-      className: "border-warning/50 text-warning",
-    };
-  if (soon)
-    return { label: "Volta em breve", className: "border-info/50 text-info" };
-  return { label: "Em dia", className: "border-success/50 text-success" };
+  if (overdue) return { label: "Em atraso", tone: "warning" as const };
+  if (soon) return { label: "Volta em breve", tone: "info" as const };
+  return { label: "Em dia", tone: "success" as const };
 }
 
 export default async function ClientsPage({
@@ -224,7 +221,7 @@ export default async function ClientsPage({
                   defaultValue={search}
                   placeholder="Nome ou telefone…"
                   aria-label="Buscar cliente por nome ou telefone"
-                  className="border-input bg-background h-9 w-40 rounded-lg border px-3 text-sm sm:w-56"
+                  className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-40 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 sm:w-56 md:h-11"
                 />
                 <Button size="sm" variant="outline" type="submit">
                   <Search className="size-3.5" />
@@ -250,7 +247,7 @@ export default async function ClientsPage({
                             {row.email ? ` · ${row.email}` : ""}
                           </p>
                         </div>
-                        <Badge variant="outline" className={badge.className}>
+                        <Badge variant={badge.tone}>
                           {badge.label}
                           {row.confidence === "baixa"
                             ? " · poucas visitas"

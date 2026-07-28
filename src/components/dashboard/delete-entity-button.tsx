@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -31,6 +32,7 @@ export function DeleteEntityButton({
   itemName: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  useActionToast(state);
 
   return (
     <AlertDialog>

@@ -54,16 +54,61 @@ const DEFAULT_BACKGROUNDS = [
 
 /** Temas prontos: um clique define destaque, escura e fundo em harmonia. */
 const THEME_PRESETS = [
-  { name: "Dourado clássico", primary: "#b8893e", secondary: "#171717", background: "#faf8f4" },
-  { name: "Meia-noite", primary: "#d9a441", secondary: "#f4f1ea", background: "#101318" },
-  { name: "Esmeralda", primary: "#2f9e77", secondary: "#10231c", background: "#f2f7f4" },
-  { name: "Vinho nobre", primary: "#8e2f3c", secondary: "#241014", background: "#faf4f2" },
-  { name: "Grafite & ouro", primary: "#e5b95c", secondary: "#ece9e2", background: "#141416" },
-  { name: "Rosé", primary: "#b96a72", secondary: "#2a1a18", background: "#fbf3f1" },
+  {
+    name: "Dourado clássico",
+    primary: "#b8893e",
+    secondary: "#171717",
+    background: "#faf8f4",
+  },
+  {
+    name: "Meia-noite",
+    primary: "#d9a441",
+    secondary: "#f4f1ea",
+    background: "#101318",
+  },
+  {
+    name: "Esmeralda",
+    primary: "#2f9e77",
+    secondary: "#10231c",
+    background: "#f2f7f4",
+  },
+  {
+    name: "Vinho nobre",
+    primary: "#8e2f3c",
+    secondary: "#241014",
+    background: "#faf4f2",
+  },
+  {
+    name: "Grafite & ouro",
+    primary: "#e5b95c",
+    secondary: "#ece9e2",
+    background: "#141416",
+  },
+  {
+    name: "Rosé",
+    primary: "#b96a72",
+    secondary: "#2a1a18",
+    background: "#fbf3f1",
+  },
   // Temas femininos — os mesmos apresentados na landing do NexoBeleza.
-  { name: "Rosé elegante", primary: "#c2497c", secondary: "#33202b", background: "#fdf8f5" },
-  { name: "Lavanda suave", primary: "#8459b3", secondary: "#2f2440", background: "#f7f4fb" },
-  { name: "Champagne", primary: "#b98a4f", secondary: "#3d2f1f", background: "#fbf7ef" },
+  {
+    name: "Rosé elegante",
+    primary: "#c2497c",
+    secondary: "#33202b",
+    background: "#fdf8f5",
+  },
+  {
+    name: "Lavanda suave",
+    primary: "#8459b3",
+    secondary: "#2f2440",
+    background: "#f7f4fb",
+  },
+  {
+    name: "Champagne",
+    primary: "#b98a4f",
+    secondary: "#3d2f1f",
+    background: "#fbf7ef",
+  },
 ];
 
 type Appearance = {
@@ -121,7 +166,7 @@ export function AppearanceEditor({
             className={
               isPlus
                 ? "bg-primary/10 text-primary border-transparent"
-                : "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+                : "border-warning/40 bg-warning-bg text-warning"
             }
           >
             <Sparkles className="size-3" /> Plus
@@ -179,7 +224,7 @@ export function AppearanceEditor({
                   className="py-2"
                 >
                   {logoState.success ? (
-                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <CheckCircle2 className="text-success size-4" />
                   ) : null}
                   <AlertDescription>{logoState.message}</AlertDescription>
                 </Alert>
@@ -189,9 +234,9 @@ export function AppearanceEditor({
             {/* Cores + textos + fundo */}
             <form action={formAction} className="space-y-5">
               {state.message ? (
-                <Alert variant={state.success ? "default" : "destructive"}>
+                <Alert variant={state.success ? "success" : "destructive"}>
                   {state.success ? (
-                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <CheckCircle2 className="text-success size-4" />
                   ) : null}
                   <AlertDescription>{state.message}</AlertDescription>
                 </Alert>
@@ -244,7 +289,7 @@ export function AppearanceEditor({
                           "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs font-medium transition-all disabled:opacity-50",
                           active
                             ? "border-primary bg-primary/5"
-                            : "hover:border-black/20 hover:bg-muted/40 dark:hover:border-white/20",
+                            : "hover:bg-muted/40 hover:border-black/20 dark:hover:border-white/20",
                         )}
                         aria-label={`Aplicar tema ${preset.name}`}
                       >
@@ -355,19 +400,19 @@ export function AppearanceEditor({
                   </Button>
                   <Button asChild variant="outline">
                     <Link href={`/${slug}`} target="_blank">
-                      Ver página pública
+                      Ver página de agendamento
                     </Link>
                   </Button>
                 </div>
               ) : (
                 <div className="bg-muted/40 flex flex-col items-start gap-3 rounded-xl border border-dashed p-4">
                   <p className="flex items-center gap-2 text-sm font-medium">
-                    <Lock className="size-4" /> Personalização bloqueada no plano
-                    Padrão
+                    <Lock className="size-4" /> Personalização bloqueada no
+                    plano Padrão
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    Faça upgrade para o Plus e deixe a área do cliente com a cara
-                    da sua barbearia.
+                    Faça upgrade para o Plus e deixe a área do cliente com a
+                    cara da sua barbearia.
                   </p>
                   <Button asChild type="button" variant="secondary">
                     <a href="/#planos" target="_blank" rel="noreferrer">
@@ -401,7 +446,7 @@ export function AppearanceEditor({
                     className="py-2"
                   >
                     {bgState.success ? (
-                      <CheckCircle2 className="size-4 text-emerald-600" />
+                      <CheckCircle2 className="text-success size-4" />
                     ) : null}
                     <AlertDescription>{bgState.message}</AlertDescription>
                   </Alert>
@@ -417,7 +462,10 @@ export function AppearanceEditor({
             </p>
             <div
               className="overflow-hidden rounded-2xl border shadow-sm"
-              style={{ background: previewBackground, color: values.secondaryColor }}
+              style={{
+                background: previewBackground,
+                color: values.secondaryColor,
+              }}
             >
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="flex items-center gap-2 text-sm font-semibold">

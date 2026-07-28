@@ -39,7 +39,7 @@ export function ReservationActions({ id }: { id: string }) {
             value={method}
             onChange={(event) => setMethod(event.target.value)}
             aria-label="Forma de pagamento da venda"
-            className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
+            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
           >
             <option value="">Receber depois</option>
             {PAYMENT_METHODS.map((item) => (
@@ -51,7 +51,7 @@ export function ReservationActions({ id }: { id: string }) {
           <Button
             size="sm"
             disabled={confirming || canceling}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            className="bg-success text-background hover:bg-success/85"
           >
             <Check className="size-3.5" /> Confirmar
           </Button>

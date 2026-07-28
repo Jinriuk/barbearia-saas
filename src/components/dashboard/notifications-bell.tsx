@@ -84,7 +84,7 @@ export function NotificationsBell({
     <>
       <DropdownMenu onOpenChange={markSeen}>
         <DropdownMenuTrigger
-          className="hover:bg-muted focus-visible:ring-ring/50 relative grid size-9 place-items-center rounded-full outline-none focus-visible:ring-3"
+          className="hover:bg-muted focus-visible:ring-focus-ring/45 relative grid size-11 place-items-center rounded-full outline-none focus-visible:ring-3"
           aria-label={`Notificações${unread ? `, ${unread} não lidas` : ""}`}
         >
           <Bell className="size-4.5" />

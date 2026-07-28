@@ -4,6 +4,7 @@ import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -105,9 +106,7 @@ export default async function ProfessionalsPage() {
                     {!item.active ? (
                       <Badge variant="secondary">Inativo</Badge>
                     ) : item.public_visible ? (
-                      <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                        Disponível
-                      </Badge>
+                      <Badge variant="success">Disponível</Badge>
                     ) : (
                       <Badge variant="outline">Indisponível</Badge>
                     )}
@@ -223,7 +222,7 @@ export default async function ProfessionalsPage() {
                           name="role"
                           defaultValue={member.role}
                           aria-label={`Papel de ${member.name}`}
-                          className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                          className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                         >
                           {editableRoles.map((role) => (
                             <option key={role} value={role}>
@@ -244,7 +243,7 @@ export default async function ProfessionalsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                          className="text-destructive hover:text-destructive/85"
                           aria-label={`Remover ${member.name}`}
                         >
                           <Trash2 className="size-3.5" /> Remover
@@ -290,6 +289,7 @@ export default async function ProfessionalsPage() {
         title="Profissionais e Equipe"
         description="Quem atende, o que executa, a disponibilidade e o acesso ao sistema."
       />
+      <SectionNav section="equipe" role={tenant.role} />
       {canManageAccess ? (
         <TeamTabs professionals={professionalsSection} access={accessSection} />
       ) : (

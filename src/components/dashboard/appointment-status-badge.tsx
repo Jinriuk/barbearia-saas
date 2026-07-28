@@ -1,30 +1,39 @@
-import { Badge } from "@/components/ui/badge";
+import {
+  CalendarCheck,
+  CircleCheck,
+  CircleX,
+  Clock,
+  UserX,
+} from "lucide-react";
+import type { VariantProps } from "class-variance-authority";
+
+import { Badge, type badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: "Pendente",
-    className:
-      "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
-  },
-  confirmed: {
-    label: "Confirmado",
-    className: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300",
-  },
-  completed: {
-    label: "Concluído",
-    className:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-  },
-  canceled: {
-    label: "Cancelado",
-    className: "bg-muted text-muted-foreground",
-  },
-  no_show: {
-    label: "Não compareceu",
-    className:
-      "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300",
-  },
+type Tone = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
+
+/**
+ * Selo de situação do atendimento (§5.6, Fase 1.9).
+ *
+ * Duas correções. As cores de "Cancelado" e "Não compareceu" estavam
+ * invertidas: a tabela do guia pede vermelho para o cancelamento e cinza
+ * para a falta, e o arquivo tinha exatamente o contrário. E o mapa usava a
+ * paleta crua do Tailwind enquanto o resto do painel usava os tokens
+ * semânticos — dois sistemas de cor para o mesmo conceito; agora tudo passa
+ * pelos tons do Badge.
+ *
+ * O ícone atende ao "ícone + texto + cor" do §5.6, e faz a cor deixar de ser
+ * a única forma de distinguir a situação (§12).
+ */
+const statusMap: Record<
+  string,
+  { label: string; tone: Tone; icon: typeof Clock }
+> = {
+  pending: { label: "Pendente", tone: "warning", icon: Clock },
+  confirmed: { label: "Confirmado", tone: "info", icon: CalendarCheck },
+  completed: { label: "Concluído", tone: "success", icon: CircleCheck },
+  canceled: { label: "Cancelado", tone: "danger", icon: CircleX },
+  no_show: { label: "Não compareceu", tone: "neutral", icon: UserX },
 };
 
 export function appointmentStatusLabel(status: string) {
@@ -38,12 +47,18 @@ export function AppointmentStatusBadge({
   status: string;
   className?: string;
 }) {
-  const entry = statusMap[status] ?? {
-    label: status,
-    className: "bg-muted text-muted-foreground",
-  };
+  const entry = statusMap[status];
+  if (!entry) {
+    return (
+      <Badge variant="neutral" className={className}>
+        {status}
+      </Badge>
+    );
+  }
+  const Icon = entry.icon;
   return (
-    <Badge className={cn("border-transparent", entry.className, className)}>
+    <Badge variant={entry.tone} className={cn("gap-1", className)}>
+      <Icon aria-hidden />
       {entry.label}
     </Badge>
   );

@@ -58,18 +58,18 @@ export default async function SubscriptionPage() {
     <>
       <PageHeader
         eyebrow="Plano e cobrança"
-        title="Assinatura"
-        description="Status do seu plano, próximas cobranças e regularização."
+        title="Meu plano NexoBarber"
+        description="Situação do seu plano, próximas cobranças e regularização."
         action={
           sub ? (
             <Badge
               variant="outline"
               className={
                 state === "ok"
-                  ? "border-emerald-300 text-emerald-700 dark:text-emerald-300"
+                  ? "border-success/40 text-success"
                   : state === "warn"
-                    ? "border-amber-300 text-amber-700 dark:text-amber-300"
-                    : "border-red-300 text-red-700 dark:text-red-300"
+                    ? "border-warning/40 text-warning"
+                    : "border-destructive/40 text-destructive"
               }
             >
               {STATUS_LABEL[sub.status] ?? sub.status}
@@ -101,7 +101,7 @@ export default async function SubscriptionPage() {
 
         {state === "warn" ? (
           <Alert>
-            <CircleAlert className="size-4 text-amber-600" />
+            <CircleAlert className="text-warning size-4" />
             <AlertTitle>
               {sub?.status === "trialing"
                 ? "Seu período de teste terminou"
