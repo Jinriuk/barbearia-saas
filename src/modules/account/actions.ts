@@ -1,13 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import {
-  RECOVERY_COOKIE,
-  canSetPasswordWithoutCurrent,
-} from "@/lib/auth/recovery";
+import { canSetPasswordWithoutCurrent } from "@/lib/auth/recovery";
 import { getPublicSupabaseEnv } from "@/lib/env";
 import { sharedRateLimit } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -116,7 +112,11 @@ export async function changePassword(
   if (signInError) {
     return { success: false, message: "A senha atual não confere." };
   }
-  await verifier.auth.signOut();
+  // scope 'local' é essencial: o padrão de signOut() é 'global', que revoga
+  // TODOS os refresh tokens do usuário no GoTrue — inclusive o da sessão que
+  // acabou de pedir a troca. Trocar a senha derrubaria a própria pessoa e
+  // todos os aparelhos dela, mesmo sem marcar "sair dos outros aparelhos".
+  await verifier.auth.signOut({ scope: "local" });
 
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
@@ -131,10 +131,9 @@ export async function changePassword(
     };
   }
 
-  await supabase
-    .from("profiles")
-    .update({ must_change_password: false })
-    .eq("auth_user_id", user.id);
+  // Por RPC: a coluna saiu do alcance de quem está logado (§0.15 — marcar o
+  // próprio perfil como "precisa trocar" era um desvio da senha atual).
+  await supabase.rpc("clear_must_change_password");
 
   // "Sair dos outros aparelhos": scope 'others' preserva a sessão atual.
   let message = "Senha alterada com sucesso.";
@@ -192,7 +191,7 @@ export async function setNewPassword(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "Sessão expirada." };
 
-  if (!(await canSetPasswordWithoutCurrent(user.id))) {
+  if (!(await canSetPasswordWithoutCurrent())) {
     return {
       success: false,
       message:
@@ -211,13 +210,9 @@ export async function setNewPassword(
     };
   }
 
-  await supabase
-    .from("profiles")
-    .update({ must_change_password: false })
-    .eq("auth_user_id", user.id);
-
-  // O link de recuperação vale uma vez: a marca sai assim que é usada.
-  (await cookies()).delete(RECOVERY_COOKIE);
+  await supabase.rpc("clear_must_change_password");
+  // O link de recuperação vale uma troca só.
+  await supabase.rpc("consume_password_recovery_grant");
   // Trocar a senha por esquecimento é exatamente quando se quer derrubar o
   // resto — inclusive quem estava com o acesso indevido.
   await supabase.auth.signOut({ scope: "others" });

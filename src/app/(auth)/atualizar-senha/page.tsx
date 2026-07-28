@@ -18,7 +18,7 @@ export default async function UpdatePasswordPage() {
   // isso é legítimo (Fase 0 §0.15): link de recuperação ou primeiro acesso do
   // colaborador. Quem chega aqui com uma sessão comum vai para Minha conta,
   // que exige a senha atual — senão a URL seria um desvio da reautenticação.
-  if (!(await canSetPasswordWithoutCurrent(user.id))) {
+  if (!(await canSetPasswordWithoutCurrent())) {
     return (
       <AuthCard
         title="Troque a senha pela sua conta"

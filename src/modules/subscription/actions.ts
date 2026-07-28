@@ -94,6 +94,15 @@ export async function revokeCancellation(
     p_barbershop: tenant.id,
   });
   if (error) {
+    // O cron pode ter encerrado o plano enquanto a aba ficava aberta. Dizer
+    // "plano reativado" nesse caso seria mentira na tela.
+    if (errorMessage(error).includes("SUBSCRIPTION_ALREADY_CANCELED")) {
+      return {
+        success: false,
+        message:
+          "O período já terminou e o plano foi encerrado. Fale com o suporte para reativar.",
+      };
+    }
     logError("subscription.cancel_revoke_failed", {
       message: errorMessage(error),
     });

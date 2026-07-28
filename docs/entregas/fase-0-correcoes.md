@@ -62,6 +62,45 @@ A separação: `changePassword` (Minha conta) exige a senha atual;
 emitido pelo callback do link, ou `must_change_password` (colaborador no
 primeiro acesso). Fora disso, manda para Minha conta.
 
+## A revisão da própria Fase 0 (migration `202607280031`)
+
+Uma revisão adversarial do diff — cinco dimensões, cada achado atacado por um
+cético — derrubou dois furos que **anulavam o §0.15 inteiro**, mais três erros
+de borda. Todos corrigidos e cobertos em
+[`supabase/tests/fase0c_revisao_seguranca.sql`](../../supabase/tests/fase0c_revisao_seguranca.sql)
+(11 asserções).
+
+**O cookie de recuperação era forjável.** A marca de "esta sessão veio de um
+link de e-mail" era um cookie httpOnly de valor fixo. `httpOnly` protege contra
+o JavaScript da página, não contra a pessoa sentada no aparelho, que cria o
+cookie na mão pelo DevTools — e o cenário do §0.15 é exatamente o painel aberto
+no balcão. A marca virou uma concessão guardada em `password_recovery_grants`,
+emitida só pelo callback e só com `service_role`, com validade de 30 minutos e
+consumida na primeira troca.
+
+**O callback descartava o resultado da troca do código.** Um `code` inválido não
+derruba a sessão que já está no navegador, então `/auth/callback?code=x&next=/atualizar-senha`
+"dava certo" com a sessão antiga e liberava a troca de senha. Agora a concessão
+só sai quando `exchangeCodeForSession` devolve sessão de verdade.
+
+**`must_change_password` era escrita pelo próprio usuário.** A policy de update
+do perfil não restringe coluna: bastava marcar a própria linha como `true` para
+abrir a mesma janela. A coluna saiu do alcance do `UPDATE` direto (gatilho
+`protect_must_change_password`, `security invoker` para enxergar quem escreve);
+baixar a marca passou a ser uma RPC `security definer`.
+
+**`signOut()` do cliente verificador é global por padrão.** Ele revogava todos
+os refresh tokens do usuário no GoTrue — inclusive o da sessão que acabou de
+pedir a troca. Trocar a senha derrubava a própria pessoa mesmo sem marcar "sair
+dos outros aparelhos". Passou a `scope: "local"`.
+
+**Redirecionamento aberto em `/auth/callback`.** `next.startsWith("/")` aceita
+`//host`, que o `URL` resolve para outro domínio. O `signIn` já se protegia; o
+callback não.
+
+**Cancelar assinatura vencida prometia uma data no passado**, e reativar um
+plano já encerrado pelo cron respondia "Plano reativado" sem ter mudado nada.
+
 ## O que a auditoria errou
 
 **0.3 — a direção estava invertida.** A auditoria dizia que a landing anunciava
@@ -122,4 +161,4 @@ Corrigidos porque a entrega da fase é "nenhum número exibido pode estar errado
 
 `npm run typecheck`, `npm run lint` e `npm run test` (54 testes) passam. A
 migration foi aplicada numa cadeia limpa em Postgres 16 e o arquivo de teste SQL
-roda com 17 asserções verdes.
+rodam verdes (17 de comportamento, 4 de isolamento, 11 de segurança).
