@@ -17,6 +17,7 @@ import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -62,7 +63,7 @@ function buildDayOptions(todayInTz: string) {
 const initialState: ActionState = { success: false, message: "" };
 
 const selectClass =
-  "border-input bg-background h-11 w-full rounded-md border px-3 text-base sm:text-sm";
+  "border-border-control bg-field h-12 rounded-lg border px-3 text-sm outline-none transition-colors focus-visible:border-focus-ring focus-visible:ring-3 focus-visible:ring-focus-ring/45 disabled:cursor-not-allowed disabled:opacity-50 md:h-11 w-full";
 
 /**
  * Lançamento manual de horário pela equipe: cliente (existente ou novo),
@@ -194,9 +195,9 @@ export function ManualAppointmentSheet({
         </SheetHeader>
         <form action={formAction} className="flex flex-1 flex-col gap-5 p-4">
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               {state.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
@@ -241,7 +242,7 @@ export function ManualAppointmentSheet({
                       name="clientId"
                       value={selectedClient.id}
                     />
-                    <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                    <p className="text-success flex items-center gap-1.5 text-xs">
                       <CheckCircle2 className="size-3.5" />
                       {selectedClient.name} selecionado
                     </p>
@@ -262,13 +263,12 @@ export function ManualAppointmentSheet({
                   className="h-11 text-base sm:text-sm"
                   aria-label="Nome do novo cliente"
                 />
-                <Input
+                <MaskedInput
+                  mask="phone"
                   name="clientPhone"
-                  inputMode="tel"
                   placeholder="WhatsApp — (11) 98765-4321"
                   autoComplete="off"
                   required
-                  className="h-11 text-base sm:text-sm"
                   aria-label="WhatsApp do novo cliente"
                 />
               </div>
@@ -377,9 +377,7 @@ export function ManualAppointmentSheet({
                 </p>
               ) : null}
               {slotsError ? (
-                <p className="text-sm text-rose-600 dark:text-rose-400">
-                  {slotsError}
-                </p>
+                <p className="text-destructive text-sm">{slotsError}</p>
               ) : null}
               {!loadingSlots && date && !slotsError && slots.length === 0 ? (
                 <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2.5 text-sm">

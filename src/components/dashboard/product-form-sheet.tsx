@@ -5,6 +5,7 @@ import { Image as ImageIcon, Pencil, Plus } from "lucide-react";
 import { saveProduct } from "@/modules/products/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,7 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
     },
     initialState,
   );
+  useActionToast(state);
   const editing = Boolean(product);
 
   return (
@@ -163,7 +165,7 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
               defaultChecked={product ? product.public_visible : true}
               className="size-4 rounded border"
             />
-            Oferecer no checkout do agendamento (Plus)
+            Oferecer este produto ao cliente no agendamento (Plus)
           </label>
           <SheetFooter className="mt-auto px-0">
             <Button type="submit" className="w-full" disabled={pending}>

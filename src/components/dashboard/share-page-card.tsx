@@ -61,7 +61,7 @@ export function SharePageCard({
                 aria-label="Copiar link"
               >
                 {copied ? (
-                  <Check className="size-4 text-emerald-600" />
+                  <Check className="text-success size-4" />
                 ) : (
                   <Copy className="size-4" />
                 )}

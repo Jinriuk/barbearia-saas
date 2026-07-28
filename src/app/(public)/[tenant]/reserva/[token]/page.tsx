@@ -115,7 +115,7 @@ export default async function PublicReservationPage({
 
         <dl className="mt-6 divide-y divide-black/[.06] rounded-2xl border border-black/10 bg-white/70">
           <Row
-            label="Status"
+            label="Situação"
             value={STATUS_LABEL[reservation.status] ?? reservation.status}
           />
           <Row label="Serviço" value={reservation.serviceName ?? "—"} />

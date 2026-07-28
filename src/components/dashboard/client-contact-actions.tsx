@@ -98,7 +98,7 @@ export function ClientContactActions({
           onChange={(event) => markOutcome(event.target.value)}
           disabled={pending}
           aria-label="Resultado do último contato"
-          className="border-input bg-background h-8 rounded-lg border px-1.5 text-xs"
+          className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
         >
           <option value="">Resultado…</option>
           {OUTCOMES.map((item) => (

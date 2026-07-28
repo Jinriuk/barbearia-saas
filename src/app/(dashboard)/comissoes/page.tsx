@@ -6,6 +6,7 @@ import { getUtcMonthRange, formatShortDateInTz } from "@/lib/dates";
 import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -195,6 +196,7 @@ export default async function EmployeePaymentsPage({
           </div>
         }
       />
+      <SectionNav section="financeiro" role={tenant.role} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -270,13 +272,22 @@ export default async function EmployeePaymentsPage({
                       {professionalNames.get(payment.professional_id) ??
                         "Profissional"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell
+                      data-label="Referência"
+                      className="text-muted-foreground"
+                    >
                       {payment.reference || "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell
+                      data-label="Data"
+                      className="text-muted-foreground"
+                    >
                       {formatShortDateInTz(payment.paid_at, tenant.timezone)}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold">
+                    <TableCell
+                      data-label="Valor"
+                      className="text-right font-mono font-semibold"
+                    >
                       {formatBRL(Number(payment.amount))}
                     </TableCell>
                   </TableRow>

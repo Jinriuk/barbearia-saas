@@ -12,6 +12,7 @@ import { getUtcDayRange } from "@/lib/dates";
 import { formatBRL, paymentMethodLabel } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,6 +126,7 @@ export default async function ReportsPage() {
           ) : undefined
         }
       />
+      <SectionNav section="financeiro" role={tenant.role} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <Card

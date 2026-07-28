@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { requireTenant } from "@/lib/auth/dal";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
@@ -5,9 +6,13 @@ import {
   PasswordForm,
   ProfileForm,
 } from "@/components/dashboard/account-forms";
+import { ThemeForm } from "@/components/dashboard/theme-form";
+import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
 
 export default async function AccountPage() {
   const tenant = await requireTenant();
+  const cookieStore = await cookies();
+  const theme = parseThemePreference(cookieStore.get(THEME_COOKIE)?.value);
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -34,6 +39,9 @@ export default async function AccountPage() {
           }}
         />
         <PasswordForm />
+        <div className="lg:col-span-2">
+          <ThemeForm initial={theme} />
+        </div>
       </div>
     </>
   );

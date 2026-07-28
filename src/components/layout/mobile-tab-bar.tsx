@@ -17,6 +17,8 @@ export type MobileNavItem = {
   href: string;
   label: string;
   icon: React.ReactNode;
+  /** Abre em nova aba — usado pela página de agendamento do cliente. */
+  external?: boolean;
 };
 
 export type MobileNavGroup = {
@@ -45,7 +47,9 @@ export function MobileTabBar({
   // O botão Menu fica "ativo" quando a rota atual pertence a ele.
   const menuActive =
     !items.some((item) => isActive(item.href)) &&
-    menuGroups.some((group) => group.items.some((item) => isActive(item.href)));
+    menuGroups.some((group) =>
+      group.items.some((item) => !item.external && isActive(item.href)),
+    );
 
   return (
     <nav
@@ -101,11 +105,12 @@ export function MobileTabBar({
                   ) : null}
                   <div className="space-y-0.5">
                     {group.items.map((item) => {
-                      const active = isActive(item.href);
+                      const active = !item.external && isActive(item.href);
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
+                          target={item.external ? "_blank" : undefined}
                           onClick={() => setMenuOpen(false)}
                           aria-current={active ? "page" : undefined}
                           className={cn(

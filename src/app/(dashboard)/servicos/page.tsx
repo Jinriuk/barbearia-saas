@@ -2,6 +2,7 @@ import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ export default async function ServicesPage() {
           ) : undefined
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Catálogo atual</CardTitle>
@@ -83,7 +85,7 @@ export default async function ServicesPage() {
                   <TableHead>Serviço</TableHead>
                   <TableHead>Duração</TableHead>
                   <TableHead>Preço</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Situação</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -101,16 +103,18 @@ export default async function ServicesPage() {
                         {item.description || "Sem descrição"}
                       </p>
                     </TableCell>
-                    <TableCell>{item.duration_minutes} min</TableCell>
-                    <TableCell>
+                    <TableCell data-label="Duração">
+                      {item.duration_minutes} min
+                    </TableCell>
+                    <TableCell data-label="Preço">
                       R${" "}
                       {Number(item.price).toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Situação">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge variant={item.active ? "default" : "secondary"}>
+                        <Badge variant={item.active ? "success" : "neutral"}>
                           {item.active ? "Visível" : "Oculto"}
                         </Badge>
                         {item.audience === "members" ? (
