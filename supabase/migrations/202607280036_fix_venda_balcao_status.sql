@@ -184,6 +184,4 @@ grant execute on function public.create_counter_sale(
   uuid, jsonb, uuid, uuid, numeric, public.payment_method, text
 ) to authenticated;
 
--- Atalhos dos mais vendidos: as duas fontes de venda, últimos 90 dias.
-
 commit;
