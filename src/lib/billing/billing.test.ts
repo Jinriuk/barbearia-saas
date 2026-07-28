@@ -12,6 +12,7 @@ function sub(partial: Partial<SubscriptionInfo>): SubscriptionInfo {
     priceCents: 4990,
     trialEndsAt: null,
     currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
     ...partial,
   };
 }

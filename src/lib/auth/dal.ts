@@ -35,7 +35,7 @@ export const getTenantContext = cache(
     const { data, error } = await supabase
       .from("memberships")
       .select(
-        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id), barbershop:barbershops!inner(id,name,slug,timezone,plan,vertical)",
+        "barbershop_id, role, profile:profiles!inner(id,name,auth_user_id,must_change_password), barbershop:barbershops!inner(id,name,slug,timezone,plan,vertical)",
       )
       .eq("status", "active")
       .eq("profiles.auth_user_id", user.id)
@@ -56,7 +56,9 @@ export const getTenantContext = cache(
     let subscription: SubscriptionInfo | null = null;
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("status, plan, price_cents, trial_ends_at, current_period_end")
+      .select(
+        "status, plan, price_cents, trial_ends_at, current_period_end, cancel_at_period_end",
+      )
       .eq("barbershop_id", barbershop.id)
       .maybeSingle();
     if (sub) {
@@ -66,6 +68,9 @@ export const getTenantContext = cache(
         priceCents: sub.price_cents,
         trialEndsAt: sub.trial_ends_at,
         currentPeriodEnd: sub.current_period_end,
+        // Cancelamento pedido pelo dono, com efeito no fim do período pago
+        // (Fase 0 §0.2). Defensivo: base sem a coluna vira false.
+        cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
       };
     }
 
@@ -79,6 +84,9 @@ export const getTenantContext = cache(
       role: data.role as MembershipRole,
       profileId: profile.id,
       profileName: profile.name,
+      // Senha definida por terceiro (dono criando acesso de colaborador —
+      // §0.17). O layout do painel obriga a troca antes de qualquer uso.
+      mustChangePassword: profile.must_change_password ?? false,
       subscription,
     };
   },

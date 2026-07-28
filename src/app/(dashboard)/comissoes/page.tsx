@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coins, HandCoins } from "lucide-react";
+import { Coins, HandCoins, Info, TrendingUp } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
 import { getUtcMonthRange, formatShortDateInTz } from "@/lib/dates";
@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   EmployeePayCard,
@@ -22,10 +23,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-function first<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
-}
+/** Linha de `commission_summary` (Fase 0 §0.9/§0.14). */
+type CommissionRow = {
+  professional_id: string;
+  produced: number | string;
+  commission: number | string;
+  received_produced: number | string;
+  received_commission: number | string;
+  completed_count: number;
+};
 
 function monthKey(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -79,7 +85,7 @@ export default async function EmployeePaymentsPage({
   const supabase = await createSupabaseServerClient();
   const [
     { data: professionalData },
-    { data: appointmentData },
+    { data: commissionData },
     { data: settingsData },
     { data: paymentData },
   ] = await Promise.all([
@@ -89,14 +95,15 @@ export default async function EmployeePaymentsPage({
       .eq("barbershop_id", tenant.id)
       .eq("active", true)
       .order("name"),
-    supabase
-      .from("appointments")
-      .select("id,professional_id,service:services(price,commission_rate)")
-      .eq("barbershop_id", tenant.id)
-      .eq("status", "completed")
-      .gte("starts_at", start.toISOString())
-      .lt("starts_at", end.toISOString())
-      .limit(3000),
+    // Comissão somada no banco, sobre o valor CONGELADO na conclusão
+    // (Fase 0 §0.9). Antes eram até 3000 linhas trazidas para somar aqui — e o
+    // PostgREST corta em ~1000 — lendo `services.price` VIVO: subir o preço de
+    // um corte reescrevia comissão de mês já fechado.
+    supabase.rpc("commission_summary", {
+      p_barbershop: tenant.id,
+      p_from: start.toISOString(),
+      p_to: end.toISOString(),
+    }),
     supabase
       .from("employee_pay_settings")
       .select(
@@ -127,33 +134,26 @@ export default async function EmployeePaymentsPage({
     ]),
   );
 
-  // Taxa padrão por profissional (fonte de verdade unificada — Fase 4).
-  const defaultRateByPro = new Map<string, number>(
-    (settingsData ?? []).map((row) => [
-      row.professional_id as string,
-      Number(row.commission_rate ?? 0),
-    ]),
-  );
-
-  // Precedência da comissão (regra única, documentada em docs/05):
-  // 1) taxa específica do SERVIÇO quando > 0; 2) senão, taxa padrão do
-  // PROFISSIONAL. Competência: serviços CONCLUÍDOS no período (vendido).
-  // Estorno/desfazer conclusão recalcula sozinho — a comissão é derivada
-  // dos atendimentos, não persistida.
+  // Precedência da comissão (regra única, documentada em docs/05): taxa
+  // específica do SERVIÇO quando > 0; senão, taxa padrão do PROFISSIONAL.
+  // Ambas ficam CONGELADAS no atendimento na hora da conclusão (§0.9), então
+  // mexer no catálogo depois não reescreve mês fechado.
+  //
+  // Regime: COMPETÊNCIA — atendimentos concluídos no período. `received` é o
+  // quanto dessa comissão já corresponde a dinheiro em caixa; o lucro do
+  // Financeiro é apurado por caixa, e sem esse segundo número a tela sugeria
+  // pagar comissão de dinheiro que ainda não entrou (§0.14).
   const commissionByPro = new Map<string, number>();
-  for (const item of appointmentData ?? []) {
-    const service = first(item.service);
-    if (!service || !item.professional_id) continue;
-    const serviceRate = Number(service.commission_rate ?? 0);
-    const rate =
-      serviceRate > 0
-        ? serviceRate
-        : (defaultRateByPro.get(item.professional_id) ?? 0);
-    const commission = (Number(service.price) * rate) / 100;
-    commissionByPro.set(
-      item.professional_id,
-      (commissionByPro.get(item.professional_id) ?? 0) + commission,
+  const receivedCommissionByPro = new Map<string, number>();
+  const producedByPro = new Map<string, number>();
+  for (const row of (commissionData ?? []) as CommissionRow[]) {
+    if (!row.professional_id) continue;
+    commissionByPro.set(row.professional_id, Number(row.commission));
+    receivedCommissionByPro.set(
+      row.professional_id,
+      Number(row.received_commission),
     );
+    producedByPro.set(row.professional_id, Number(row.produced));
   }
 
   const payments = paymentData ?? [];
@@ -167,6 +167,14 @@ export default async function EmployeePaymentsPage({
   const professionalNames = new Map(professionals.map((p) => [p.id, p.name]));
 
   const totalCommission = [...commissionByPro.values()].reduce(
+    (total, value) => total + value,
+    0,
+  );
+  const totalReceivedCommission = [...receivedCommissionByPro.values()].reduce(
+    (total, value) => total + value,
+    0,
+  );
+  const totalProduced = [...producedByPro.values()].reduce(
     (total, value) => total + value,
     0,
   );
@@ -196,7 +204,45 @@ export default async function EmployeePaymentsPage({
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* O regime deixa de ser implícito (Fase 0 §0.14): a comissão conta o
+          atendimento concluído, o lucro do Financeiro conta o dinheiro que
+          entrou. Sem dizer isso, a tela sugeria pagar comissão de venda que
+          ainda não virou caixa. */}
+      <Alert className="mb-4">
+        <Info className="size-4" />
+        <AlertDescription>
+          A comissão é calculada por <strong>atendimento concluído</strong> no
+          mês, mesmo que o pagamento ainda não tenha entrado.{" "}
+          {totalCommission > 0 && totalReceivedCommission < totalCommission ? (
+            <>
+              Deste mês, <strong>{formatBRL(totalReceivedCommission)}</strong>{" "}
+              correspondem a dinheiro já recebido — os{" "}
+              {formatBRL(totalCommission - totalReceivedCommission)} restantes
+              ainda estão a receber.
+            </>
+          ) : (
+            <>Todo o valor deste mês já corresponde a dinheiro recebido.</>
+          )}
+        </AlertDescription>
+      </Alert>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Total produzido no mês
+            </CardTitle>
+            <TrendingUp className="text-primary size-4" />
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-2xl font-semibold">
+              {formatBRL(totalProduced)}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Base sobre a qual a comissão é calculada.
+            </p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-muted-foreground text-sm font-medium">
@@ -207,6 +253,9 @@ export default async function EmployeePaymentsPage({
           <CardContent>
             <p className="font-mono text-2xl font-semibold">
               {formatBRL(totalCommission)}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {formatBRL(totalReceivedCommission)} já em caixa
             </p>
           </CardContent>
         </Card>

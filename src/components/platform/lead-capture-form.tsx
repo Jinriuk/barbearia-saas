@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { track } from "@vercel/analytics";
 import { LoaderCircle, Send } from "lucide-react";
+import {
+  CONSENT_TEXT_VERSION,
+  consentText,
+  type LeadVertical,
+} from "@/lib/leads/consent";
 
 /**
  * Captura de lead da landing (Fase 5): etapa curta — nome, um contato com
@@ -12,7 +17,7 @@ import { LoaderCircle, Send } from "lucide-react";
 export function LeadCaptureForm({
   vertical = "barber",
 }: {
-  vertical?: "barber" | "salon";
+  vertical?: LeadVertical;
 }) {
   const [channel, setChannel] = useState<"whatsapp" | "email">("whatsapp");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">(
@@ -51,6 +56,8 @@ export function LeadCaptureForm({
           vertical,
           utm,
           sourcePage: window.location.pathname,
+          // Qual redação a pessoa leu ao marcar a caixa (Fase 0 §0.4).
+          consentTextVersion: CONSENT_TEXT_VERSION,
         }),
       });
       const result = (await response.json().catch(() => null)) as {
@@ -137,8 +144,7 @@ export function LeadCaptureForm({
           required
           className="mt-0.5 size-4 rounded border-white/20 bg-white/5"
         />
-        Autorizo o contato do NexoBarber sobre o produto por este canal. Sem
-        spam — e você pode pedir para parar quando quiser.
+        {consentText(vertical)}
       </label>
       {status === "error" ? (
         <p className="text-sm text-red-400">{message}</p>

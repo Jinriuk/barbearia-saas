@@ -10,7 +10,6 @@ import {
   Heart,
   Palette,
   QrCode,
-  Quote,
   Smartphone,
   Sparkles,
   UsersRound,
@@ -96,24 +95,20 @@ const themes = [
   { name: "Champagne", bg: "#fbf7ef", ink: "#3d2f1f", accent: "#b98a4f" },
 ];
 
-const testimonials = [
+// Ver o comentário equivalente em src/app/page.tsx: os depoimentos nominais
+// eram ficção apresentada como cliente real e saíram na Fase 0.
+const dailyWins = [
   {
-    quote:
-      "Minha agenda vivia no papel e no WhatsApp. Hoje as clientes marcam sozinhas e eu foco no que amo: atender.",
-    name: "Camila",
-    role: "Dona de salão, 3 profissionais",
+    title: "A cliente marca sozinha",
+    body: "Link e QR Code próprios, com a agenda de cada profissional e os horários realmente livres. Sem ida e volta no WhatsApp.",
   },
   {
-    quote:
-      "O financeiro fechar sozinho no fim do dia mudou minha vida. Sei exatamente quanto entrou e de qual serviço.",
-    name: "Patrícia",
-    role: "Cabeleireira e gestora",
+    title: "O financeiro se preenche",
+    body: "Concluir o atendimento lança a venda. Vendido, recebido e a receber são números separados — não uma soma só.",
   },
   {
-    quote:
-      "Coloquei o link na bio do Instagram. As meninas agendam escova de madrugada e eu só confirmo de manhã.",
-    name: "Juliana",
-    role: "Studio de beleza, 5 cadeiras",
+    title: "Você vê quem sumiu",
+    body: "O sistema calcula de quanto em quanto tempo cada cliente costuma voltar e mostra quem passou do prazo.",
   },
 ];
 
@@ -613,11 +608,11 @@ export default async function SalonLandingPage() {
         </div>
       </section>
 
-      {/* ===== Depoimentos ===== */}
+      {/* ===== O dia a dia no salão ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
-            Quem usa, recomenda
+            No dia a dia
           </p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Feito para o dia a dia{" "}
@@ -626,18 +621,15 @@ export default async function SalonLandingPage() {
           </h2>
         </Reveal>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {testimonials.map((item, index) => (
-            <Reveal key={item.name} delay={index * 90}>
-              <figure className="h-full rounded-3xl border border-[#33202b]/[.07] bg-white p-7 shadow-sm">
-                <Quote className="size-5 text-[#c2497c]/50" />
-                <blockquote className="mt-4 text-sm leading-7 text-[#33202b]/70">
-                  “{item.quote}”
-                </blockquote>
-                <figcaption className="mt-5 text-sm">
-                  <span className="font-semibold">{item.name}</span>
-                  <span className="text-[#33202b]/45"> — {item.role}</span>
-                </figcaption>
-              </figure>
+          {dailyWins.map((item, index) => (
+            <Reveal key={item.title} delay={index * 90}>
+              <div className="h-full rounded-3xl border border-[#33202b]/[.07] bg-white p-7 shadow-sm">
+                <Check className="size-5 text-[#c2497c]/50" />
+                <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-[#33202b]/70">
+                  {item.body}
+                </p>
+              </div>
             </Reveal>
           ))}
         </div>

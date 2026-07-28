@@ -14,10 +14,15 @@ dado e de conformidade que precisam vir antes, porque estão em produção com c
 
 ---
 
-## Fase 0 — Parar o sangramento
+## Fase 0 — Parar o sangramento ✅ entregue
 
 **Por quê primeiro:** são os itens em que o sistema mostra número errado, promete o que não
 cumpre, ou expõe a empresa. Nada disso é "melhoria de layout" — é correção.
+
+> **Entregue em 28/07/2026** — relatório em [`entregas/fase-0-correcoes.md`](entregas/fase-0-correcoes.md),
+> banco em `202607280030_fase0_correcoes.sql`, testes em `supabase/tests/fase0b_correcoes.sql`.
+> Dois itens não sobreviveram à reverificação na forma escrita abaixo (0.3 e 0.11) — as
+> correções aplicadas e o porquê estão no relatório.
 
 ### Risco jurídico e comercial (o mais urgente)
 
@@ -25,7 +30,7 @@ cumpre, ou expõe a empresa. Nada disso é "melhoria de layout" — é correçã
 |---|---|---|---|
 | 0.1 | Seis depoimentos nominais **fictícios** apresentados como clientes reais | `src/app/page.tsx:113-132`, `src/app/salao/page.tsx` | Remover, ou substituir por depoimentos reais com autorização por escrito. Exposição a publicidade enganosa (CDC art. 37) e ao CONAR |
 | 0.2 | "Cancele quando quiser" prometido **5 vezes** sem cancelamento self-service | `page.tsx:262,567`; `salao/page.tsx:254,522`; `assinatura/page.tsx:183` | Implementar o cancelamento na conta ou trocar a frase por "sem fidelidade — cancelamento pelo suporte" |
-| 0.3 | Landing vende "Relatório financeiro em PDF" no plano Padrão; o catálogo o entrega só no Plus | `page.tsx:596` vs `src/lib/billing/index.ts:40` | Alinhar. O código é a verdade que o cliente vai encontrar depois de pagar |
+| 0.3 | ~~Landing vende "Relatório financeiro em PDF" no plano Padrão; o catálogo o entrega só no Plus~~ **direção invertida** | `page.tsx:596` vs `src/lib/billing/index.ts:40` | O código nunca restringiu o PDF ao Plus (`relatorio-financeiro/page.tsx` só checa o papel). Errada estava a lista do catálogo: o PDF foi movido para o Padrão |
 | 0.4 | Consentimento de lead sem prova: não grava IP, user-agent nem versão do termo; sem opt-out | `supabase/migrations/202607240025_*.sql:104-118` | Acrescentar as colunas e um caminho de descadastro. Exigência de LGPD antes de qualquer disparo |
 | 0.5 | Texto de consentimento diz "NexoBarber" na landing de salão | `src/components/platform/lead-capture-form.tsx:140` | Tornar o texto dependente da vertical |
 
@@ -38,7 +43,7 @@ cumpre, ou expõe a empresa. Nada disso é "melhoria de layout" — é correçã
 | 0.8 | **Estoque negativo é possível** — "saída por perda" de 100 unidades num produto zerado deixa −100 | sem trigger em `inventory_movements` | Trigger `BEFORE INSERT` ou RPC transacional. O guia é categórico (§7.6) |
 | 0.9 | Comissão calculada sobre o **preço atual do catálogo** — subir o preço de um serviço reescreve comissões já fechadas | `comissoes/page.tsx:152` | Congelar o valor transacionado no fechamento |
 | 0.10 | Fiado lançado em `/contas-a-receber` fica **fora de todos os indicadores** do Financeiro | `src/modules/bills/actions.ts:61-67` | Unificar as duas fontes de recebível |
-| 0.11 | O card "A receber" ignora o período selecionado (soma tudo, sempre) | `202607240027_*.sql:45-49` | Respeitar a janela, ou rotular explicitamente como saldo total |
+| 0.11 | O card "A receber" ignora o período selecionado (soma tudo, sempre) | `202607240027_*.sql:45-49` | Rotulado como saldo total, **sem** mudar a coluna: o painel usa o mesmo número e ali o total é o certo. O recorte da janela entrou como `receivable_period` |
 | 0.12 | Lista "A receber" capada em 100 e o título anuncia `A receber (100)` como se fosse o total | `financeiro/page.tsx:184,450` | Paginar e mostrar a contagem real |
 | 0.13 | Gasto do cliente **assinante aparece como R$ 0,00** — justamente o cliente mais valioso | `202607240026_*.sql:137-147` | Incluir a receita de plano no agregado |
 | 0.14 | Comissão é apurada por competência, lucro por caixa: o sistema sugere pagar comissão de dinheiro que ainda não entrou | `comissoes/page.tsx:96` vs `202607240027_*.sql:58` | Escolher um regime e deixar explícito na tela |
@@ -308,7 +313,7 @@ itens de maior impacto antes de mover a Fase 2.
 
 | Fase | Foco | Depende de |
 |---|---|---|
-| 0 | Correção de risco e de número errado | — |
+| 0 ✅ | Correção de risco e de número errado | — |
 | 1 | Fundação visual e de componentes | — (pode correr junto da 0) |
 | 2 | Agenda, Início, perfil do cliente, venda | Fase 1 |
 | 3 | Financeiro, comissões, equipe, configurações | Fase 1 |

@@ -14,6 +14,8 @@ import {
   planConfig,
 } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { brandName } from "@/lib/leads/consent";
+import { CancelSubscriptionCard } from "@/components/dashboard/cancel-subscription-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +48,16 @@ export default async function SubscriptionPage() {
   const trialDays =
     sub?.status === "trialing" ? daysLeft(sub.trialEndsAt) : null;
   const periodEnd = formatDate(sub?.currentPeriodEnd ?? null);
+  // Fim efetivo do acesso: no teste é o fim do trial; assinando, o fim do
+  // período pago. É a data que o cancelamento respeita (§0.2).
+  const accessEndsAt = formatDate(
+    sub?.status === "trialing"
+      ? (sub?.trialEndsAt ?? null)
+      : (sub?.currentPeriodEnd ?? null),
+  );
+  // A landing de salão se apresenta como NexoBeleza; a tela dizia "NexoBarber"
+  // para todo mundo (mesmo defeito do §0.5).
+  const brand = brandName(tenant.vertical);
 
   // Preços da fonte de verdade (catálogo no banco — Fase 2B).
   const catalog = await loadPlanCatalog();
@@ -202,11 +214,21 @@ export default async function SubscriptionPage() {
             <p className="text-muted-foreground text-sm leading-6">
               O pagamento online (cartão e Pix) ainda não está disponível —
               estamos finalizando a integração com o provedor. Para assinar,
-              renovar ou regularizar agora, fale com o suporte do NexoBarber; os
-              preços cobrados são exatamente os desta tela.
+              renovar ou regularizar agora, fale com o suporte do {brand}; os
+              preços cobrados são exatamente os desta tela. O cancelamento você
+              faz por aqui mesmo, sem falar com ninguém.
             </p>
           </CardContent>
         </Card>
+
+        {/* "Cancele quando quiser" era prometido em cinco lugares e não
+            existia caminho de saída no produto (Fase 0 §0.2). */}
+        {isOwner && sub?.status !== "canceled" ? (
+          <CancelSubscriptionCard
+            scheduled={sub?.cancelAtPeriodEnd ?? false}
+            endsAtLabel={accessEndsAt}
+          />
+        ) : null}
       </div>
     </>
   );

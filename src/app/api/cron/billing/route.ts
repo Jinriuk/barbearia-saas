@@ -92,6 +92,24 @@ export async function GET(request: Request) {
         .select("id,barbershop_id"),
     );
 
+    // Cancelamento pedido pelo dono (Fase 0 §0.2). Só executa quando o
+    // período pago termina — é aqui que o pedido vira status 'canceled' e o
+    // trigger do banco tira a página pública do ar. Antes das demais regras
+    // para não ser sobrescrito por elas.
+    await run(
+      "cancel_requested",
+      "canceled",
+      supabase
+        .from("subscriptions")
+        .update({ status: "canceled", canceled_at: nowIso })
+        .eq("cancel_at_period_end", true)
+        .neq("status", "canceled")
+        .or(
+          `current_period_end.lte.${nowIso},and(status.eq.trialing,trial_ends_at.lte.${nowIso})`,
+        )
+        .select("id,barbershop_id"),
+    );
+
     // Ordem do maior atraso para o menor, para cada linha cair na regra certa.
     await run(
       "cancel_trials",

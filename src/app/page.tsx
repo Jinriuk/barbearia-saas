@@ -8,7 +8,6 @@ import {
   Check,
   Palette,
   QrCode,
-  Quote,
   Scissors,
   ShieldCheck,
   Smartphone,
@@ -110,24 +109,23 @@ const themes = [
   },
 ];
 
-const testimonials = [
+// Os depoimentos nominais que ficavam aqui eram ficção apresentada como
+// cliente real — publicidade enganosa (CDC art. 37) e violação do código do
+// CONAR. Saíram na Fase 0. No lugar entram afirmações verificáveis sobre o que
+// o produto faz; depoimento só volta quando houver cliente real com
+// autorização por escrito.
+const dailyWins = [
   {
-    quote:
-      "Antes era WhatsApp o dia inteiro. Agora o cliente marca sozinho e a cadeira não fica vazia.",
-    name: "Rafael",
-    role: "Dono de barbearia, 2 cadeiras",
+    title: "O cliente marca sozinho",
+    body: "Link e QR Code próprios, com a agenda de cada profissional e os horários realmente livres. Sem ida e volta no WhatsApp.",
   },
   {
-    quote:
-      "O financeiro se preenche sozinho quando concluo o atendimento. Fim do caderninho.",
-    name: "Diego",
-    role: "Barbeiro e gestor",
+    title: "O financeiro se preenche",
+    body: "Concluir o atendimento lança a venda. Vendido, recebido e a receber são números separados — não uma soma só.",
   },
   {
-    quote:
-      "Coloquei o QR Code no espelho. Metade dos clientes já remarca antes de sair da cadeira.",
-    name: "Marcos",
-    role: "Barbearia de bairro, 4 profissionais",
+    title: "Você vê quem sumiu",
+    body: "O sistema calcula de quanto em quanto tempo cada cliente costuma voltar e mostra quem passou do prazo.",
   },
 ];
 
@@ -657,31 +655,28 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ===== Depoimentos ===== */}
+      {/* ===== O dia a dia no balcão ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
-            Quem usa, recomenda
+            No dia a dia
           </p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Feito para o dia a dia real do balcão.
           </h2>
         </Reveal>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {testimonials.map((item, index) => (
-            <Reveal key={item.name} delay={index * 100}>
-              <figure className="h-full rounded-3xl border border-white/10 bg-white/[.02] p-7">
-                <Quote className="size-5 text-amber-500/60" />
-                <blockquote className="mt-4 text-[15px] leading-7 text-stone-300">
-                  “{item.quote}”
-                </blockquote>
-                <figcaption className="mt-5 text-sm">
-                  <span className="font-medium text-stone-200">
-                    {item.name}
-                  </span>
-                  <span className="text-stone-500"> · {item.role}</span>
-                </figcaption>
-              </figure>
+          {dailyWins.map((item, index) => (
+            <Reveal key={item.title} delay={index * 100}>
+              <div className="h-full rounded-3xl border border-white/10 bg-white/[.02] p-7">
+                <Check className="size-5 text-amber-500/60" />
+                <h3 className="mt-4 text-base font-medium text-stone-200">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-[15px] leading-7 text-stone-400">
+                  {item.body}
+                </p>
+              </div>
             </Reveal>
           ))}
         </div>

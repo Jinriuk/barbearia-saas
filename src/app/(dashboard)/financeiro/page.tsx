@@ -67,6 +67,20 @@ type ProfessionalAgg = {
 type ServiceAgg = { name: string; count: number; revenue: number };
 type ProductAgg = { name: string; qty: number; revenue: number };
 
+/** Linhas de `revenue_breakdown` e `income_by_day` (Fase 0 §0.7). */
+type BreakdownRow = {
+  kind: "professional" | "service" | "product" | "product_professional";
+  ref_id: string;
+  label: string;
+  total: number | string;
+  quantity: number | string;
+};
+type IncomeByDayRow = {
+  paid_on: string;
+  category: string;
+  total: number | string;
+};
+
 export default async function FinanceiroPage() {
   const tenant = await requireTenant();
 
@@ -95,11 +109,6 @@ export default async function FinanceiroPage() {
     month,
   } = getUtcMonthRange(tenant.timezone);
 
-  const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tenant.timezone,
-    year: "numeric",
-    month: "2-digit",
-  });
   const monthShortFmt = new Intl.DateTimeFormat("pt-BR", {
     month: "short",
     timeZone: "UTC",
@@ -118,8 +127,7 @@ export default async function FinanceiroPage() {
 
   const [
     { data: appointmentRows },
-    { data: incomeRows },
-    { data: saleRows },
+    { data: breakdownRows },
     { data: chartRows },
     { data: summaryRows },
     { data: receivableRows },
@@ -135,37 +143,23 @@ export default async function FinanceiroPage() {
       .lt("starts_at", dayEnd.toISOString())
       .neq("status", "canceled")
       .order("starts_at"),
-    // Vendas de serviço do mês (pagas ou a receber) — produto é tratado à
-    // parte. Cancelada não conta.
-    supabase
-      .from("financial_transactions")
-      .select(
-        "amount,category,appointment:appointments(professional:professionals(id,name),service:services(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .neq("status", "canceled")
-      .neq("category", "product")
-      .gte("created_at", monthStart.toISOString())
-      .lt("created_at", monthEnd.toISOString()),
-    // Vendas de produto confirmadas no mês.
-    supabase
-      .from("appointment_products")
-      .select(
-        "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(professional:professionals(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("status", "confirmed")
-      .gte("confirmed_at", monthStart.toISOString())
-      .lt("confirmed_at", monthEnd.toISOString()),
-    supabase
-      .from("financial_transactions")
-      .select("amount,category,paid_at")
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .eq("status", "paid")
-      .gte("paid_at", chartStart.toISOString())
-      .lt("paid_at", monthEnd.toISOString()),
+    // Vendas do mês por profissional, serviço e produto — somadas no banco
+    // (Fase 0 §0.7). As três varreduras que ficavam aqui não tinham limite:
+    // o PostgREST devolve ~1000 linhas e a página somava o pedaço achando que
+    // era o mês inteiro, sem nada na tela indicando o corte.
+    supabase.rpc("revenue_breakdown", {
+      p_barbershop: tenant.id,
+      p_from: monthStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+    }),
+    // Série do gráfico: agregada por dia no banco (limite natural de ~180
+    // linhas em 6 meses) e agrupada por mês aqui.
+    supabase.rpc("income_by_day", {
+      p_barbershop: tenant.id,
+      p_from: chartStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+      p_timezone: tenant.timezone,
+    }),
     // Verdade financeira (Fase 0/4): vendido × recebido × a receber ×
     // despesas × lucro, somados no banco.
     supabase.rpc("income_summary", {
@@ -195,7 +189,14 @@ export default async function FinanceiroPage() {
   const summary0 = Array.isArray(summaryRows) ? summaryRows[0] : summaryRows;
   const soldMonth = Number(summary0?.sold ?? 0);
   const receivedMonth = Number(summary0?.received ?? 0);
+  // Dois números diferentes, cada um com o próprio rótulo (Fase 0 §0.11): o
+  // que foi vendido no mês e ainda não entrou, e o saldo devedor inteiro. Antes
+  // era só o total, dentro de um cartão que anuncia o mês.
   const receivableTotal = Number(summary0?.receivable ?? 0);
+  const receivablePeriod = Number(summary0?.receivable_period ?? 0);
+  // Contagem real do que está pendente. A lista abaixo é uma página de 100 e o
+  // título anunciava o tamanho da página como se fosse o total (§0.12).
+  const receivableCount = Number(summary0?.receivable_count ?? 0);
   const expensesMonth = Number(summary0?.expenses_paid ?? 0);
   const profitMonth = Number(summary0?.profit ?? 0);
   const receivables = receivableRows ?? [];
@@ -217,6 +218,7 @@ export default async function FinanceiroPage() {
     return `${delta >= 0 ? "+" : ""}${delta}% vs mês anterior`;
   };
 
+  // As somas já vêm prontas do banco; aqui só se organiza por corte.
   const byProfessional = new Map<string, ProfessionalAgg>();
   const byService = new Map<string, ServiceAgg>();
   const byProduct = new Map<string, ProductAgg>();
@@ -233,54 +235,51 @@ export default async function FinanceiroPage() {
     return current;
   };
 
-  for (const row of incomeRows ?? []) {
-    const amount = Number(row.amount);
-    const appt = first(row.appointment);
-    if (!appt) continue;
-    const professional = first(appt.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.count += 1;
-      entry.service += amount;
-      entry.total += amount;
-    }
-    const service = first(appt.service);
-    if (service) {
-      const current = byService.get(service.id) ?? {
-        name: service.name,
-        count: 0,
-        revenue: 0,
-      };
-      current.count += 1;
-      current.revenue += amount;
-      byService.set(service.id, current);
-    }
-  }
-
-  for (const row of saleRows ?? []) {
-    const revenue = Number(row.quantity) * Number(row.unit_price);
-    const name = first(row.product)?.name ?? "Produto";
-    const current = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
-    current.qty += Number(row.quantity);
-    current.revenue += revenue;
-    byProduct.set(name, current);
-    const professional = first(first(row.appointment)?.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.product += revenue;
-      entry.total += revenue;
+  for (const row of (breakdownRows ?? []) as BreakdownRow[]) {
+    const total = Number(row.total);
+    const quantity = Number(row.quantity);
+    switch (row.kind) {
+      case "professional": {
+        const entry = professionalEntry(row.ref_id, row.label);
+        entry.count += quantity;
+        entry.service += total;
+        entry.total += total;
+        break;
+      }
+      case "product_professional": {
+        const entry = professionalEntry(row.ref_id, row.label);
+        entry.product += total;
+        entry.total += total;
+        break;
+      }
+      case "service":
+        byService.set(row.ref_id, {
+          name: row.label,
+          count: quantity,
+          revenue: total,
+        });
+        break;
+      case "product":
+        byProduct.set(row.ref_id, {
+          name: row.label,
+          qty: quantity,
+          revenue: total,
+        });
+        break;
     }
   }
 
   const monthBuckets = new Map<string, { service: number; product: number }>(
     chartMonths.map((m) => [m.key, { service: 0, product: 0 }]),
   );
-  for (const row of chartRows ?? []) {
-    if (!row.paid_at) continue;
-    const bucket = monthBuckets.get(monthKeyFmt.format(new Date(row.paid_at)));
+  for (const row of (chartRows ?? []) as IncomeByDayRow[]) {
+    if (!row.paid_on) continue;
+    // paid_on é `date` (YYYY-MM-DD): a chave do mês sai do próprio texto, sem
+    // passar por Date, para não deslocar o dia 1 por fuso.
+    const bucket = monthBuckets.get(row.paid_on.slice(0, 7));
     if (!bucket) continue;
-    if (row.category === "product") bucket.product += Number(row.amount);
-    else bucket.service += Number(row.amount);
+    if (row.category === "product") bucket.product += Number(row.total);
+    else bucket.service += Number(row.total);
   }
   const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
     label: m.label,
@@ -316,11 +315,16 @@ export default async function FinanceiroPage() {
       hint: compare(receivedMonth, Number(prev0?.received ?? 0)),
     },
     {
-      label: "A receber",
+      label: "A receber (saldo total)",
       value: formatBRL(receivableTotal),
       icon: HandCoins,
       href: "#a-receber",
-      hint: null,
+      // O card fica ao lado de números do mês, então precisa dizer que não é
+      // do mês — e quanto do saldo nasceu dentro dele.
+      hint:
+        receivablePeriod > 0
+          ? `${formatBRL(receivablePeriod)} vendidos neste mês`
+          : "Saldo acumulado, não apenas do mês",
     },
     {
       label: "Despesas pagas no mês",
@@ -447,8 +451,15 @@ export default async function FinanceiroPage() {
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <HandCoins className="size-4" /> A receber ({receivables.length})
+              <HandCoins className="size-4" /> A receber ({receivableCount})
             </CardTitle>
+            {/* O corte é dito na tela, em vez de a lista fingir ser o total. */}
+            {receivableCount > receivables.length ? (
+              <p className="text-muted-foreground text-sm">
+                Mostrando os {receivables.length} lançamentos mais recentes de{" "}
+                {receivableCount}.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-2">
             {receivables.map((item) => (

@@ -23,6 +23,11 @@ export const PLANS = {
       "Agenda completa e agendamento online",
       "Cadastro de clientes e histórico",
       "Financeiro, contas e comissões",
+      // O relatório em PDF nunca foi restrito ao Plus: /relatorio-financeiro
+      // só checa o papel (finance:view), não o plano. Ele estava listado como
+      // exclusivo do Plus e anunciado no Padrão pela landing — a lista é que
+      // estava errada, e a Fase 0 alinhou a lista ao que o código entrega.
+      "Relatório financeiro em PDF",
       "Página pública da barbearia",
       "Equipe com papéis e permissões",
     ],
@@ -37,7 +42,6 @@ export const PLANS = {
       "Produtos, estoque e venda no agendamento",
       "Página personalizada (cores, fotos e fundos)",
       "Temas prontos e identidade própria",
-      "Relatórios em PDF",
     ],
   },
 } as const;

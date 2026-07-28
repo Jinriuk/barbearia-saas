@@ -59,8 +59,10 @@ export default async function ProductsPage() {
 
   const [
     { data: productData },
+    { data: balanceData },
     { data: movementData },
     { data: reservationData },
+    { count: reservationCount },
   ] = await Promise.all([
     supabase
       .from("products")
@@ -69,12 +71,21 @@ export default async function ProductsPage() {
       )
       .eq("barbershop_id", tenant.id)
       .order("name"),
+    // Saldo somado no banco (Fase 0 §0.6). Antes o ledger era somado aqui
+    // sobre as 400 movimentações mais recentes: da 401ª em diante o estoque
+    // exibido era ficção, e ninguém via que estava errado.
+    supabase
+      .from("product_stock_balances")
+      .select("product_id,on_hand,reserved")
+      .eq("barbershop_id", tenant.id),
+    // A lista abaixo é só o histórico visível na tela (12 linhas); nenhuma
+    // conta depende dela.
     supabase
       .from("inventory_movements")
       .select("id,product_id,type,quantity,reason,created_at")
       .eq("barbershop_id", tenant.id)
       .order("created_at", { ascending: false })
-      .limit(400),
+      .limit(20),
     // Reservas pendentes (produtos escolhidos no agendamento, ainda não vendidos).
     supabase
       .from("appointment_products")
@@ -85,31 +96,26 @@ export default async function ProductsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(100),
+    // Contagem real das reservas pendentes: a lista acima é uma página de 100
+    // e o selo anunciava o tamanho da página como se fosse o total.
+    supabase
+      .from("appointment_products")
+      .select("id", { count: "exact", head: true })
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "pending"),
   ]);
 
   const products = productData ?? [];
   const movements = movementData ?? [];
   const reservations = reservationData ?? [];
 
+  const stockByProduct = new Map<string, number>();
   const reservedByProduct = new Map<string, number>();
-  for (const reservation of reservations) {
-    reservedByProduct.set(
-      reservation.product_id,
-      (reservedByProduct.get(reservation.product_id) ?? 0) +
-        Number(reservation.quantity),
-    );
+  for (const balance of balanceData ?? []) {
+    stockByProduct.set(balance.product_id, Number(balance.on_hand));
+    reservedByProduct.set(balance.product_id, Number(balance.reserved));
   }
   const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
-
-  const stockByProduct = new Map<string, number>();
-  for (const movement of movements) {
-    const signal = IN_TYPES.has(movement.type) ? 1 : -1;
-    stockByProduct.set(
-      movement.product_id,
-      (stockByProduct.get(movement.product_id) ?? 0) +
-        signal * Number(movement.quantity),
-    );
-  }
   const productNames = new Map(products.map((item) => [item.id, item.name]));
 
   const stockOf = (id: string) => stockByProduct.get(id) ?? 0;
@@ -197,8 +203,16 @@ export default async function ProductsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingBag className="size-4" /> Reservas de produtos pendentes
-              <Badge variant="secondary">{reservations.length}</Badge>
+              <Badge variant="secondary">
+                {reservationCount ?? reservations.length}
+              </Badge>
             </CardTitle>
+            {(reservationCount ?? 0) > reservations.length ? (
+              <p className="text-muted-foreground text-sm">
+                Mostrando as {reservations.length} mais recentes de{" "}
+                {reservationCount}.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

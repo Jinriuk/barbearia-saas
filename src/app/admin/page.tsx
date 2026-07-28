@@ -119,6 +119,9 @@ export default async function AdminPage() {
               priceCents: sub.price_cents,
               trialEndsAt: sub.trial_ends_at,
               currentPeriodEnd: sub.current_period_end,
+              // O super-admin lê o estado de acesso, que não depende do
+              // pedido de cancelamento (Fase 0 §0.2 — o efeito é do cron).
+              cancelAtPeriodEnd: false,
             }
           : null,
       ),

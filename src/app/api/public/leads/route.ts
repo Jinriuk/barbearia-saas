@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requestIp, sharedRateLimit } from "@/lib/rate-limit";
+import { consentIp } from "@/lib/leads/consent";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { errorMessage, logError } from "@/lib/log";
 
@@ -15,6 +16,7 @@ const leadSchema = z.object({
   vertical: z.enum(["barber", "salon"]).default("barber"),
   utm: z.record(z.string(), z.string().max(200)).default({}),
   sourcePage: z.string().max(200).optional(),
+  consentTextVersion: z.string().trim().max(40).optional(),
 });
 
 /**
@@ -24,7 +26,8 @@ const leadSchema = z.object({
  * leitura por contato normalizado; o histórico não é apagado.
  */
 export async function POST(request: Request) {
-  if (!(await sharedRateLimit(`lead:${requestIp(request)}`, 5, 60_000))) {
+  const ip = requestIp(request);
+  if (!(await sharedRateLimit(`lead:${ip}`, 5, 60_000))) {
     return Response.json(
       { error: "Muitas tentativas. Aguarde um minuto." },
       { status: 429 },
@@ -65,6 +68,18 @@ export async function POST(request: Request) {
     vertical: lead.vertical,
     utm,
     source_page: lead.sourcePage ?? null,
+    // Prova do aceite (Fase 0 §0.4): quando, de onde, em que aparelho e sob
+    // qual redação. Sem isso o consentimento não se sustenta numa reclamação,
+    // e a régua de disparo da Fase 5 nasceria irregular.
+    consent_at: new Date().toISOString(),
+    consent_ip: consentIp(ip),
+    consent_user_agent:
+      request.headers.get("user-agent")?.slice(0, 400) ?? null,
+    // A versão vem do cliente porque é ele que renderizou o texto lido. Sem
+    // ela (bundle antigo em cache), grava null: "não sabemos qual redação foi
+    // aceita" é um registro honesto; carimbar a versão atual do servidor seria
+    // inventar prova.
+    consent_text_version: lead.consentTextVersion ?? null,
   });
   if (error) {
     logError("leads.persist_failed", { message: errorMessage(error) });
