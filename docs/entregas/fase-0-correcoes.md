@@ -26,7 +26,10 @@ seção "O que a auditoria errou".
 | coluna `profiles.must_change_password`                                                                         | 0.17           | Senha criada pelo dono vira provisória                                                              |
 
 Testes em [`supabase/tests/fase0b_correcoes.sql`](../../supabase/tests/fase0b_correcoes.sql)
-— 17 asserções, em transação com `ROLLBACK`. A cadeia inteira de migrations
+(17 asserções de comportamento) e
+[`fase0b_isolamento.sql`](../../supabase/tests/fase0b_isolamento.sql) (o dono da
+barbearia A pedindo os números da B em cada objeto novo), ambos em transação com
+`ROLLBACK`. A cadeia inteira de migrations
 (as 30) foi aplicada num Postgres 16 limpo e o arquivo de teste roda verde.
 
 ## Aplicação
