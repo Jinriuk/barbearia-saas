@@ -26,7 +26,7 @@ seção "O que a auditoria errou".
 | coluna `profiles.must_change_password`                                                                         | 0.17           | Senha criada pelo dono vira provisória                                                              |
 
 Testes em [`supabase/tests/fase0b_correcoes.sql`](../../supabase/tests/fase0b_correcoes.sql)
-— 16 asserções, em transação com `ROLLBACK`. A cadeia inteira de migrations
+— 17 asserções, em transação com `ROLLBACK`. A cadeia inteira de migrations
 (as 30) foi aplicada num Postgres 16 limpo e o arquivo de teste roda verde.
 
 ## Aplicação
@@ -86,6 +86,10 @@ Corrigidos porque a entrega da fase é "nenhum número exibido pode estar errado
   resolve em UTC: um pagamento das 22h de 30/junho em São Paulo cairia em julho.
 - **O selo de reservas pendentes** em `/produtos` anunciava o tamanho da página
   (100) como se fosse o total.
+- **Anular uma venda deixava a comissão de pé.** `income_summary` já tira a
+  receita anulada de "Vendido"; a comissão continuava contando o mesmo
+  atendimento, e as duas telas mostravam realidades diferentes. Atendimento sem
+  receita nenhuma (coberto por plano) segue contando, que é o correto.
 - **Apagar um fiado pendente** quebrava na primeira versão do gatilho: a FK
   `accounts_receivable.transaction_id` é `on delete set null`, então apagar a
   receita dentro de um `BEFORE DELETE` tentava atualizar a própria linha em
@@ -115,4 +119,4 @@ Corrigidos porque a entrega da fase é "nenhum número exibido pode estar errado
 
 `npm run typecheck`, `npm run lint` e `npm run test` (54 testes) passam. A
 migration foi aplicada numa cadeia limpa em Postgres 16 e o arquivo de teste SQL
-roda com 16 asserções verdes.
+roda com 17 asserções verdes.

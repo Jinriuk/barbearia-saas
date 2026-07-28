@@ -258,6 +258,26 @@ as $$
     and a.status = 'completed'
     and a.starts_at >= p_from
     and a.starts_at < p_to
+    -- Venda anulada não gera comissão. `income_summary` já tira a receita
+    -- anulada de "Vendido"; sem esta condição a comissão continuaria contando
+    -- e as duas telas mostrariam realidades diferentes do mesmo atendimento.
+    -- Atendimento SEM receita nenhuma continua contando: é o caso do serviço
+    -- coberto por plano, que não gera receita de propósito.
+    and (
+      not exists (
+        select 1 from public.financial_transactions ft
+        where ft.appointment_id = a.id
+          and ft.type = 'income'
+          and ft.category = 'service'
+      )
+      or exists (
+        select 1 from public.financial_transactions ft
+        where ft.appointment_id = a.id
+          and ft.type = 'income'
+          and ft.category = 'service'
+          and ft.status <> 'canceled'
+      )
+    )
   group by a.professional_id;
 $$;
 revoke all on function public.commission_summary(uuid, timestamptz, timestamptz)

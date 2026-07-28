@@ -332,4 +332,35 @@ begin
 end;
 $$;
 
+-- ── §0.9 — venda anulada não deixa comissão para trás ──────────────────────
+-- Por último de propósito: anular a receita muda os números de cima.
+-- income_summary já tira a receita anulada de "Vendido"; a comissão precisa
+-- acompanhar, senão as duas telas mostram realidades diferentes do mesmo
+-- atendimento.
+do $$
+declare t uuid; c numeric;
+begin
+  select commission into c from public.commission_summary(
+    '33333333-3333-3333-3333-333333333333',
+    now() - interval '1 day', now() + interval '1 day');
+  if coalesce(c, 0) = 0 then
+    raise exception 'FALHOU 0.9: cenário inválido — não havia comissão para anular';
+  end if;
+
+  select id into t from public.financial_transactions
+  where appointment_id = '88888888-8888-8888-8888-888888888888'
+    and category = 'service'
+  limit 1;
+  perform public.cancel_income_transaction(t, 'lançamento errado');
+
+  select commission into c from public.commission_summary(
+    '33333333-3333-3333-3333-333333333333',
+    now() - interval '1 day', now() + interval '1 day');
+  if coalesce(c, 0) <> 0 then
+    raise exception 'FALHOU 0.9: comissão % sobrou depois de anular a venda', c;
+  end if;
+  raise notice 'OK 0.9 — anular a venda zera a comissão junto';
+end;
+$$;
+
 rollback;
