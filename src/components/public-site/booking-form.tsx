@@ -919,10 +919,19 @@ export function BookingForm({
 
             {step.key === "payment" ? (
               <div>
+                {/* Sem gateway (é Fase 5), esta etapa é o "pagar no local"
+                    que o próprio §7.11 admite — com o valor à vista, para o
+                    cliente não precisar abrir o resumo só para conferir. */}
                 <p className="flex items-start gap-2.5 rounded-2xl border border-black/10 bg-white/50 px-4 py-3.5 text-sm leading-6 opacity-75">
                   <Wallet className="mt-0.5 size-4 shrink-0" />
-                  Você paga no local, no dia do atendimento. Diga como pretende
-                  pagar para o caixa já ficar preparado.
+                  <span>
+                    Você paga{" "}
+                    <strong className="font-semibold">
+                      {currency.format(orderTotal)}
+                    </strong>{" "}
+                    no local, no dia do atendimento. Diga como pretende pagar
+                    para o caixa já ficar preparado.
+                  </span>
                 </p>
                 <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                   {PAYMENT_PREFERENCES.map((option) => {

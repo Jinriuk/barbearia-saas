@@ -212,8 +212,8 @@ que o §6.2 exige. É o gráfico mais vendável dos cinco.
 ## Fase 4 — Público e mobile ✅ entregue
 
 > Entrega registrada em [docs/entregas/plano-14-fase-4.md](entregas/plano-14-fase-4.md).
-> Migration `202607280030_fase4_publico_agendamento.sql` **precisa ser aplicada antes do
-> deploy** — `create_public_appointment` mudou de assinatura.
+> Migration `202607280030_fase4_publico_agendamento.sql` **já aplicada em produção**
+> (2026-07-28), antes do deploy do código — `create_public_appointment` mudou de assinatura.
 
 **4.1 Fluxo em 7 etapas (§7.11)** ✅ — eram 5 numa página rolável. Agora são as 7 do guia, com
 "Seus dados" na etapa 4 e produtos na 5. Celular: uma decisão por tela, "Continuar" fixo e

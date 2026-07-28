@@ -101,7 +101,7 @@ Migration `202607280030_fase4_publico_agendamento.sql`:
 
 | Objeto | O que muda |
 |---|---|
-| `product_available_stock(uuid, uuid)` | novo: saldo público = ledger − reservas pendentes |
+| `product_available_stock(uuid, uuid)` | novo: saldo público = ledger − reservas pendentes (interna) |
 | `appointments.payment_preference` | nova coluna (`public.payment_method`, nullable) |
 | `get_public_barbershop` | produtos passam a trazer `stock` |
 | `get_public_client_hint(text, text)` | novo: primeiro nome do cliente pelo telefone |
@@ -109,9 +109,20 @@ Migration `202607280030_fase4_publico_agendamento.sql`:
 | `get_public_appointment` | +pagamento, produtos, total, `canReschedule`, ids |
 | `reschedule_public_appointment(text, timestamptz)` | novo: remarcação pelo cliente |
 
-**A migration precisa ser aplicada antes do deploy do código** (`supabase db
-push`, conforme docs/09 e docs/12). `create_public_appointment` muda de
-assinatura: o código novo chama a versão com pagamento.
+**Aplicada em produção (projeto `jaerticlcbsuvgmiumfl`) em 2026-07-28**, antes
+do deploy do código, como docs/09 e docs/12 exigem — `create_public_appointment`
+mudou de assinatura e o código novo chama a versão com pagamento. Conferido
+depois de aplicar: só uma sobrecarga da RPC (a antiga foi derrubada), grants de
+`anon` nos três pontos públicos, `stock` chegando na vitrine (`studio-aurora`
+com saldo real, `aurora` com `null` por não usar o módulo de estoque) e
+`get_public_client_hint` devolvendo o primeiro nome só para o telefone certo no
+tenant certo — número parcial, número desconhecido e slug de outro tenant
+devolvem `null`.
+
+`product_available_stock` fica **sem grant** para `anon`/`authenticated`: as duas
+funções que a usam são `SECURITY DEFINER` e executam como o dono, então a chamada
+interna vale do mesmo jeito. Não há uso público direto — expor
+`/rest/v1/rpc/product_available_stock` seria superfície à toa.
 
 ### Decisões registradas
 
@@ -125,6 +136,12 @@ assinatura: o código novo chama a versão com pagamento.
    pagamento recebido continua vivendo em `financial_transactions`, gravado na
    conclusão do atendimento. Nomes diferentes para não confundir intenção com
    caixa. Forma inválida nunca derruba a reserva: vira "decide na hora".
+   A etapa **fica no ar mesmo sem gateway**: o §7.11 prevê exatamente esse caso
+   ("pagar no local ou forma disponível"), ela já nasce com "Decido na hora"
+   selecionado — então custa um toque em "Continuar" para quem não se importa —
+   e mostra o valor à vista, para o cliente não precisar abrir o resumo só para
+   conferir quanto vai pagar. Quando o gateway chegar na Fase 5, é esta etapa
+   que ganha a cobrança, sem mexer no resto do fluxo.
 3. **Remarcar não troca de profissional.** Trocar de profissional é uma reserva
    nova — remarcação preserva serviço e profissional e move só o horário.
 4. **Reconhecimento por telefone tem superfície mínima.** Primeiro nome apenas,

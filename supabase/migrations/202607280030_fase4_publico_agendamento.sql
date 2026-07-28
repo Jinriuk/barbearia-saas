@@ -74,9 +74,12 @@ as $$
       ), 0)
   end
 $$;
-revoke all on function public.product_available_stock(uuid, uuid) from public;
-grant execute on function public.product_available_stock(uuid, uuid)
-  to anon, authenticated;
+-- Sem grant para anon/authenticated de propósito: get_public_barbershop e
+-- create_public_appointment são SECURITY DEFINER e executam como o dono, então
+-- a chamada interna vale mesmo assim. Não existe uso público direto desta
+-- função — expor /rest/v1/rpc/product_available_stock seria superfície à toa.
+revoke all on function public.product_available_stock(uuid, uuid)
+  from public, anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Preferência de pagamento declarada pelo cliente (etapa 6 do §7.11).
