@@ -796,7 +796,7 @@ export default async function FinanceiroPage() {
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" className="h-10 shrink-0">
+                          <Button size="sm" className="shrink-0">
                             Confirmar
                           </Button>
                         </form>

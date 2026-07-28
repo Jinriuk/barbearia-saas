@@ -20,9 +20,21 @@ export function onlyDigits(value: string): string {
  * Telefone brasileiro: (11) 98765-4321 no celular e (11) 3456-7890 no fixo.
  * O oitavo dígito decide o corte, então o formato se ajusta sozinho enquanto
  * a pessoa digita.
+ *
+ * O DDI é tratado antes de qualquer corte. `whatsAppNumber` (src/lib/contact)
+ * aceita "formatos livres" e devolve o número com 55 na frente, então existe
+ * cadastro gravado como 5511987654321. Cortar em 11 dígitos transformaria
+ * isso em "(55) 11987-6543" e, no primeiro salvamento do formulário, gravaria
+ * o telefone errado por cima do certo. Tirar o 55 não perde nada: quem disca
+ * é o whatsAppNumber, e ele recoloca.
  */
 export function formatPhone(value: string): string {
-  const digits = onlyDigits(value).slice(0, 11);
+  const raw = onlyDigits(value);
+  const national =
+    raw.length > 11 && raw.length <= 13 && raw.startsWith("55")
+      ? raw.slice(2)
+      : raw;
+  const digits = national.slice(0, 11);
   if (digits.length === 0) return "";
   if (digits.length <= 2) return `(${digits}`;
   const ddd = digits.slice(0, 2);
@@ -32,9 +44,9 @@ export function formatPhone(value: string): string {
   return `(${ddd}) ${rest.slice(0, split)}-${rest.slice(split)}`;
 }
 
-/** Desfaz formatPhone: guarda só os dígitos. */
+/** Desfaz formatPhone: guarda só os dígitos do número nacional. */
 export function unformatPhone(value: string): string {
-  return onlyDigits(value).slice(0, 11);
+  return onlyDigits(formatPhone(value));
 }
 
 /**

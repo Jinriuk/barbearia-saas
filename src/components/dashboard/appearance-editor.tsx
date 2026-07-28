@@ -621,7 +621,7 @@ function ColorField({
           value={value}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className="size-9 shrink-0 cursor-pointer rounded-md border bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          className="border-border-control size-11 shrink-0 cursor-pointer rounded-md border bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={label}
         />
         <Input

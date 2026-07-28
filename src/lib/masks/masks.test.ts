@@ -33,8 +33,23 @@ describe("formatPhone", () => {
     expect(formatPhone("11987654321999")).toBe("(11) 98765-4321");
   });
 
-  it("unformatPhone devolve só os dígitos", () => {
+  it("tira o DDI 55 em vez de cortar o número", () => {
+    // Cadastro gravado por whatsAppNumber(), que põe o 55 na frente. Cortar
+    // em 11 dígitos daria "(55) 11987-6543" e gravaria telefone errado.
+    expect(formatPhone("5511987654321")).toBe("(11) 98765-4321");
+    expect(formatPhone("551134567890")).toBe("(11) 3456-7890");
+    expect(formatPhone("+55 (11) 98765-4321")).toBe("(11) 98765-4321");
+  });
+
+  it("não confunde DDD 55 com DDI", () => {
+    // Rio Grande do Sul usa DDD 55. Com 10 ou 11 dígitos não há DDI a tirar.
+    expect(formatPhone("5599876543")).toBe("(55) 9987-6543");
+    expect(formatPhone("55998765432")).toBe("(55) 99876-5432");
+  });
+
+  it("unformatPhone devolve só os dígitos do número nacional", () => {
     expect(unformatPhone("(11) 98765-4321")).toBe("11987654321");
+    expect(unformatPhone("5511987654321")).toBe("11987654321");
     expect(unformatPhone("")).toBe("");
   });
 });

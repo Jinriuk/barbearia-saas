@@ -178,7 +178,7 @@ export function MembershipPlanSheet({
                         min="1"
                         max="99"
                         defaultValue={included.get(service.id) ?? 1}
-                        className="h-8 w-16 text-center"
+                        className="w-16 text-center"
                         aria-label={`Usos de ${service.name} por período`}
                       />
                       <span className="text-muted-foreground text-xs">

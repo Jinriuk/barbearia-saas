@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/toast";
 
 type NotificationItem = {
   id: string;
@@ -36,7 +37,10 @@ export function NotificationsBell({
     if (typeof window === "undefined") return 0;
     return Number(window.localStorage.getItem(storageKey) ?? "0");
   });
-  const [toast, setToast] = useState<string | null>(null);
+  // Fase 1.7: o aviso de novo agendamento era um <div> fixo próprio deste
+  // componente, sem aria-live e sem API. Agora usa a camada compartilhada —
+  // que também evita dois avisos disputando o mesmo canto da tela.
+  const { toast } = useToast();
   const knownNewest = useRef<number>(0);
   const initialized = useRef(false);
 
@@ -54,15 +58,18 @@ export function NotificationsBell({
 
       const newest = next.length ? new Date(next[0].createdAt).getTime() : 0;
       if (initialized.current && newest > knownNewest.current) {
-        setToast(`Novo agendamento — ${next[0].clientName}`);
-        window.setTimeout(() => setToast(null), 6000);
+        toast({
+          variant: "info",
+          title: "Novo agendamento",
+          description: `${next[0].clientName} — ${next[0].serviceName}`,
+        });
       }
       knownNewest.current = Math.max(knownNewest.current, newest);
       initialized.current = true;
     } catch {
       // silencioso: o polling tenta de novo no próximo ciclo
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const initial = window.setTimeout(poll, 0);
@@ -153,14 +160,6 @@ export function NotificationsBell({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {toast ? (
-        <div className="animate-in fade-in slide-in-from-bottom-4 bg-popover text-popover-foreground fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg">
-          <span className="bg-primary/10 text-primary grid size-8 place-items-center rounded-full">
-            <CalendarPlus className="size-4" />
-          </span>
-          <span className="text-sm font-medium">{toast}</span>
-        </div>
-      ) : null}
     </>
   );
 }
