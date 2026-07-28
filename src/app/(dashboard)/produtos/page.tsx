@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   AlertTriangle,
   Boxes,
@@ -5,6 +6,7 @@ import {
   EyeOff,
   Package,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -77,7 +79,7 @@ export default async function ProductsPage() {
     // exibido era ficção, e ninguém via que estava errado.
     supabase
       .from("product_stock_balances")
-      .select("product_id,on_hand,reserved")
+      .select("product_id,on_hand,reserved,last_movement_at")
       .eq("barbershop_id", tenant.id),
     // A lista abaixo é só o histórico visível na tela (12 linhas); nenhuma
     // conta depende dela.
@@ -112,48 +114,56 @@ export default async function ProductsPage() {
 
   const stockByProduct = new Map<string, number>();
   const reservedByProduct = new Map<string, number>();
+  const lastMovementByProduct = new Map<string, string | null>();
   for (const balance of balanceData ?? []) {
     stockByProduct.set(balance.product_id, Number(balance.on_hand));
     reservedByProduct.set(balance.product_id, Number(balance.reserved));
+    lastMovementByProduct.set(balance.product_id, balance.last_movement_at);
   }
-  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
   const productNames = new Map(products.map((item) => [item.id, item.name]));
 
   const stockOf = (id: string) => stockByProduct.get(id) ?? 0;
+  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
+  const lastMovementOf = (id: string) => lastMovementByProduct.get(id) ?? null;
   const activeProducts = products.filter((product) => product.active);
-  const totalUnits = activeProducts.reduce(
-    (total, product) => total + stockOf(product.id),
-    0,
-  );
   const stockValue = activeProducts.reduce(
     (total, product) =>
       total + stockOf(product.id) * Number(product.sale_price),
     0,
   );
   const lowStock = activeProducts.filter(
-    (product) => stockOf(product.id) < Number(product.minimum_stock),
+    (product) =>
+      Number(product.minimum_stock) > 0 &&
+      stockOf(product.id) < Number(product.minimum_stock),
+  );
+  const zeroStock = activeProducts.filter(
+    (product) => stockOf(product.id) <= 0,
+  );
+  const reservedUnits = activeProducts.reduce(
+    (total, product) => total + reservedOf(product.id),
+    0,
   );
 
   const totals = [
     {
-      label: "Produtos ativos",
-      value: String(activeProducts.length),
+      label: "Abaixo do mínimo",
+      value: String(lowStock.length),
+      icon: AlertTriangle,
+    },
+    {
+      label: "Produtos zerados",
+      value: String(zeroStock.length),
       icon: Package,
     },
     {
-      label: "Unidades em estoque",
-      value: totalUnits.toLocaleString("pt-BR"),
-      icon: Boxes,
-    },
-    {
-      label: "Valor estimado",
+      label: "Valor em estoque",
       value: formatBRL(stockValue),
       icon: Wallet,
     },
     {
-      label: "Baixo estoque",
-      value: String(lowStock.length),
-      icon: AlertTriangle,
+      label: "Reservas atuais",
+      value: reservedUnits.toLocaleString("pt-BR"),
+      icon: Boxes,
     },
   ];
 
@@ -164,11 +174,20 @@ export default async function ProductsPage() {
         title="Produtos e Estoque"
         description="Catálogo, saldo, reservas e movimentações num só lugar."
         action={
-          canCatalog ? (
-            <div className="w-full sm:w-56">
-              <ProductFormSheet />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {canInventory ? (
+              <Button asChild variant="outline">
+                <Link href="/vendas">
+                  <ShoppingCart className="size-4" /> Nova venda
+                </Link>
+              </Button>
+            ) : null}
+            {canCatalog ? (
+              <div className="w-full sm:w-48">
+                <ProductFormSheet />
+              </div>
+            ) : null}
+          </div>
         }
       />
       <SectionNav section="catalogo" role={tenant.role} />
@@ -302,6 +321,8 @@ export default async function ProductsPage() {
                       <TableHead className="text-right">Estoque</TableHead>
                       <TableHead className="text-right">Reservado</TableHead>
                       <TableHead className="text-right">Disponível</TableHead>
+                      <TableHead className="text-right">Mínimo</TableHead>
+                      <TableHead>Última movimentação</TableHead>
                       <TableHead>Situação</TableHead>
                       <TableHead />
                     </TableRow>
@@ -311,8 +332,11 @@ export default async function ProductsPage() {
                       const stock = stockOf(product.id);
                       const reserved = reservedOf(product.id);
                       const available = stock - reserved;
+                      const lastMovement = lastMovementOf(product.id);
                       const low =
-                        product.active && stock < Number(product.minimum_stock);
+                        product.active &&
+                        Number(product.minimum_stock) > 0 &&
+                        stock < Number(product.minimum_stock);
                       return (
                         <TableRow key={product.id}>
                           <TableCell>
@@ -346,6 +370,24 @@ export default async function ProductsPage() {
                             className="text-right font-mono"
                           >
                             {available.toLocaleString("pt-BR")}
+                          </TableCell>
+                          <TableCell
+                            data-label="Mínimo"
+                            className="text-muted-foreground text-right font-mono"
+                          >
+                            {Number(product.minimum_stock) > 0
+                              ? Number(product.minimum_stock).toLocaleString(
+                                  "pt-BR",
+                                )
+                              : "—"}
+                          </TableCell>
+                          <TableCell
+                            data-label="Última movimentação"
+                            className="text-muted-foreground text-xs"
+                          >
+                            {lastMovement
+                              ? `${formatShortDateInTz(lastMovement, tenant.timezone)} ${formatTimeInTz(lastMovement, tenant.timezone)}`
+                              : "Nunca"}
                           </TableCell>
                           <TableCell data-label="Situação">
                             <div className="flex flex-wrap gap-1">

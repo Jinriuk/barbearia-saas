@@ -4,10 +4,17 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
+import { formatBRL } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/types/domain";
 
-const statusSchema = z.enum(["confirmed", "completed", "canceled", "no_show"]);
+const statusSchema = z.enum([
+  "confirmed",
+  "in_progress",
+  "completed",
+  "canceled",
+  "no_show",
+]);
 
 const RESCHEDULE_ERRORS: Record<string, string> = {
   APPOINTMENT_CONFLICT:
@@ -139,11 +146,12 @@ export async function getManualSlots(
 }
 
 // Transições válidas a partir do status atual (espelho da máquina de
-// estados do banco — trigger enforce_appointment_transition, Fase 2).
+// estados do banco — trigger enforce_appointment_transition).
 // completed/no_show → confirmed são correções explícitas de engano.
 const allowedTransitions: Record<string, string[]> = {
-  pending: ["confirmed", "canceled"],
-  confirmed: ["completed", "canceled", "no_show"],
+  pending: ["confirmed", "canceled", "no_show"],
+  confirmed: ["in_progress", "completed", "canceled", "no_show"],
+  in_progress: ["completed", "canceled", "confirmed"],
   completed: ["confirmed"],
   no_show: ["confirmed"],
 };
@@ -189,13 +197,31 @@ export async function rescheduleAppointment(
   return { success: true, message: "Atendimento remarcado." };
 }
 
-export async function updateAppointmentStatus(formData: FormData) {
+// Confirmação curta do que acabou de acontecer (§8.2 pede o objeto na
+// frase, não só "Salvo").
+const STATUS_DONE: Record<string, string> = {
+  confirmed: "Horário confirmado.",
+  in_progress: "Atendimento iniciado.",
+  completed: "Atendimento concluído — a receber lançado no Financeiro.",
+  canceled: "Horário cancelado.",
+  no_show: "Falta registrada.",
+};
+
+/** Muda a situação do atendimento e devolve o que aconteceu, para a tela. */
+export async function setAppointmentStatus(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const tenant = await requireTenant();
-  if (!can(tenant.role, "appointments:manage")) return;
+  if (!can(tenant.role, "appointments:manage")) {
+    return { success: false, message: "Sem permissão para mudar a agenda." };
+  }
 
   const id = String(formData.get("id") ?? "");
   const parsed = statusSchema.safeParse(formData.get("status"));
-  if (!id || !parsed.success) return;
+  if (!id || !parsed.success) {
+    return { success: false, message: "Situação inválida." };
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: appointment } = await supabase
@@ -204,18 +230,122 @@ export async function updateAppointmentStatus(formData: FormData) {
     .eq("id", id)
     .eq("barbershop_id", tenant.id)
     .maybeSingle();
-  if (!appointment) return;
+  if (!appointment) {
+    return { success: false, message: "Atendimento não encontrado." };
+  }
 
   const allowed = allowedTransitions[appointment.status] ?? [];
-  if (!allowed.includes(parsed.data)) return;
+  if (!allowed.includes(parsed.data)) {
+    return {
+      success: false,
+      message: "Essa mudança não é permitida a partir da situação atual.",
+    };
+  }
 
-  await supabase
+  const { error } = await supabase
     .from("appointments")
-    .update({ status: parsed.data })
+    .update({
+      status: parsed.data,
+      ...(parsed.data === "canceled"
+        ? { canceled_at: new Date().toISOString() }
+        : {}),
+    })
     .eq("id", id)
     .eq("barbershop_id", tenant.id);
+  if (error) {
+    return {
+      success: false,
+      message: error.message.includes("COMPLETION_IN_FUTURE")
+        ? "Não dá para concluir um horário que ainda não começou."
+        : error.message.includes("START_IN_FUTURE")
+          ? "Não dá para iniciar um horário que ainda não começou."
+          : "Não foi possível mudar a situação. Tente novamente.",
+    };
+  }
 
   revalidatePath("/agenda");
   revalidatePath("/dashboard");
   revalidatePath("/financeiro");
+  return {
+    success: true,
+    message: STATUS_DONE[parsed.data] ?? "Agenda atualizada.",
+  };
+}
+
+/** Compatibilidade com a visão em lista, que não exibe retorno da ação. */
+export async function updateAppointmentStatus(formData: FormData) {
+  await setAppointmentStatus({ success: false, message: "" }, formData);
+}
+
+const COMPLETE_ERRORS: Record<string, string> = {
+  APPOINTMENT_NOT_FOUND: "Atendimento não encontrado. Atualize a página.",
+  NOT_AUTHORIZED: "Sem permissão para concluir este atendimento.",
+  INVALID_STATUS_TRANSITION:
+    "Só dá para finalizar um horário confirmado ou em atendimento.",
+  COMPLETION_IN_FUTURE:
+    "Não dá para concluir um horário que ainda não começou.",
+  PAYMENT_METHOD_REQUIRED: "Informe como o cliente pagou.",
+};
+
+/**
+ * "Finalizar e receber" (§7.2): conclui o atendimento e captura o pagamento
+ * no mesmo gesto. Serviço coberto por plano não cobra nada — a RPC avisa.
+ */
+export async function completeAndReceiveAppointment(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const tenant = await requireTenant();
+  if (!can(tenant.role, "appointments:manage")) {
+    return { success: false, message: "Sem permissão para concluir." };
+  }
+  const parsed = z
+    .object({
+      id: z.uuid(),
+      paymentMethod: z.enum(["cash", "card", "pix", "other"]),
+    })
+    .safeParse({
+      id: formData.get("id"),
+      paymentMethod: formData.get("paymentMethod"),
+    });
+  if (!parsed.success) {
+    return { success: false, message: "Informe como o cliente pagou." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc(
+    "complete_and_receive_appointment",
+    {
+      p_appointment_id: parsed.data.id,
+      p_payment_method: parsed.data.paymentMethod,
+    },
+  );
+  if (error) {
+    const known = Object.keys(COMPLETE_ERRORS).find((code) =>
+      error.message.includes(code),
+    );
+    return {
+      success: false,
+      message: known
+        ? COMPLETE_ERRORS[known]
+        : "Não foi possível finalizar. Tente novamente.",
+    };
+  }
+
+  revalidatePath("/agenda");
+  revalidatePath("/dashboard");
+  revalidatePath("/financeiro");
+  revalidatePath("/clientes");
+
+  const result = (data ?? {}) as { received?: number; covered?: boolean };
+  if (result.covered) {
+    return {
+      success: true,
+      message: "Atendimento concluído — coberto pelo plano do cliente.",
+    };
+  }
+  return {
+    success: true,
+    message: `Atendimento concluído — ${formatBRL(Number(result.received ?? 0))} recebido.`,
+  };
 }

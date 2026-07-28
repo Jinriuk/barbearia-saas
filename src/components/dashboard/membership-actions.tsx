@@ -36,7 +36,7 @@ export function MembershipActions({
 }: {
   membershipId: string;
   clientName: string;
-  status: "active" | "paused" | "past_due";
+  status: "active" | "due_soon" | "paused" | "past_due";
   canManage: boolean;
 }) {
   const [open, setOpen] = useState(false);

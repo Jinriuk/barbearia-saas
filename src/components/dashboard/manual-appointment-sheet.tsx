@@ -35,25 +35,38 @@ type ServiceOption = { id: string; name: string; durationMinutes: number };
 type ProfessionalOption = { id: string; name: string; serviceIds: string[] };
 type Slot = { starts_at: string };
 
+/**
+ * Valores que a grade da agenda envia ao clicar num espaço vazio (§7.2.4):
+ * profissional, dia e horário já vêm decididos pelo clique.
+ */
+export type ManualAppointmentSeed = {
+  professionalId?: string;
+  date?: string;
+  startsAt?: string;
+};
+
 const DAY_MS = 86_400_000;
 
-/** Próximos 14 dias a partir do "hoje" do fuso do negócio (como no público). */
-function buildDayOptions(todayInTz: string) {
-  const [year, month, day] = todayInTz.split("-").map(Number);
+/** 14 dias a partir da base, com "Hoje"/"Amanhã" medidos no dia do negócio. */
+function buildDayOptions(baseKey: string, todayInTz: string) {
+  const [year, month, day] = baseKey.split("-").map(Number);
   const base = Date.UTC(year, month - 1, day);
   const weekday = new Intl.DateTimeFormat("pt-BR", {
     weekday: "short",
     timeZone: "UTC",
   });
+  const [ty, tm, td] = todayInTz.split("-").map(Number);
+  const todayMs = Date.UTC(ty, tm - 1, td);
   return Array.from({ length: 14 }, (_, index) => {
     const date = new Date(base + index * DAY_MS);
+    const distance = Math.round((date.getTime() - todayMs) / DAY_MS);
     return {
       value: date.toISOString().slice(0, 10),
       dayNumber: date.getUTCDate(),
       weekday:
-        index === 0
+        distance === 0
           ? "Hoje"
-          : index === 1
+          : distance === 1
             ? "Amanhã"
             : weekday.format(date).replace(".", ""),
     };
@@ -69,6 +82,9 @@ const selectClass =
  * Lançamento manual de horário pela equipe: cliente (existente ou novo),
  * serviço, profissional, dia e horário livre — os horários vêm da mesma RPC
  * da página pública, então nunca oferecem um slot já tomado.
+ *
+ * Pode ser aberto por conta própria (botão do cabeçalho) ou controlado pela
+ * grade da agenda, que semeia profissional, dia e horário do clique.
  */
 export function ManualAppointmentSheet({
   clients,
@@ -76,14 +92,28 @@ export function ManualAppointmentSheet({
   professionals,
   timezone,
   todayInTz,
+  open: controlledOpen,
+  onOpenChange,
+  seed,
+  showTrigger = true,
 }: {
   clients: ClientOption[];
   services: ServiceOption[];
   professionals: ProfessionalOption[];
   timezone: string;
   todayInTz: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  seed?: ManualAppointmentSeed | null;
+  showTrigger?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
+
   const [clientMode, setClientMode] = useState<"existing" | "new">(
     clients.length ? "existing" : "new",
   );
@@ -95,8 +125,34 @@ export function ManualAppointmentSheet({
   const [slot, setSlot] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsError, setSlotsError] = useState("");
+  // Horário clicado na grade: só pode ser marcado depois que a RPC de
+  // disponibilidade confirmar que ele está mesmo livre para o serviço.
+  const [wantedStart, setWantedStart] = useState<string | null>(null);
 
-  const days = useMemo(() => buildDayOptions(todayInTz), [todayInTz]);
+  const seedKey = seed
+    ? `${seed.professionalId ?? ""}|${seed.date ?? ""}|${seed.startsAt ?? ""}`
+    : "";
+  const [appliedSeed, setAppliedSeed] = useState("");
+
+  // Ajuste de estado durante a renderização (padrão da doc do React para
+  // "prop mudou"): um clique novo na grade zera a escolha e semeia
+  // profissional, dia e horário. Em efeito, isso viraria render em cascata.
+  if (seed && seedKey !== appliedSeed) {
+    setAppliedSeed(seedKey);
+    setServiceId("");
+    setSlots([]);
+    setSlot("");
+    setSlotsError("");
+    setProfessionalId(seed.professionalId ?? "");
+    setDate(seed.date ?? "");
+    setWantedStart(seed.startsAt ?? null);
+  }
+
+  const days = useMemo(
+    () =>
+      buildDayOptions(date && date > todayInTz ? date : todayInTz, todayInTz),
+    [date, todayInTz],
+  );
 
   const clientLabel = (client: ClientOption) =>
     client.phone ? `${client.name} · ${client.phone}` : client.name;
@@ -133,6 +189,7 @@ export function ManualAppointmentSheet({
     setSlot("");
     setSlots([]);
     setSlotsError("");
+    setWantedStart(null);
   }
 
   async function fetchSlots(
@@ -145,8 +202,22 @@ export function ManualAppointmentSheet({
     setSlots([]);
     setSlotsError("");
     const result = await getManualSlots(service, professional, day);
-    if ("error" in result) setSlotsError(result.error);
-    else setSlots(result.slots);
+    if ("error" in result) {
+      setSlotsError(result.error);
+    } else {
+      setSlots(result.slots);
+      // O horário clicado na grade é um ISO do navegador; o da RPC vem com
+      // o offset do Postgres. Comparar texto erraria — comparamos o
+      // instante e guardamos o valor canônico da RPC.
+      if (wantedStart) {
+        const wantedMs = Date.parse(wantedStart);
+        const match = result.slots.find(
+          (item) => Date.parse(item.starts_at) === wantedMs,
+        );
+        if (match) setSlot(match.starts_at);
+        setWantedStart(null);
+      }
+    }
     setLoadingSlots(false);
   }
 
@@ -181,11 +252,13 @@ export function ManualAppointmentSheet({
         if (!next) resetSchedule();
       }}
     >
-      <SheetTrigger asChild>
-        <Button>
-          <CalendarPlus /> Novo agendamento
-        </Button>
-      </SheetTrigger>
+      {showTrigger ? (
+        <SheetTrigger asChild>
+          <Button>
+            <CalendarPlus /> Novo agendamento
+          </Button>
+        </SheetTrigger>
+      ) : null}
       <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Novo agendamento</SheetTitle>
@@ -226,7 +299,7 @@ export function ManualAppointmentSheet({
                   list="manual-appointment-clients"
                   value={clientQuery}
                   onChange={(event) => setClientQuery(event.target.value)}
-                  placeholder="Busque por nome ou telefone"
+                  placeholder="Busque por nome ou WhatsApp"
                   className="h-11 text-base sm:text-sm"
                   aria-label="Buscar cliente existente"
                 />
@@ -284,9 +357,25 @@ export function ManualAppointmentSheet({
               required
               value={serviceId}
               onChange={(event) => {
-                setServiceId(event.target.value);
-                setProfessionalId("");
-                resetSchedule();
+                const nextService = event.target.value;
+                setServiceId(nextService);
+                // Mantém o profissional semeado pelo clique na grade quando
+                // ele executa o serviço escolhido.
+                const keepsProfessional = professionals.some(
+                  (item) =>
+                    item.id === professionalId &&
+                    item.serviceIds.includes(nextService),
+                );
+                const nextProfessional = keepsProfessional
+                  ? professionalId
+                  : "";
+                setProfessionalId(nextProfessional);
+                setSlot("");
+                setSlots([]);
+                setSlotsError("");
+                if (nextService && nextProfessional && date) {
+                  void fetchSlots(nextService, nextProfessional, date);
+                }
               }}
               className={selectClass}
             >
@@ -309,8 +398,14 @@ export function ManualAppointmentSheet({
                 required
                 value={professionalId}
                 onChange={(event) => {
-                  setProfessionalId(event.target.value);
-                  resetSchedule();
+                  const next = event.target.value;
+                  setProfessionalId(next);
+                  setSlot("");
+                  setSlots([]);
+                  setSlotsError("");
+                  if (serviceId && next && date) {
+                    void fetchSlots(serviceId, next, date);
+                  }
                 }}
                 className={selectClass}
               >
@@ -435,7 +530,7 @@ export function ManualAppointmentSheet({
               ) : (
                 <CalendarPlus className="size-4" />
               )}
-              Confirmar agendamento
+              Salvar agendamento
             </Button>
           </SheetFooter>
         </form>

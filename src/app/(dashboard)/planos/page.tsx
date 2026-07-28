@@ -39,7 +39,7 @@ type OverviewRow = {
   period: string;
   price: number;
   status: "active" | "paused";
-  effective_status: "active" | "paused" | "past_due";
+  effective_status: "active" | "due_soon" | "paused" | "past_due";
   current_period_start: string;
   current_period_end: string;
   usage: {
@@ -90,7 +90,10 @@ export default async function MembershipPlansPage() {
       .eq("active", true)
       .order("name")
       .limit(500),
-    supabase.rpc("get_membership_overview", { p_barbershop: tenant.id }),
+    supabase.rpc("get_membership_overview", {
+      p_barbershop: tenant.id,
+      p_client_id: null,
+    }),
   ]);
 
   const services = serviceData ?? [];
@@ -200,6 +203,8 @@ export default async function MembershipPlansPage() {
                           <Badge variant="danger">Vencido</Badge>
                         ) : membership.effective_status === "paused" ? (
                           <Badge variant="neutral">Pausado</Badge>
+                        ) : membership.effective_status === "due_soon" ? (
+                          <Badge variant="warning">Vence em breve</Badge>
                         ) : (
                           <Badge variant="success">Em dia</Badge>
                         )}

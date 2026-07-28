@@ -150,7 +150,8 @@ export async function GET(request: Request) {
 
   const summary = { sent, failed, withoutPhone, infraFailed };
   if (infraFailed) logError("cron.reminders.completed_with_failures", summary);
-  else if (failed) logWarn("cron.reminders.completed_with_send_failures", summary);
+  else if (failed)
+    logWarn("cron.reminders.completed_with_send_failures", summary);
   else logInfo("cron.reminders.completed", summary);
   return Response.json(summary, { status: infraFailed ? 500 : 200 });
 }

@@ -44,9 +44,7 @@ export async function reactivateSubscription(formData: FormData) {
   // Reativa com um novo período de 30 dias a partir de agora.
   await updateSubscription(formData.get("barbershopId"), {
     status: "active",
-    current_period_end: new Date(
-      Date.now() + 30 * 86_400_000,
-    ).toISOString(),
+    current_period_end: new Date(Date.now() + 30 * 86_400_000).toISOString(),
     canceled_at: null,
   });
 }

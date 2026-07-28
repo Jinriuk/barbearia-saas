@@ -228,6 +228,64 @@ export function formatShortDateInTz(date: Date | string, timeZone: string) {
   }).format(typeof date === "string" ? new Date(date) : date);
 }
 
+/**
+ * Minuto do dia (0–1439) no fuso do negócio. É a coordenada vertical da
+ * grade da agenda: o cartão é desenhado a partir do minuto em que começa.
+ */
+export function getMinutesInTz(date: Date | string, timeZone: string): number {
+  const value = typeof date === "string" ? new Date(date) : date;
+  const parts = partsInTimeZone(value, timeZone);
+  return parts.hour * 60 + parts.minute;
+}
+
+/** Dia da semana (0 = domingo) no fuso do negócio. */
+export function getWeekdayInTz(date: Date | string, timeZone: string): number {
+  const value = typeof date === "string" ? new Date(date) : date;
+  const parts = partsInTimeZone(value, timeZone);
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+}
+
+/** Soma dias a uma chave "AAAA-MM-DD" sem passar por fuso nenhum. */
+export function shiftDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return shifted.toISOString().slice(0, 10);
+}
+
+/** Dia da semana (0 = domingo) de uma chave "AAAA-MM-DD". */
+export function weekdayOfDateKey(dateKey: string): number {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+/** Segunda-feira da semana da chave dada (a semana do negócio começa nela). */
+export function startOfWeekKey(dateKey: string): string {
+  return shiftDateKey(dateKey, -((weekdayOfDateKey(dateKey) + 6) % 7));
+}
+
+const dateKeyFormatCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Formata uma chave "AAAA-MM-DD" em pt-BR sem reinterpretá-la em fuso
+ * nenhum — a chave já é a data local do negócio.
+ */
+export function formatDateKey(
+  dateKey: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  const cacheKey = JSON.stringify(options);
+  let formatter = dateKeyFormatCache.get(cacheKey);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("pt-BR", {
+      ...options,
+      timeZone: "UTC",
+    });
+    dateKeyFormatCache.set(cacheKey, formatter);
+  }
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return formatter.format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 export function getLocalDateInputValue(now = new Date()) {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");

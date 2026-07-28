@@ -70,6 +70,9 @@ export const SECTION_NAV: Record<SectionKey, NavEntry[]> = {
       label: "Produtos e estoque",
       permission: "catalog:manage",
     },
+    // Fase 2.6: a venda de balcão é uma tela de operação, não de cadastro —
+    // mora na área do catálogo, sem virar um oitavo item do menu lateral.
+    { href: "/vendas", label: "Nova venda", permission: "inventory:manage" },
   ],
   equipe: [
     { href: "/profissionais", label: "Profissionais" },

@@ -1,4 +1,4 @@
-import { Check, CheckCheck, RotateCcw, UserX, X } from "lucide-react";
+import { Check, CheckCheck, Play, RotateCcw, UserX, X } from "lucide-react";
 import { updateAppointmentStatus } from "@/modules/appointments/actions";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,16 @@ const actionsByStatus: Record<
       variant: "outline",
       className: "border-success/40 text-success hover:bg-success-bg",
     },
+    // Horário que passou sem nunca ter sido confirmado também é falta — o
+    // balcão não deve precisar confirmar um atendimento que não aconteceu.
+    {
+      status: "no_show",
+      label: "Não veio",
+      icon: UserX,
+      variant: "ghost",
+      notInFuture: true,
+      className: "text-destructive",
+    },
     {
       status: "canceled",
       label: "Cancelar",
@@ -31,6 +41,15 @@ const actionsByStatus: Record<
     },
   ],
   confirmed: [
+    {
+      status: "in_progress",
+      label: "Iniciar",
+      icon: Play,
+      variant: "outline",
+      notInFuture: true,
+      className:
+        "border-accent-purple/40 text-accent-purple hover:bg-accent-purple/10",
+    },
     {
       status: "completed",
       label: "Concluir",
@@ -51,6 +70,22 @@ const actionsByStatus: Record<
       status: "canceled",
       label: "Cancelar",
       icon: X,
+      variant: "ghost",
+      className: "text-muted-foreground",
+    },
+  ],
+  in_progress: [
+    {
+      status: "completed",
+      label: "Concluir",
+      icon: CheckCheck,
+      variant: "outline",
+      className: "border-success/40 text-success hover:bg-success-bg",
+    },
+    {
+      status: "confirmed",
+      label: "Desfazer início",
+      icon: RotateCcw,
       variant: "ghost",
       className: "text-muted-foreground",
     },

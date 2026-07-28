@@ -124,7 +124,9 @@ existem só como cabeçalho de grupo inerte. No celular, "Página de agendamento
 
 ---
 
-## Fase 2 — O que o barbeiro usa todo dia
+## Fase 2 — O que o barbeiro usa todo dia ✅ entregue
+
+> Relatório de entrega: [`entregas/fase-2-operacao-diaria.md`](entregas/fase-2-operacao-diaria.md).
 
 **Por quê agora:** é onde o produto ganha ou perde o cliente na primeira semana. Também é onde
 está a maior lacuna isolada da auditoria.

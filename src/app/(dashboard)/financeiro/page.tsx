@@ -169,7 +169,9 @@ export default async function FinanceiroPage() {
     // Vendas do mês por profissional, serviço e produto — somadas no banco
     // (Fase 0 §0.7). As três varreduras que ficavam aqui não tinham limite:
     // o PostgREST devolve ~1000 linhas e a página somava o pedaço achando que
-    // era o mês inteiro, sem nada na tela indicando o corte.
+    // era o mês inteiro, sem nada na tela indicando o corte. Desde a Fase 2.6
+    // a parte de produto cobre as duas portas de venda: reserva do
+    // agendamento e venda de balcão.
     supabase.rpc("revenue_breakdown", {
       p_barbershop: tenant.id,
       p_from: monthStart.toISOString(),
