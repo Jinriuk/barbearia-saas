@@ -5,6 +5,22 @@ export const PAYMENT_METHODS = [
   { value: "other", label: "Outro" },
 ] as const;
 
+/**
+ * Categorias sugeridas de despesa (Fase 3 — item 3.5). Ficam aqui, e não no
+ * módulo de actions, porque um arquivo "use server" só pode exportar função
+ * assíncrona — exportar a constante de lá quebra o build.
+ */
+export const EXPENSE_CATEGORIES = [
+  "Aluguel",
+  "Fornecedor",
+  "Água, luz e internet",
+  "Equipamento",
+  "Produtos de revenda",
+  "Marketing",
+  "Impostos e taxas",
+  "Outros",
+] as const;
+
 const labels: Record<string, string> = Object.fromEntries(
   PAYMENT_METHODS.map((method) => [method.value, method.label]),
 );

@@ -3,14 +3,11 @@ import {
   Banknote,
   CalendarClock,
   CalendarDays,
-  ChartNoAxesCombined,
   CircleAlert,
   Contact,
   Crown,
-  HandCoins,
   LayoutDashboard,
   LogOut,
-  ReceiptText,
   Scissors,
   Settings,
   ShieldCheck,
@@ -18,7 +15,6 @@ import {
   Sparkles,
   Store,
   Users,
-  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -62,35 +58,14 @@ const navGroups: NavGroup[] = [
   {
     label: "Financeiro",
     items: [
+      // Uma entrada só (Fase 3 — item 3.1): despesas, a receber, comissões e
+      // relatórios viraram seções internas de /financeiro. As rotas antigas
+      // continuam existindo e redirecionam para a seção correspondente.
       {
         href: "/financeiro",
-        label: "Resumo e caixa",
+        label: "Financeiro",
         icon: Banknote,
         permission: "finance:view",
-      },
-      {
-        href: "/contas-a-pagar",
-        label: "Despesas",
-        icon: ReceiptText,
-        permission: "finance:view",
-      },
-      {
-        href: "/contas-a-receber",
-        label: "A receber",
-        icon: HandCoins,
-        permission: "finance:view",
-      },
-      {
-        href: "/comissoes",
-        label: "Comissões",
-        icon: Wallet,
-        permission: "finance:view",
-      },
-      {
-        href: "/relatorios",
-        label: "Relatórios",
-        icon: ChartNoAxesCombined,
-        permission: "reports:view",
       },
     ],
   },

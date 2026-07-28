@@ -12,6 +12,9 @@ export type Bill = {
   amount: number;
   due_date: string;
   status: string;
+  /** Detalhes progressivos (Fase 3 — item 3.5). */
+  category?: string | null;
+  notes?: string | null;
 };
 
 export function BillsView({
@@ -96,12 +99,17 @@ export function BillsView({
                         {bill.description}
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        Vence em{" "}
+                        {bill.category ? `${bill.category} · ` : ""}Vence em{" "}
                         {formatShortDateInTz(
                           `${bill.due_date}T12:00:00Z`,
                           timezone,
                         )}
                       </p>
+                      {bill.notes ? (
+                        <p className="text-muted-foreground mt-0.5 truncate text-xs italic">
+                          {bill.notes}
+                        </p>
+                      ) : null}
                     </div>
                     {overdue ? (
                       <Badge className="border-transparent bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
