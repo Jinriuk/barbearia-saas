@@ -65,7 +65,7 @@ const features = [
     icon: Palette,
     title: "Uma página com a sua cara",
     description:
-      "Logo, cores, fotos e temas prontos. Sua página de agendamento fica tão linda quanto o seu trabalho.",
+      "Logo, cores, fotos e temas prontos no plano Plus. Sua página de agendamento fica tão linda quanto o seu trabalho.",
   },
 ];
 
@@ -282,6 +282,9 @@ export default async function SalonLandingPage() {
               <p className="text-xs text-[#33202b]/50">Recebido no mês</p>
               <p className="mt-0.5 font-mono text-xl font-semibold text-emerald-600">
                 R$ 12.480
+              </p>
+              <p className="mt-1 text-[10px] tracking-wide text-[#33202b]/40 uppercase">
+                Exemplo ilustrativo
               </p>
             </div>
             <div className="animate-float-slow absolute -right-6 -bottom-10 w-72 rounded-2xl border border-[#33202b]/[.07] bg-white/95 p-4 shadow-xl shadow-[#33202b]/[.08] backdrop-blur">
@@ -545,6 +548,7 @@ export default async function SalonLandingPage() {
                   "Clientes, serviços e equipe",
                   "Financeiro com receitas automáticas",
                   "Relatório financeiro em PDF",
+                  "Produtos e controle de estoque",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-[#c2497c]" />
@@ -672,11 +676,13 @@ export default async function SalonLandingPage() {
 
       {/* ===== Lead: prefere que a gente chame? ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
+        {/* A seção foi copiada da landing escura: card e texto claros sobre
+            fundo claro deixavam o bloco quase invisível (item 5.9 do plano). */}
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-[#33202b]/[.07] bg-white p-8 text-center shadow-sm">
           <h2 className="text-2xl font-semibold tracking-tight">
             Prefere que a gente fale com você?
           </h2>
-          <p className="mt-2 mb-6 text-sm text-stone-400">
+          <p className="mt-2 mb-6 text-sm text-[#33202b]/60">
             Deixe seu contato e mostramos o NexoBeleza funcionando na sua
             realidade. Sem compromisso.
           </p>

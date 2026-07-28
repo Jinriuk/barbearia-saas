@@ -215,4 +215,42 @@ exception
 end;
 $$;
 
+-- (8) Pagar a renovação desfaz o cancelamento agendado.
+-- Sem isto, quem pede cancelamento e depois PAGA (em vez de clicar em
+-- "Continuar com o plano") era cancelado pelo cron no fim do novo período —
+-- com a barbearia em dia e a página pública indo ao ar abaixo junto.
+reset role;
+do $$
+declare flag boolean;
+begin
+  update public.subscriptions
+  set status = 'active',
+      cancel_at_period_end = false,
+      cancellation_requested_at = null,
+      current_period_end = now() + interval '10 days'
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+
+  -- O dono pede o cancelamento (não mexe em current_period_end).
+  update public.subscriptions set cancel_at_period_end = true,
+    cancellation_requested_at = now()
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+  select cancel_at_period_end into flag from public.subscriptions
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+  if not flag then
+    raise exception 'FALHOU: o gatilho de renovação apagou o próprio pedido de cancelamento';
+  end if;
+
+  -- Agora ele paga: o webhook estende o período.
+  update public.subscriptions
+  set status = 'active', current_period_end = now() + interval '40 days'
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+  select cancel_at_period_end into flag from public.subscriptions
+  where barbershop_id = 'cccc3333-3333-3333-3333-333333333333';
+  if flag then
+    raise exception 'FURO: quem pagou a renovação continua marcado para cancelar';
+  end if;
+  raise notice 'OK — pagar a renovação desfaz o cancelamento agendado';
+end;
+$$;
+
 rollback;

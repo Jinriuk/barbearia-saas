@@ -53,7 +53,7 @@ const features = [
     icon: Palette,
     title: "Sua marca, sua página",
     description:
-      "Logo, cores, fundos e textos personalizados. Temas prontos e coleção de artes exclusivas no plano Plus.",
+      "Logo, cores, fundos, textos, temas prontos e coleção de artes — tudo isso no plano Plus.",
   },
   {
     icon: UsersRound,
@@ -326,6 +326,12 @@ export default async function HomePage() {
               <p className="mt-0.5 font-mono text-xl font-semibold text-emerald-400">
                 R$ 8.940
               </p>
+              {/* Números e nomes destes cartões são simulação de tela, não
+                  resultado de cliente. Sem o rótulo visível, uma cifra ao lado
+                  do CTA lê como promessa de faturamento (Fase 0 §0.1). */}
+              <p className="mt-1 text-[10px] tracking-wide text-stone-600 uppercase">
+                Exemplo ilustrativo
+              </p>
             </div>
           </div>
         </div>
@@ -592,6 +598,7 @@ export default async function HomePage() {
                   "Clientes, serviços e equipe",
                   "Financeiro com receitas automáticas",
                   "Relatório financeiro em PDF",
+                  "Produtos e controle de estoque",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-amber-400" />

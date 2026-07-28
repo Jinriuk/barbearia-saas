@@ -129,6 +129,45 @@ contava como "em aberto" (o filtro era `status !== "paid"`) e que `deleteBill`
 não conseguia apagar. O lançamento anulado saiu do total em aberto, ganhou uma
 seção própria e voltou a ser removível.
 
+### Segunda rodada da revisão
+
+**O cancelamento agendado sobrevivia ao pagamento.** O dono pede o
+cancelamento, muda de ideia e — em vez de clicar em "Continuar com o plano" —
+simplesmente paga a renovação. O webhook estendia o período mas ninguém baixava
+`cancel_at_period_end`: no fim do novo período a régua encerrava a assinatura
+de quem estava pagando em dia, tirando a página pública do ar. A trava ficou no
+banco (`clear_cancellation_on_renewal`), não no webhook, porque há três
+caminhos que estendem período: o webhook, o console do super-admin e o gateway
+da Fase 5. O discriminador é o período ter sido **estendido**, então o próprio
+pedido de cancelamento não se autoanula.
+
+**Mais duas listas de plano mentindo** (mesma classe do 0.3): produtos e
+controle de estoque funcionam no Padrão — `/produtos` só bloqueia o upsell no
+agendamento, e a própria tela diz isso ao dono — mas apareciam só como
+diferencial do Plus; e o card "Sua marca, sua página" marcava como exclusivo do
+Plus apenas temas e artes, quando **toda** a personalização é Plus (os três
+gates de `isPlus` em `settings/actions.ts`).
+
+**LGPD, o que faltava do 0.4:** `/descadastro` prometia "apagamos você" e a RPC
+só marca o opt-out — o registro precisa sobreviver, senão não há como garantir
+que a pessoa não será contatada de novo; o texto passou a dizer isso. A política
+de privacidade não mencionava a captura de leads em nenhuma seção (dados,
+finalidade, base legal, retenção), e o checkbox não linkava para ela. E a versão
+do consentimento era gravada sem que o texto daquela versão existisse em lugar
+nenhum — havia um `CONSENT_TEXT_VERSION` e uma única redação, então uma versão
+antiga apontaria para o nada. Agora é um mapa versão → texto, e a rota recusa
+versão desconhecida em vez de gravar um rótulo sem lastro.
+
+**Os mockups do hero** continuavam com nomes de cliente e "Recebido no mês
+R$ 8.940" ao lado do CTA, sem nada dizendo que é simulação — a mesma ficção que
+o 0.1 tirou dos depoimentos, em outro formato. Ganharam rótulo visível.
+
+**Antecipado do item 5.9:** o formulário de captura ficava ilegível na landing
+de salão (texto quase branco sobre fundo quase branco), porque o componente
+nasceu na landing escura. Está no plano como Fase 5, mas a Fase 0 já mexeu neste
+componente pelo §0.5 e deixar metade das suas telas ilegível não seria entrega.
+As classes passaram a depender da vertical.
+
 ## O que a auditoria errou
 
 **0.3 — a direção estava invertida.** A auditoria dizia que a landing anunciava

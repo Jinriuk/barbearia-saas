@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { brandName, consentIp, consentText } from "./consent";
+import {
+  CONSENT_TEXT_VERSION,
+  brandName,
+  consentIp,
+  consentText,
+  consentTextForVersion,
+  isKnownConsentVersion,
+} from "./consent";
 
 describe("texto de consentimento por vertical (Fase 0 §0.5)", () => {
   it("usa a marca da barbearia", () => {
@@ -44,5 +51,25 @@ describe("consentIp — o que a coluna inet aceita (Fase 0 §0.4)", () => {
     expect(consentIp("nao-e-um-ip")).toBeNull();
     // Sem isso, um header forjado viraria erro de insert e o lead se perderia.
     expect(consentIp("<script>alert(1)</script>")).toBeNull();
+  });
+});
+
+describe("histórico das versões do consentimento (Fase 0 §0.4)", () => {
+  it("a versão em uso tem texto recuperável — é o que a prova exige", () => {
+    expect(isKnownConsentVersion(CONSENT_TEXT_VERSION)).toBe(true);
+    expect(consentTextForVersion(CONSENT_TEXT_VERSION, "barber")).toBe(
+      consentText("barber"),
+    );
+  });
+
+  it("guarda o texto por vertical, não só a redação atual", () => {
+    expect(consentTextForVersion(CONSENT_TEXT_VERSION, "salon")).toContain(
+      "NexoBeleza",
+    );
+  });
+
+  it("versão desconhecida não vira prova falsa", () => {
+    expect(isKnownConsentVersion("2099-01-01.v9")).toBe(false);
+    expect(consentTextForVersion("2099-01-01.v9", "barber")).toBeNull();
   });
 });

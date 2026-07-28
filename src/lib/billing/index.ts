@@ -28,6 +28,10 @@ export const PLANS = {
       // exclusivo do Plus e anunciado no Padrão pela landing — a lista é que
       // estava errada, e a Fase 0 alinhou a lista ao que o código entrega.
       "Relatório financeiro em PDF",
+      // Catálogo, saldo, movimentações e alerta de estoque baixo não têm gate
+      // de plano: /produtos só bloqueia o upsell no agendamento. A própria
+      // tela diz isso ao dono do Padrão — a lista é que não dizia.
+      "Produtos e controle de estoque",
       "Página pública da barbearia",
       "Equipe com papéis e permissões",
     ],
@@ -39,8 +43,11 @@ export const PLANS = {
     description: "Para faturar mais e ter a página com a sua cara.",
     features: [
       "Tudo do Padrão",
-      "Produtos, estoque e venda no agendamento",
-      "Página personalizada (cores, fotos e fundos)",
+      // O gate real é este: showUpsell = isPlus (booking-form.tsx).
+      "Venda de produtos no agendamento do cliente",
+      // Todos os três gates de isPlus em settings/actions.ts: cores e textos,
+      // logo e imagem de fundo. Nada de personalização abre no Padrão.
+      "Página personalizada: logo, cores, fundos e textos",
       "Temas prontos e identidade própria",
     ],
   },

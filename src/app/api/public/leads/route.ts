@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requestIp, sharedRateLimit } from "@/lib/rate-limit";
-import { consentIp } from "@/lib/leads/consent";
+import { consentIp, isKnownConsentVersion } from "@/lib/leads/consent";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { errorMessage, logError } from "@/lib/log";
 
@@ -79,7 +79,12 @@ export async function POST(request: Request) {
     // ela (bundle antigo em cache), grava null: "não sabemos qual redação foi
     // aceita" é um registro honesto; carimbar a versão atual do servidor seria
     // inventar prova.
-    consent_text_version: lead.consentTextVersion ?? null,
+    // Versão desconhecida vira null: gravar um rótulo cujo texto não existe no
+    // sistema seria pior que não gravar nada — pareceria prova e não é.
+    consent_text_version:
+      lead.consentTextVersion && isKnownConsentVersion(lead.consentTextVersion)
+        ? lead.consentTextVersion
+        : null,
   });
   if (error) {
     logError("leads.persist_failed", { message: errorMessage(error) });

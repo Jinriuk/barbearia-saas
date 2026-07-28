@@ -41,8 +41,10 @@ export default async function UnsubscribePage({
       <>
         <h1>Pronto, você saiu da lista</h1>
         <p>
-          Não vamos mais entrar em contato sobre o produto. Se isso foi engano,
-          basta preencher o formulário na página inicial de novo.
+          Não vamos mais entrar em contato sobre o produto. Guardamos o seu
+          registro apenas como prova de que você pediu para sair — é o que nos
+          impede de contatar você de novo por engano. Se isso foi um engano,
+          basta preencher o formulário na página inicial outra vez.
         </p>
       </>
     );
@@ -53,9 +55,9 @@ export default async function UnsubscribePage({
       <>
         <h1>Link incompleto</h1>
         <p>
-          Este endereço precisa do código que vem no rodapé da mensagem que
-          você recebeu. Abra o link direto da mensagem, ou responda pedindo
-          para sair da lista — a baixa é registrada do mesmo jeito.
+          Este endereço precisa do código que vem no rodapé da mensagem que você
+          recebeu. Abra o link direto da mensagem, ou responda pedindo para sair
+          da lista — a baixa é registrada do mesmo jeito.
         </p>
       </>
     );
@@ -65,8 +67,10 @@ export default async function UnsubscribePage({
     <>
       <h1>Não quero mais receber contato</h1>
       <p>
-        Ao confirmar, apagamos você da nossa lista de contato comercial. Isso
-        não afeta nenhuma conta que você tenha na plataforma.
+        Ao confirmar, paramos de entrar em contato sobre o produto. Seu registro
+        continua guardado apenas como prova do descadastro — sem isso não
+        teríamos como garantir que você não voltaria a ser contatado. Isso não
+        afeta nenhuma conta que você tenha na plataforma.
       </p>
       <form action={confirm}>
         <input type="hidden" name="token" value={token} />

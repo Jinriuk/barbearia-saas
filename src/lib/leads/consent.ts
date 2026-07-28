@@ -16,8 +16,6 @@
 
 export type LeadVertical = "barber" | "salon";
 
-export const CONSENT_TEXT_VERSION = "2026-07-28.v1";
-
 const BRAND: Record<LeadVertical, string> = {
   barber: "NexoBarber",
   salon: "NexoBeleza",
@@ -27,17 +25,38 @@ export function brandName(vertical: LeadVertical): string {
   return BRAND[vertical] ?? BRAND.barber;
 }
 
+/**
+ * Histórico das redações, por versão. NUNCA edite uma entrada existente: para
+ * mudar o texto, acrescente uma versão nova e aponte CONSENT_TEXT_VERSION para
+ * ela. A versão gravada em `saas_leads.consent_text_version` só prova alguma
+ * coisa se o texto daquela versão continuar recuperável aqui — sem este mapa,
+ * um registro de julho apontaria para uma redação que já não existe.
+ */
+const CONSENT_TEXTS: Record<string, (vertical: LeadVertical) => string> = {
+  "2026-07-28.v1": (vertical) =>
+    `Autorizo o contato do ${brandName(vertical)} sobre o produto por este canal. Sem spam — e você pode pedir para parar quando quiser.`,
+};
+
+export const CONSENT_TEXT_VERSION = "2026-07-28.v1";
+
 export function consentText(vertical: LeadVertical): string {
-  return `Autorizo o contato do ${brandName(vertical)} sobre o produto por este canal. Sem spam — e você pode pedir para parar quando quiser.`;
+  return CONSENT_TEXTS[CONSENT_TEXT_VERSION]!(vertical);
 }
 
-/**
- * IP no formato que a coluna `saas_leads.consent_ip` (`inet`) aceita.
- *
- * Um valor que o Postgres recusaria vira null em vez de derrubar o cadastro:
- * sem prova de IP o consentimento ainda vale (data, user-agent e versão
- * continuam gravados); sem lead não vale nada.
- */
+/** O texto exato de uma versão passada, para exibir numa contestação. */
+export function consentTextForVersion(
+  version: string,
+  vertical: LeadVertical,
+): string | null {
+  const build = CONSENT_TEXTS[version];
+  return build ? build(vertical) : null;
+}
+
+/** Versão desconhecida (bundle adulterado) não vira prova falsa. */
+export function isKnownConsentVersion(version: string): boolean {
+  return Object.hasOwn(CONSENT_TEXTS, version);
+}
+
 export function consentIp(value: string): string | null {
   if (!value || value === "unknown") return null;
   let clean = value.trim();
