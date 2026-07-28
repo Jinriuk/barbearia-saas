@@ -58,14 +58,36 @@ const monthLabel = new Intl.DateTimeFormat("pt-BR", {
 });
 
 type ProfessionalAgg = {
+  id: string;
   name: string;
   count: number;
   service: number;
   product: number;
   total: number;
 };
-type ServiceAgg = { name: string; count: number; revenue: number };
-type ProductAgg = { name: string; qty: number; revenue: number };
+type ServiceAgg = { id: string; name: string; count: number; revenue: number };
+type ProductAgg = { id: string; name: string; qty: number; revenue: number };
+
+/**
+ * Rótulo da linha em "A receber". Era binário (produto ou serviço) e passou a
+ * mentir quando o fiado e a mensalidade de plano entraram na mesma lista
+ * (Fase 0 §0.10): "Fiado do João" aparecia como "Serviço", sugerindo um
+ * atendimento que não existe.
+ */
+function incomeCategoryLabel(category: string): string {
+  switch (category) {
+    case "product":
+      return "Produto";
+    case "service":
+      return "Serviço";
+    case "conta_a_receber":
+      return "Fiado";
+    case "membership":
+      return "Plano do cliente";
+    default:
+      return "Outros";
+  }
+}
 
 /** Linhas de `revenue_breakdown` e `income_by_day` (Fase 0 §0.7). */
 type BreakdownRow = {
@@ -225,6 +247,7 @@ export default async function FinanceiroPage() {
 
   const professionalEntry = (id: string, name: string) => {
     const current = byProfessional.get(id) ?? {
+      id,
       name,
       count: 0,
       service: 0,
@@ -254,13 +277,17 @@ export default async function FinanceiroPage() {
       }
       case "service":
         byService.set(row.ref_id, {
+          id: row.ref_id,
           name: row.label,
           count: quantity,
           revenue: total,
         });
         break;
       case "product":
+        // Agrupado por id, não por nome: duas "Pomada 100g" de SKUs diferentes
+        // são duas linhas, e o React precisa de chave estável para cada uma.
         byProduct.set(row.ref_id, {
+          id: row.ref_id,
           name: row.label,
           qty: quantity,
           revenue: total,
@@ -472,8 +499,7 @@ export default async function FinanceiroPage() {
                     {item.description}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {item.category === "product" ? "Produto" : "Serviço"} ·
-                    vendido em{" "}
+                    {incomeCategoryLabel(item.category)} · vendido em{" "}
                     {formatShortDateInTz(item.created_at, tenant.timezone)}
                   </p>
                 </div>
@@ -536,6 +562,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={services.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.revenue,
                 hint: `${item.count}x`,
@@ -553,6 +580,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={products.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.revenue,
                 hint: `${item.qty} un`,
@@ -570,6 +598,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={professionals.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.total,
                 hint: `${item.count} atend.`,
@@ -591,7 +620,7 @@ export default async function FinanceiroPage() {
                 {/* Celular: cards resumidos no lugar da tabela larga. */}
                 <div className="space-y-3 sm:hidden">
                   {professionals.map((item) => (
-                    <div key={item.name} className="rounded-xl border p-4">
+                    <div key={item.id} className="rounded-xl border p-4">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="min-w-0 truncate font-medium">
                           {item.name}
@@ -627,7 +656,7 @@ export default async function FinanceiroPage() {
                     </TableHeader>
                     <TableBody>
                       {professionals.map((item) => (
-                        <TableRow key={item.name}>
+                        <TableRow key={item.id}>
                           <TableCell className="font-medium">
                             {item.name}
                           </TableCell>
@@ -678,7 +707,7 @@ export default async function FinanceiroPage() {
                 </TableHeader>
                 <TableBody>
                   {services.map((item) => (
-                    <TableRow key={item.name}>
+                    <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-right font-mono">
                         {item.count}
@@ -717,7 +746,7 @@ export default async function FinanceiroPage() {
               </TableHeader>
               <TableBody>
                 {products.map((item) => (
-                  <TableRow key={item.name}>
+                  <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-right font-mono">
                       {item.qty.toLocaleString("pt-BR")}

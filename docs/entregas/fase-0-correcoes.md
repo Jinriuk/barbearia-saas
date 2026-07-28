@@ -117,6 +117,12 @@ valendo zero para sempre. Agora a taxa fica `NULL` quando nada estava
 configurado, e `commission_summary` cai na taxa vigente do profissional — o que
 continua congelado é o **preço**, que era o defeito do §0.9.
 
+**"A receber" chamava o fiado de "Serviço".** O rótulo era binário — produto ou
+serviço — e passou a mentir quando o fiado e a mensalidade de plano entraram na
+mesma lista: "Fiado do João" aparecia como um atendimento que não existe.
+Também havia chave de React por nome onde o agrupamento passou a ser por id:
+dois produtos homônimos com SKUs diferentes colidiam.
+
 **Anular uma venda deixava o fiado preso na tela.** O espelho de status passou a
 gravar `canceled` em `accounts_receivable`, estado que `/contas-a-receber`
 contava como "em aberto" (o filtro era `status !== "paid"`) e que `deleteBill`
