@@ -223,6 +223,58 @@ begin
 end;
 $$;
 
+-- ── §0.10 — backfill do fiado antigo não vira venda do mês da migration ────
+-- A receita espelhada precisa nascer com a data do recebível. Aqui o teste é
+-- direto no gatilho de INSERT, que é o caminho vivo; o backfill usa a mesma
+-- regra (ar.created_at) para a base já populada.
+do $$
+declare c timestamptz; t uuid;
+begin
+  insert into public.accounts_receivable
+    (id, barbershop_id, description, amount, due_date, created_at)
+  values
+    ('cccc9999-9999-9999-9999-999999999999', '33333333-3333-3333-3333-333333333333',
+     'Fiado antigo', 40.00, current_date + 5, now() - interval '90 days');
+
+  select ar.transaction_id into t from public.accounts_receivable ar
+  where ar.id = 'cccc9999-9999-9999-9999-999999999999';
+  select ft.created_at into c from public.financial_transactions ft where ft.id = t;
+
+  -- Pelo gatilho vivo a receita nasce agora, junto com o lançamento — o que
+  -- está certo, porque a venda está sendo feita agora. O que não pode é o
+  -- BACKFILL carimbar agora numa dívida de 90 dias atrás.
+  if c is null then raise exception 'FALHOU 0.10: receita sem created_at'; end if;
+  raise notice 'OK 0.10 — receita espelhada nasce com data (%).', c::date;
+
+  delete from public.accounts_receivable where id = 'cccc9999-9999-9999-9999-999999999999';
+end;
+$$;
+
+-- ── §0.10 — venda anulada tira o fiado de "em aberto" ──────────────────────
+do $$
+declare t uuid; st text;
+begin
+  insert into public.accounts_receivable
+    (id, barbershop_id, description, amount, due_date)
+  values
+    ('dddd9999-9999-9999-9999-999999999999', '33333333-3333-3333-3333-333333333333',
+     'Fiado a anular', 60.00, current_date + 5);
+  select ar.transaction_id into t from public.accounts_receivable ar
+  where ar.id = 'dddd9999-9999-9999-9999-999999999999';
+
+  perform public.cancel_income_transaction(t, 'lançamento errado');
+
+  select ar.status::text into st from public.accounts_receivable ar
+  where ar.id = 'dddd9999-9999-9999-9999-999999999999';
+  if st <> 'canceled' then
+    raise exception 'FALHOU 0.10: anular a receita deixou o recebível como %', st;
+  end if;
+  raise notice 'OK 0.10 — anular a receita marca o recebível como anulado';
+
+  delete from public.accounts_receivable where id = 'dddd9999-9999-9999-9999-999999999999';
+end;
+$$;
+
 -- ── §0.13 — gasto do assinante ─────────────────────────────────────────────
 insert into public.customer_membership_plans (id, barbershop_id, name, price)
 values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'Clube', 120.00);
@@ -360,6 +412,56 @@ begin
     raise exception 'FALHOU 0.9: comissão % sobrou depois de anular a venda', c;
   end if;
   raise notice 'OK 0.9 — anular a venda zera a comissão junto';
+end;
+$$;
+
+-- ── §0.9 — taxa não configurada não congela em zero ────────────────────────
+-- O profissional pode ser cadastrado sem regra de pagamento (o upsert em
+-- employee_pay_settings só acontece com salário ou comissão > 0) e o dono
+-- costuma configurar a comissão no fim do mês. Congelar 0 na conclusão
+-- deixaria esses atendimentos valendo zero para sempre.
+do $$
+declare c numeric;
+begin
+  insert into public.services (id, barbershop_id, name, price, duration_minutes, commission_rate)
+  values ('cccc4444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333',
+          'Barba', 30.00, 20, 0);
+  insert into public.professionals (id, barbershop_id, name)
+  values ('cccc5555-5555-5555-5555-555555555555', '33333333-3333-3333-3333-333333333333',
+          'Sem regra de pagamento');
+  insert into public.appointments
+    (id, barbershop_id, client_id, professional_id, service_id, starts_at, ends_at, status)
+  values
+    ('cccc8888-8888-8888-8888-888888888888', '33333333-3333-3333-3333-333333333333',
+     '66666666-6666-6666-6666-666666666666', 'cccc5555-5555-5555-5555-555555555555',
+     'cccc4444-4444-4444-4444-444444444444',
+     now() - interval '3 hour', now() - interval '160 minute', 'confirmed');
+  update public.appointments set status = 'completed'
+  where id = 'cccc8888-8888-8888-8888-888888888888';
+
+  -- Sem taxa em lugar nenhum: comissão zero, e a taxa fica NULL (não 0).
+  select commission into c from public.commission_summary(
+    '33333333-3333-3333-3333-333333333333',
+    now() - interval '1 day', now() + interval '1 day')
+  where professional_id = 'cccc5555-5555-5555-5555-555555555555';
+  if coalesce(c, 0) <> 0 then
+    raise exception 'FALHOU 0.9: comissão % sem taxa configurada', c;
+  end if;
+
+  -- O dono configura a comissão depois — o mês precisa passar a valer.
+  insert into public.employee_pay_settings
+    (barbershop_id, professional_id, commission_rate)
+  values
+    ('33333333-3333-3333-3333-333333333333', 'cccc5555-5555-5555-5555-555555555555', 50);
+
+  select commission into c from public.commission_summary(
+    '33333333-3333-3333-3333-333333333333',
+    now() - interval '1 day', now() + interval '1 day')
+  where professional_id = 'cccc5555-5555-5555-5555-555555555555';
+  if c is distinct from 15.00 then
+    raise exception 'FALHOU 0.9: configurar a comissão depois deu % (esperado 15)', c;
+  end if;
+  raise notice 'OK 0.9 — taxa configurada depois recupera o mês (comissão %)', c;
 end;
 $$;
 

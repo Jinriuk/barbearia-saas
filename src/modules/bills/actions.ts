@@ -147,12 +147,14 @@ async function deleteBill(kind: BillKind, formData: FormData) {
   if (!id) return;
 
   const supabase = await createSupabaseServerClient();
+  // Também apaga o que foi anulado no Financeiro: sem isso um recebível
+  // 'canceled' ficaria preso na tela, sem poder ser cobrado nem removido.
   await supabase
     .from(config[kind].table)
     .delete()
     .eq("id", id)
     .eq("barbershop_id", tenant.id)
-    .eq("status", "pending");
+    .in("status", ["pending", "overdue", "canceled"]);
   revalidatePath(config[kind].path);
 }
 

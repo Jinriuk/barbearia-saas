@@ -143,16 +143,23 @@ begin
   from public.services s
   where s.id = new.service_id;
 
-  select coalesce(eps.commission_rate, 0)
+  select eps.commission_rate
   into v_pro_rate
   from public.employee_pay_settings eps
   where eps.barbershop_id = new.barbershop_id
     and eps.professional_id = new.professional_id;
 
   new.charged_price := coalesce(v_price, 0);
+  -- NULL, e não 0, quando não havia taxa nenhuma configurada: o profissional
+  -- pode ser cadastrado sem regra de pagamento (o upsert em
+  -- employee_pay_settings só acontece quando salário ou comissão > 0), e o
+  -- dono costuma configurar a comissão depois, no fim do mês. Congelar 0 aqui
+  -- deixaria esses atendimentos valendo zero para sempre, sem jeito de
+  -- recuperar. Com NULL, commission_summary usa a taxa vigente do profissional
+  -- — o que já é congelado é o PREÇO, que era o defeito do §0.9.
   new.commission_rate := case
     when coalesce(v_service_rate, 0) > 0 then v_service_rate
-    else coalesce(v_pro_rate, 0)
+    else v_pro_rate
   end;
   return new;
 end;
@@ -185,12 +192,12 @@ set charged_price = coalesce(
       0),
     commission_rate = case
       when coalesce(s.commission_rate, 0) > 0 then s.commission_rate
-      else coalesce((
+      else (
         select eps.commission_rate
         from public.employee_pay_settings eps
         where eps.barbershop_id = a.barbershop_id
           and eps.professional_id = a.professional_id
-      ), 0)
+      )
     end
 from public.services s
 where s.id = a.service_id
@@ -229,16 +236,27 @@ as $$
   select
     a.professional_id,
     coalesce(sum(a.charged_price), 0)::numeric as produced,
-    coalesce(sum(a.charged_price * a.commission_rate / 100), 0)::numeric
-      as commission,
+    coalesce(sum(a.charged_price * rate.pct / 100), 0)::numeric as commission,
     coalesce(sum(a.charged_price) filter (where cash.settled), 0)::numeric
       as received_produced,
     coalesce(
-      sum(a.charged_price * a.commission_rate / 100) filter (where cash.settled),
+      sum(a.charged_price * rate.pct / 100) filter (where cash.settled),
       0
     )::numeric as received_commission,
     count(*)::integer as completed_count
   from public.appointments a
+  -- Taxa congelada na conclusão. Só cai na taxa vigente do profissional
+  -- quando NENHUMA taxa estava configurada naquele momento (congelado = null)
+  -- — assim configurar a comissão depois não deixa o mês valendo zero, e
+  -- mexer numa taxa já aplicada continua sem reescrever mês fechado.
+  left join lateral (
+    select coalesce(a.commission_rate, (
+      select eps.commission_rate
+      from public.employee_pay_settings eps
+      where eps.barbershop_id = a.barbershop_id
+        and eps.professional_id = a.professional_id
+    ), 0) as pct
+  ) rate on true
   left join lateral (
     select (
       exists (
@@ -741,16 +759,23 @@ declare
   v_transaction_id uuid;
 begin
   for r in
-    select ar.id, ar.barbershop_id, ar.description, ar.amount, ar.due_date
+    select ar.id, ar.barbershop_id, ar.description, ar.amount, ar.due_date,
+           ar.status, ar.created_at
     from public.accounts_receivable ar
     where ar.transaction_id is null
       and ar.status in ('pending', 'overdue')
   loop
+    -- created_at vem do recebível, NÃO do default now(). Sem isso, todo saldo
+    -- de fiado antigo entraria como "Vendido" no mês em que a migration
+    -- rodasse: uma barbearia com R$ 5.000 pendentes de janeiro veria R$ 5.000
+    -- de venda em julho, que é exatamente o tipo de número errado que esta
+    -- fase existe para eliminar.
     insert into public.financial_transactions
-      (barbershop_id, type, status, category, description, amount, due_at)
+      (barbershop_id, type, status, category, description, amount, due_at,
+       created_at)
     values
-      (r.barbershop_id, 'income', 'pending', 'conta_a_receber',
-       r.description, r.amount, r.due_date)
+      (r.barbershop_id, 'income', r.status, 'conta_a_receber',
+       r.description, r.amount, r.due_date, r.created_at)
     returning id into v_transaction_id;
 
     update public.accounts_receivable

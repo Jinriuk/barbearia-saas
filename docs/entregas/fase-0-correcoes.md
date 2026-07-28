@@ -101,6 +101,28 @@ callback não.
 **Cancelar assinatura vencida prometia uma data no passado**, e reativar um
 plano já encerrado pelo cron respondia "Plano reativado" sem ter mudado nada.
 
+E três defeitos de número, na mesma revisão:
+
+**O backfill do fiado carimbava a data de hoje.** A receita espelhada nascia com
+`created_at = now()`, então todo saldo antigo entraria como "Vendido" no mês em
+que a migration rodasse — uma barbearia com R$ 5.000 pendentes de janeiro veria
+R$ 5.000 de venda em julho. Verificado aplicando a cadeia sobre uma base
+populada: agora o valor aparece em janeiro e julho fica zerado.
+
+**A taxa de comissão congelava em 0 para quem ainda não tinha regra de
+pagamento.** O profissional pode ser cadastrado sem comissão (o upsert em
+`employee_pay_settings` só acontece com salário ou comissão > 0) e o dono
+costuma configurar no fim do mês. Congelar 0 deixaria esses atendimentos
+valendo zero para sempre. Agora a taxa fica `NULL` quando nada estava
+configurado, e `commission_summary` cai na taxa vigente do profissional — o que
+continua congelado é o **preço**, que era o defeito do §0.9.
+
+**Anular uma venda deixava o fiado preso na tela.** O espelho de status passou a
+gravar `canceled` em `accounts_receivable`, estado que `/contas-a-receber`
+contava como "em aberto" (o filtro era `status !== "paid"`) e que `deleteBill`
+não conseguia apagar. O lançamento anulado saiu do total em aberto, ganhou uma
+seção própria e voltou a ser removível.
+
 ## O que a auditoria errou
 
 **0.3 — a direção estava invertida.** A auditoria dizia que a landing anunciava
