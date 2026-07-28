@@ -84,6 +84,20 @@ export function PasswordForm() {
         <form action={formAction} className="space-y-4">
           <Feedback state={state} />
           <div className="space-y-2">
+            <Label htmlFor="current">Senha atual</Label>
+            <Input
+              id="current"
+              name="current"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+            <p className="text-muted-foreground text-xs">
+              Confirmamos quem você é antes de trocar — o painel costuma ficar
+              aberto no aparelho do balcão.
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="password">Nova senha</Label>
             <Input
               id="password"
@@ -105,6 +119,21 @@ export function PasswordForm() {
               required
             />
           </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="signOutOthers"
+              defaultChecked
+              className="border-input mt-0.5 size-4 rounded border"
+            />
+            <span>
+              Sair dos outros aparelhos
+              <span className="text-muted-foreground block text-xs">
+                Encerra a sessão em qualquer outro celular ou computador. Este
+                aparelho continua conectado.
+              </span>
+            </span>
+          </label>
           <Button disabled={pending}>
             {pending ? "Alterando…" : "Alterar senha"}
           </Button>

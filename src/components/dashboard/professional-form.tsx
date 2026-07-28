@@ -57,7 +57,7 @@ export function ProfessionalForm({
               <Input id="email" name="email" type="email" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha inicial</Label>
+              <Label htmlFor="password">Senha provisória</Label>
               <Input
                 id="password"
                 name="password"
@@ -66,6 +66,10 @@ export function ProfessionalForm({
                 placeholder="mín. 6 caracteres"
                 required
               />
+              <p className="text-muted-foreground text-xs">
+                Serve só para o primeiro acesso — a pessoa cria a própria senha
+                ao entrar.
+              </p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

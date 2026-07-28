@@ -10,7 +10,6 @@ import {
   Heart,
   Palette,
   QrCode,
-  Quote,
   Smartphone,
   Sparkles,
   UsersRound,
@@ -66,7 +65,7 @@ const features = [
     icon: Palette,
     title: "Uma página com a sua cara",
     description:
-      "Logo, cores, fotos e temas prontos. Sua página de agendamento fica tão linda quanto o seu trabalho.",
+      "Logo, cores, fotos e temas prontos no plano Plus. Sua página de agendamento fica tão linda quanto o seu trabalho.",
   },
 ];
 
@@ -96,24 +95,20 @@ const themes = [
   { name: "Champagne", bg: "#fbf7ef", ink: "#3d2f1f", accent: "#b98a4f" },
 ];
 
-const testimonials = [
+// Ver o comentário equivalente em src/app/page.tsx: os depoimentos nominais
+// eram ficção apresentada como cliente real e saíram na Fase 0.
+const dailyWins = [
   {
-    quote:
-      "Minha agenda vivia no papel e no WhatsApp. Hoje as clientes marcam sozinhas e eu foco no que amo: atender.",
-    name: "Camila",
-    role: "Dona de salão, 3 profissionais",
+    title: "A cliente marca sozinha",
+    body: "Link e QR Code próprios, com a agenda de cada profissional e os horários realmente livres. Sem ida e volta no WhatsApp.",
   },
   {
-    quote:
-      "O financeiro fechar sozinho no fim do dia mudou minha vida. Sei exatamente quanto entrou e de qual serviço.",
-    name: "Patrícia",
-    role: "Cabeleireira e gestora",
+    title: "O financeiro se preenche",
+    body: "Concluir o atendimento lança a venda. Vendido, recebido e a receber são números separados — não uma soma só.",
   },
   {
-    quote:
-      "Coloquei o link na bio do Instagram. As meninas agendam escova de madrugada e eu só confirmo de manhã.",
-    name: "Juliana",
-    role: "Studio de beleza, 5 cadeiras",
+    title: "Você vê quem sumiu",
+    body: "O sistema calcula de quanto em quanto tempo cada cliente costuma voltar e mostra quem passou do prazo.",
   },
 ];
 
@@ -287,6 +282,9 @@ export default async function SalonLandingPage() {
               <p className="text-xs text-[#33202b]/50">Recebido no mês</p>
               <p className="mt-0.5 font-mono text-xl font-semibold text-emerald-600">
                 R$ 12.480
+              </p>
+              <p className="mt-1 text-[10px] tracking-wide text-[#33202b]/40 uppercase">
+                Exemplo ilustrativo
               </p>
             </div>
             <div className="animate-float-slow absolute -right-6 -bottom-10 w-72 rounded-2xl border border-[#33202b]/[.07] bg-white/95 p-4 shadow-xl shadow-[#33202b]/[.08] backdrop-blur">
@@ -550,6 +548,7 @@ export default async function SalonLandingPage() {
                   "Clientes, serviços e equipe",
                   "Financeiro com receitas automáticas",
                   "Relatório financeiro em PDF",
+                  "Produtos e controle de estoque",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-[#c2497c]" />
@@ -613,11 +612,11 @@ export default async function SalonLandingPage() {
         </div>
       </section>
 
-      {/* ===== Depoimentos ===== */}
+      {/* ===== O dia a dia no salão ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
-            Quem usa, recomenda
+            No dia a dia
           </p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Feito para o dia a dia{" "}
@@ -626,18 +625,15 @@ export default async function SalonLandingPage() {
           </h2>
         </Reveal>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {testimonials.map((item, index) => (
-            <Reveal key={item.name} delay={index * 90}>
-              <figure className="h-full rounded-3xl border border-[#33202b]/[.07] bg-white p-7 shadow-sm">
-                <Quote className="size-5 text-[#c2497c]/50" />
-                <blockquote className="mt-4 text-sm leading-7 text-[#33202b]/70">
-                  “{item.quote}”
-                </blockquote>
-                <figcaption className="mt-5 text-sm">
-                  <span className="font-semibold">{item.name}</span>
-                  <span className="text-[#33202b]/45"> — {item.role}</span>
-                </figcaption>
-              </figure>
+          {dailyWins.map((item, index) => (
+            <Reveal key={item.title} delay={index * 90}>
+              <div className="h-full rounded-3xl border border-[#33202b]/[.07] bg-white p-7 shadow-sm">
+                <Check className="size-5 text-[#c2497c]/50" />
+                <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-[#33202b]/70">
+                  {item.body}
+                </p>
+              </div>
             </Reveal>
           ))}
         </div>
@@ -680,11 +676,13 @@ export default async function SalonLandingPage() {
 
       {/* ===== Lead: prefere que a gente chame? ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
+        {/* A seção foi copiada da landing escura: card e texto claros sobre
+            fundo claro deixavam o bloco quase invisível (item 5.9 do plano). */}
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-[#33202b]/[.07] bg-white p-8 text-center shadow-sm">
           <h2 className="text-2xl font-semibold tracking-tight">
             Prefere que a gente fale com você?
           </h2>
-          <p className="mt-2 mb-6 text-sm text-stone-400">
+          <p className="mt-2 mb-6 text-sm text-[#33202b]/60">
             Deixe seu contato e mostramos o NexoBeleza funcionando na sua
             realidade. Sem compromisso.
           </p>

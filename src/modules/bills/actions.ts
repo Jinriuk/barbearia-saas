@@ -88,6 +88,23 @@ async function settleBill(kind: BillKind, formData: FormData) {
   if (config[kind].transactionType === "income" && !method.success) return;
 
   const supabase = await createSupabaseServerClient();
+
+  // Recebível: a receita pendente já existe desde a criação do lançamento
+  // (Fase 0 §0.10 — o fiado passou a nascer visível para o Financeiro).
+  // Baixar é LIQUIDAR essa receita, não criar uma segunda: inserir aqui
+  // dobraria o faturamento do mês. A RPC faz os dois lados numa transação.
+  if (kind === "receivable") {
+    const { error } = await supabase.rpc("settle_receivable", {
+      p_receivable_id: id,
+      p_payment_method: method.success ? method.data : null,
+    });
+    if (error) return;
+    revalidatePath(config[kind].path);
+    revalidatePath("/financeiro");
+    revalidatePath("/relatorios");
+    return;
+  }
+
   const { data: bill } = await supabase
     .from(config[kind].table)
     .select("id,description,amount,status")
@@ -130,12 +147,14 @@ async function deleteBill(kind: BillKind, formData: FormData) {
   if (!id) return;
 
   const supabase = await createSupabaseServerClient();
+  // Também apaga o que foi anulado no Financeiro: sem isso um recebível
+  // 'canceled' ficaria preso na tela, sem poder ser cobrado nem removido.
   await supabase
     .from(config[kind].table)
     .delete()
     .eq("id", id)
     .eq("barbershop_id", tenant.id)
-    .eq("status", "pending");
+    .in("status", ["pending", "overdue", "canceled"]);
   revalidatePath(config[kind].path);
 }
 

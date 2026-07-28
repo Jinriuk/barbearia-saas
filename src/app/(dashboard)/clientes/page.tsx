@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
+import { can } from "@/lib/permissions";
+import { errorMessage, logError } from "@/lib/log";
 import { formatBRL } from "@/lib/financial";
 import { currentEpochMs, formatShortDateInTz } from "@/lib/dates";
 import { returnMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
@@ -95,6 +97,23 @@ export default async function ClientsPage({
   }>;
 }) {
   const tenant = await requireTenant();
+  // Era a única tela do painel sob permissão que não checava papel (§0.16):
+  // profissional e cliente chegavam à base inteira de clientes.
+  if (!can(tenant.role, "clients:manage")) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Relacionamento"
+          title="Clientes"
+          description="Quem precisa voltar e a ação de retorno a um toque."
+        />
+        <EmptyState
+          title="Acesso restrito"
+          description="Seu perfil não acessa a base de clientes."
+        />
+      </>
+    );
+  }
   const params = await searchParams;
   // Compatibilidade com o link antigo ?arquivados=1.
   const segment = SEGMENTS.some((s) => s.value === params.segmento)
@@ -117,6 +136,16 @@ export default async function ClientsPage({
       p_offset: (page - 1) * PAGE_SIZE,
     },
   );
+  // Falha da RPC virava lista vazia em silêncio, e a tela dizia "nenhum
+  // cliente cadastrado" para uma base cheia (§0.16). Agora é registrada e a
+  // tela diz que não conseguiu carregar.
+  if (error) {
+    logError("clientes.insights_failed", {
+      message: errorMessage(error),
+      barbershop: tenant.id,
+      segment,
+    });
+  }
   const rows = (error ? [] : (insightData ?? [])) as InsightRow[];
   const totalCount = rows[0]?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -383,16 +412,20 @@ export default async function ClientsPage({
             ) : (
               <EmptyState
                 title={
-                  search
-                    ? `Nada encontrado para "${search}"`
-                    : segment === "todos"
-                      ? "Nenhum cliente cadastrado"
-                      : "Ninguém neste grupo agora"
+                  error
+                    ? "Não foi possível carregar os clientes"
+                    : search
+                      ? `Nada encontrado para "${search}"`
+                      : segment === "todos"
+                        ? "Nenhum cliente cadastrado"
+                        : "Ninguém neste grupo agora"
                 }
                 description={
-                  segment === "todos"
-                    ? "Novos agendamentos públicos também criam clientes automaticamente."
-                    : activeSegment.hint
+                  error
+                    ? "A consulta falhou. Recarregue em instantes — sua base não foi alterada."
+                    : segment === "todos"
+                      ? "Novos agendamentos públicos também criam clientes automaticamente."
+                      : activeSegment.hint
                 }
               />
             )}
