@@ -31,8 +31,8 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Dados de clientes finais</strong> informados num agendamento
-          (nome, WhatsApp e e-mail): o <strong>estabelecimento</strong> que
-          você escolheu é o controlador desses dados; a Plataforma atua como{" "}
+          (nome, WhatsApp e e-mail): o <strong>estabelecimento</strong> que você
+          escolheu é o controlador desses dados; a Plataforma atua como{" "}
           <strong>operadora</strong>, tratando-os apenas para viabilizar o
           agendamento, os lembretes e o histórico daquele estabelecimento.
         </li>
@@ -46,13 +46,23 @@ export default function PrivacyPage() {
           endereço, contatos, serviços, preços).
         </li>
         <li>
-          <strong>Agendamento público:</strong> nome, número de WhatsApp,
-          e-mail (opcional) e observações que o cliente final informar.
+          <strong>Agendamento público:</strong> nome, número de WhatsApp, e-mail
+          (opcional) e observações que o cliente final informar.
         </li>
         <li>
-          <strong>Uso do site:</strong> métricas de navegação agregadas
-          (Vercel Analytics, sem cookies de identificação) e, somente com o
-          seu consentimento, eventos do Meta Pixel para medição de anúncios.
+          <strong>
+            Contato comercial (formulário &ldquo;quero saber mais&rdquo;):
+          </strong>{" "}
+          nome, um canal de contato (WhatsApp ou e-mail), plano de interesse e a
+          origem da visita (parâmetros UTM). Junto com o aceite, guardamos a
+          data, o endereço IP, o navegador (user-agent) e a versão do texto que
+          você leu — é isso que comprova <em>o que</em> foi autorizado, e existe
+          para a sua proteção tanto quanto para a nossa.
+        </li>
+        <li>
+          <strong>Uso do site:</strong> métricas de navegação agregadas (Vercel
+          Analytics, sem cookies de identificação) e, somente com o seu
+          consentimento, eventos do Meta Pixel para medição de anúncios.
         </li>
       </ul>
 
@@ -64,6 +74,10 @@ export default function PrivacyPage() {
           (inclusive por WhatsApp);
         </li>
         <li>Processar a assinatura e emitir cobranças;</li>
+        <li>
+          Falar com quem pediu contato pelo formulário, sobre a Plataforma —
+          nunca com quem não pediu, e nunca depois de você pedir para parar;
+        </li>
         <li>Cumprir obrigações legais e prevenir fraudes;</li>
         <li>
           Medir campanhas de marketing — apenas se você aceitar os cookies de
@@ -76,17 +90,18 @@ export default function PrivacyPage() {
         Tratamos dados com fundamento na <strong>execução de contrato</strong>{" "}
         (conta e agendamentos), no <strong>legítimo interesse</strong>{" "}
         (segurança e melhoria do serviço), no{" "}
-        <strong>cumprimento de obrigação legal</strong> (registros fiscais) e
-        no <strong>consentimento</strong> (cookies de medição/Meta Pixel).
+        <strong>cumprimento de obrigação legal</strong> (registros fiscais) e no{" "}
+        <strong>consentimento</strong> (cookies de medição/Meta Pixel e o
+        contato comercial pedido pelo formulário).
       </p>
 
       <h2>5. Com quem compartilhamos</h2>
       <p>
         Usamos fornecedores de infraestrutura que tratam dados em nosso nome e
-        sob contrato: <strong>Supabase</strong> (banco de dados e
-        autenticação), <strong>Vercel</strong> (hospedagem e métricas),{" "}
-        <strong>Meta</strong> (WhatsApp Business e, com consentimento, Pixel) e
-        o provedor de pagamento da assinatura. Não vendemos dados pessoais.
+        sob contrato: <strong>Supabase</strong> (banco de dados e autenticação),{" "}
+        <strong>Vercel</strong> (hospedagem e métricas), <strong>Meta</strong>{" "}
+        (WhatsApp Business e, com consentimento, Pixel) e o provedor de
+        pagamento da assinatura. Não vendemos dados pessoais.
       </p>
 
       <h2>6. Por quanto tempo guardamos</h2>
@@ -96,30 +111,37 @@ export default function PrivacyPage() {
         retidos pelo prazo legal. Dados de clientes finais podem ser excluídos
         ou anonimizados a pedido, diretamente pelo estabelecimento no painel.
       </p>
+      <p>
+        Quem pediu contato pelo formulário pode sair da lista a qualquer momento
+        pelo link de descadastro que acompanha cada mensagem, ou escrevendo para
+        o contato abaixo. Depois da baixa, paramos o contato e mantemos o
+        registro apenas como prova do próprio descadastro — é o que garante que
+        você não será contatado de novo por engano.
+      </p>
 
       <h2>7. Seus direitos</h2>
       <p>
         Você pode solicitar confirmação de tratamento, acesso, correção,
-        portabilidade, anonimização ou exclusão dos seus dados, além de
-        revogar consentimentos. Clientes finais podem exercer esses direitos
-        diretamente com o estabelecimento ou através do nosso contato abaixo —
+        portabilidade, anonimização ou exclusão dos seus dados, além de revogar
+        consentimentos. Clientes finais podem exercer esses direitos diretamente
+        com o estabelecimento ou através do nosso contato abaixo —
         encaminharemos ao controlador responsável.
       </p>
 
       <h2>8. Segurança</h2>
       <p>
         Os dados são isolados por estabelecimento no banco de dados (políticas
-        de acesso por linha), trafegam criptografados (HTTPS) e o acesso
-        interno é restrito. Nenhum sistema é infalível; incidentes relevantes
-        serão comunicados conforme a LGPD.
+        de acesso por linha), trafegam criptografados (HTTPS) e o acesso interno
+        é restrito. Nenhum sistema é infalível; incidentes relevantes serão
+        comunicados conforme a LGPD.
       </p>
 
       <h2>9. Cookies</h2>
       <p>
         Usamos cookies essenciais de sessão (login) que não dependem de
         consentimento. Cookies de medição de anúncios (Meta Pixel) só são
-        ativados se você aceitar no aviso exibido no site, e a escolha pode
-        ser refeita limpando os dados do navegador.
+        ativados se você aceitar no aviso exibido no site, e a escolha pode ser
+        refeita limpando os dados do navegador.
       </p>
 
       <h2>10. Contato</h2>

@@ -38,7 +38,7 @@ export function BookingRulesForm({ initial }: { initial: BookingRules }) {
       <CardContent>
         <form action={formAction} className="space-y-4">
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
           ) : null}
@@ -49,7 +49,7 @@ export function BookingRulesForm({ initial }: { initial: BookingRules }) {
               id="rules-confirmation"
               name="bookingConfirmationMode"
               defaultValue={initial.bookingConfirmationMode}
-              className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               <option value="manual">
                 Manual — a equipe confirma cada reserva (recomendado)
@@ -168,7 +168,7 @@ export function OpeningHoursForm({
       <CardContent>
         <form action={formAction} className="space-y-4">
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
           ) : null}

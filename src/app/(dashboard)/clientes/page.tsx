@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Search, TriangleAlert } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
+import { errorMessage, logError } from "@/lib/log";
 import { formatBRL } from "@/lib/financial";
 import { currentEpochMs, formatShortDateInTz } from "@/lib/dates";
 import { membershipStatusMeta, type MembershipStatus } from "@/lib/memberships";
@@ -89,21 +89,18 @@ type InsightRow = {
   total_count: number;
 };
 
+// Fase 1.9: os tons vêm do Badge, para "situação" ter uma fonte de cor só
+// em todo o painel.
 function returnBadge(row: InsightRow, nowMs: number) {
   if (!row.expected_return_at) {
-    return { label: "Sem previsão", className: "text-muted-foreground" };
+    return { label: "Sem previsão", tone: "neutral" as const };
   }
   const expected = Date.parse(row.expected_return_at);
   const overdue = expected < nowMs;
   const soon = !overdue && expected < nowMs + 7 * 86_400_000;
-  if (overdue)
-    return {
-      label: "Em atraso",
-      className: "border-warning/50 text-warning",
-    };
-  if (soon)
-    return { label: "Volta em breve", className: "border-info/50 text-info" };
-  return { label: "Em dia", className: "border-success/50 text-success" };
+  if (overdue) return { label: "Em atraso", tone: "warning" as const };
+  if (soon) return { label: "Volta em breve", tone: "info" as const };
+  return { label: "Em dia", tone: "success" as const };
 }
 
 export default async function ClientsPage({
@@ -117,10 +114,23 @@ export default async function ClientsPage({
   }>;
 }) {
   const tenant = await requireTenant();
-  // A tela inteira depende de clients:manage — era a única do painel sem
-  // checagem de papel.
-  if (!can(tenant.role, "clients:manage")) redirect("/dashboard");
-
+  // Era a única tela do painel sob permissão que não checava papel (§0.16):
+  // profissional e cliente chegavam à base inteira de clientes.
+  if (!can(tenant.role, "clients:manage")) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Relacionamento"
+          title="Clientes"
+          description="Quem precisa voltar e a ação de retorno a um toque."
+        />
+        <EmptyState
+          title="Acesso restrito"
+          description="Seu perfil não acessa a base de clientes."
+        />
+      </>
+    );
+  }
   const params = await searchParams;
   // Compatibilidade com o link antigo ?arquivados=1.
   const segment = SEGMENTS.some((s) => s.value === params.segmento)
@@ -155,8 +165,17 @@ export default async function ClientsPage({
       }),
     ]);
 
-  // Falha da RPC não pode virar "nenhum cliente cadastrado" em silêncio.
+  // Falha da RPC virava lista vazia em silêncio, e a tela dizia "nenhum
+  // cliente cadastrado" para uma base cheia (§0.16). Agora é registrada e a
+  // tela diz que não conseguiu carregar.
   const loadError = insightRes.error;
+  if (loadError) {
+    logError("clientes.insights_failed", {
+      message: errorMessage(loadError),
+      barbershop: tenant.id,
+      segment,
+    });
+  }
   const rows = (loadError ? [] : (insightRes.data ?? [])) as InsightRow[];
   const totalCount = rows[0]?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -312,7 +331,7 @@ export default async function ClientsPage({
                 defaultValue={search}
                 placeholder="Buscar por nome ou WhatsApp…"
                 aria-label="Buscar cliente por nome ou WhatsApp"
-                className="border-input bg-background h-9 w-40 rounded-lg border px-3 text-sm sm:w-56"
+                className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-40 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 sm:w-56 md:h-11"
               />
               <Button size="sm" variant="outline" type="submit">
                 <Search className="size-3.5" />
@@ -343,11 +362,9 @@ export default async function ClientsPage({
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {plan ? (
-                          <Badge variant="outline" className={plan.className}>
-                            {plan.label}
-                          </Badge>
+                          <Badge variant={plan.tone}>{plan.label}</Badge>
                         ) : null}
-                        <Badge variant="outline" className={badge.className}>
+                        <Badge variant={badge.tone}>
                           {badge.label}
                           {row.confidence === "baixa"
                             ? " · poucas visitas"

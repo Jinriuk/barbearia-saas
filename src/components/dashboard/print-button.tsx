@@ -18,7 +18,7 @@ export function PrintButton({ auto = true }: { auto?: boolean }) {
     <button
       type="button"
       onClick={() => window.print()}
-      className="print:hidden inline-flex h-10 items-center gap-2 rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
+      className="inline-flex h-12 items-center gap-2 rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-700 md:h-11 print:hidden"
     >
       <Printer className="size-4" /> Imprimir / Salvar PDF
     </button>

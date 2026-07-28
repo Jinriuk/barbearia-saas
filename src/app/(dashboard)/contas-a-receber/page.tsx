@@ -8,6 +8,7 @@ import {
   settleReceivable,
 } from "@/modules/bills/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { BillForm } from "@/components/dashboard/bill-form";
 import { BillsView, type Bill } from "@/components/dashboard/bills-view";
@@ -46,6 +47,7 @@ export default async function ReceivablesPage() {
         title="Contas a receber"
         description="Fiado, convênios e outros valores a receber. Os atendimentos do dia você recebe direto no Financeiro."
       />
+      <SectionNav section="financeiro" role={tenant.role} />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <BillForm title="Novo valor a receber" action={createReceivable} />
         <BillsView

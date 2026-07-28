@@ -32,7 +32,7 @@ type ProfessionalOption = { id: string; name: string };
 const initialState: ActionState = { success: false, message: "" };
 
 const selectClass =
-  "border-input bg-background h-11 w-full rounded-md border px-3 text-base sm:text-sm";
+  "border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm md:h-11";
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -225,7 +225,7 @@ export function CounterSaleForm({
         {state.message ? (
           <Alert variant={state.success ? "default" : "destructive"}>
             {state.success ? (
-              <CheckCircle2 className="size-4 text-emerald-600" />
+              <CheckCircle2 className="text-success size-4" />
             ) : null}
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
@@ -361,7 +361,7 @@ export function CounterSaleForm({
           {discount > 0 ? (
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Desconto</dt>
-              <dd className="font-mono text-rose-600 dark:text-rose-400">
+              <dd className="text-destructive font-mono">
                 − {formatBRL(discount)}
               </dd>
             </div>

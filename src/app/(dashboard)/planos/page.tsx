@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { membershipChargeMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,7 @@ export default async function MembershipPlansPage() {
           </div>
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
 
       <Card>
         <CardHeader>
@@ -188,33 +190,23 @@ export default async function MembershipPlansPage() {
                         {membership.client_phone ?? "Sem telefone"}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Plano">
                       <p>{membership.plan_name}</p>
                       <p className="text-muted-foreground text-xs">
                         {money(Number(membership.price))} ·{" "}
                         {PERIOD_LABELS[membership.period] ?? membership.period}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Situação">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {membership.effective_status === "past_due" ? (
-                          <Badge variant="destructive">Vencido</Badge>
+                          <Badge variant="danger">Vencido</Badge>
                         ) : membership.effective_status === "paused" ? (
-                          <Badge variant="secondary">Pausado</Badge>
+                          <Badge variant="neutral">Pausado</Badge>
                         ) : membership.effective_status === "due_soon" ? (
-                          <Badge
-                            variant="outline"
-                            className="border-warning/50 text-warning"
-                          >
-                            Vence em breve
-                          </Badge>
+                          <Badge variant="warning">Vence em breve</Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="border-success/50 text-success"
-                          >
-                            Em dia
-                          </Badge>
+                          <Badge variant="success">Em dia</Badge>
                         )}
                         <span className="text-muted-foreground text-xs">
                           até {periodEndLabel}
@@ -234,7 +226,7 @@ export default async function MembershipPlansPage() {
                         </Button>
                       ) : null}
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Uso do período">
                       {membership.usage.length ? (
                         <ul className="space-y-0.5 text-sm">
                           {membership.usage.map((item) => (
@@ -289,7 +281,7 @@ export default async function MembershipPlansPage() {
                   <TableHead>Plano</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Incluídos</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Situação</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -302,14 +294,14 @@ export default async function MembershipPlansPage() {
                         {plan.description || "Sem descrição"}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Preço">
                       {money(Number(plan.price))}
                       <span className="text-muted-foreground text-xs">
                         {" "}
                         /{PERIOD_LABELS[plan.period] ?? plan.period}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Incluídos">
                       <ul className="space-y-0.5 text-sm">
                         {plan.entitlements.map((item) => (
                           <li key={item.service_id}>
@@ -323,8 +315,8 @@ export default async function MembershipPlansPage() {
                         ))}
                       </ul>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={plan.active ? "default" : "secondary"}>
+                    <TableCell data-label="Situação">
+                      <Badge variant={plan.active ? "success" : "neutral"}>
                         {plan.active ? "À venda" : "Desativado"}
                       </Badge>
                     </TableCell>

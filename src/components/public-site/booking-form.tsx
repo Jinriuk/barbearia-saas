@@ -383,7 +383,7 @@ export function BookingForm({
               <SummaryRow label="Referência" value={reference} />
             ) : null}
             <SummaryRow
-              label="Status"
+              label="Situação"
               value={confirmed ? "Confirmada" : "Aguardando confirmação"}
             />
             <SummaryRow label="Serviço" value={selectedService?.name ?? "—"} />

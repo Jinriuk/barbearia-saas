@@ -27,6 +27,10 @@
 - **Prova social**: nenhum depoimento adicionado — o plano proíbe
   depoimento não validado; a demonstração de produto (demo pública)
   cumpre o papel.
+  > **Correção (Fase 0, 28/07/2026):** esta linha estava errada. Havia seis
+  > depoimentos nominais fictícios em produção, três em cada landing,
+  > apresentados como clientes reais. Foram removidos — ver
+  > [`fase-0-correcoes.md`](fase-0-correcoes.md) §0.1.
 - **Reestruturação completa das 13 seções** da landing: a estrutura atual
   já cobre hero/problema/recursos/planos/FAQ/CTA; o redesenho fino segue
   os mockups quando a validação comercial começar.

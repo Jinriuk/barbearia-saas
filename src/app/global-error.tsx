@@ -34,7 +34,13 @@ export default function GlobalError({
             persistir, fale com o suporte informando o código abaixo.
           </p>
           {error.digest ? (
-            <p style={{ color: "#78716c", fontSize: 12, fontFamily: "monospace" }}>
+            <p
+              style={{
+                color: "#78716c",
+                fontSize: 12,
+                fontFamily: "monospace",
+              }}
+            >
               código: {error.digest}
             </p>
           ) : null}

@@ -7,8 +7,10 @@ import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionToast } from "@/components/ui/toast";
 
 export type ClientFormValues = {
   id: string;
@@ -34,6 +36,8 @@ export function ClientForm({
 }) {
   const [state, formAction, pending] = useActionState(saveClient, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  // Dentro do painel lateral a mensagem morreria com o fechamento (§5.7).
+  useActionToast(state);
 
   useEffect(() => {
     if (!state.success) return;
@@ -50,9 +54,9 @@ export function ClientForm({
     <form ref={formRef} action={formAction} className="space-y-4">
       {client ? <input type="hidden" name="id" value={client.id} /> : null}
       {state.message ? (
-        <Alert variant={state.success ? "default" : "destructive"}>
+        <Alert variant={state.success ? "success" : "destructive"}>
           {state.success ? (
-            <CheckCircle2 className="size-4 text-emerald-600" />
+            <CheckCircle2 className="text-success size-4" />
           ) : null}
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
@@ -68,12 +72,12 @@ export function ClientForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor={fieldId("phone")}>WhatsApp</Label>
-        <Input
+        <MaskedInput
+          mask="phone"
           id={fieldId("phone")}
           name="phone"
-          inputMode="tel"
-          required
           placeholder="(11) 98765-4321"
+          required
           defaultValue={client?.phone ?? ""}
         />
       </div>
@@ -96,7 +100,7 @@ export function ClientForm({
           defaultValue={client?.notes ?? ""}
         />
       </div>
-      <Button className="h-11 w-full" disabled={pending}>
+      <Button className="w-full" disabled={pending}>
         {client ? "Salvar cliente" : "Adicionar cliente"}
       </Button>
     </form>

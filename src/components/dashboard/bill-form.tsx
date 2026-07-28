@@ -30,9 +30,9 @@ export function BillForm({
       <CardContent>
         <form action={formAction} className="space-y-4">
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               {state.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>

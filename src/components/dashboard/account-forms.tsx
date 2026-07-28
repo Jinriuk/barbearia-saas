@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -15,10 +16,8 @@ const initialState: ActionState = { success: false, message: "" };
 function Feedback({ state }: { state: ActionState }) {
   if (!state.message) return null;
   return (
-    <Alert variant={state.success ? "default" : "destructive"}>
-      {state.success ? (
-        <CheckCircle2 className="size-4 text-emerald-600" />
-      ) : null}
+    <Alert variant={state.success ? "success" : "destructive"}>
+      {state.success ? <CheckCircle2 className="text-success size-4" /> : null}
       <AlertDescription>{state.message}</AlertDescription>
     </Alert>
   );
@@ -47,10 +46,11 @@ export function ProfileForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Telefone</Label>
-            <Input
+            <MaskedInput
+              mask="phone"
               id="phone"
               name="phone"
-              inputMode="tel"
+              placeholder="(11) 98765-4321"
               defaultValue={initial.phone}
             />
           </div>
@@ -84,6 +84,20 @@ export function PasswordForm() {
         <form action={formAction} className="space-y-4">
           <Feedback state={state} />
           <div className="space-y-2">
+            <Label htmlFor="current">Senha atual</Label>
+            <Input
+              id="current"
+              name="current"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+            <p className="text-muted-foreground text-xs">
+              Confirmamos quem você é antes de trocar — o painel costuma ficar
+              aberto no aparelho do balcão.
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="password">Nova senha</Label>
             <Input
               id="password"
@@ -105,6 +119,21 @@ export function PasswordForm() {
               required
             />
           </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="signOutOthers"
+              defaultChecked
+              className="border-input mt-0.5 size-4 rounded border"
+            />
+            <span>
+              Sair dos outros aparelhos
+              <span className="text-muted-foreground block text-xs">
+                Encerra a sessão em qualquer outro celular ou computador. Este
+                aparelho continua conectado.
+              </span>
+            </span>
+          </label>
           <Button disabled={pending}>
             {pending ? "Alterando…" : "Alterar senha"}
           </Button>

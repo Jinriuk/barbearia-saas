@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -32,11 +33,15 @@ export function ProfessionalForm({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4" key={state.success ? "ok" : "form"}>
+        <form
+          action={formAction}
+          className="space-y-4"
+          key={state.success ? "ok" : "form"}
+        >
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               {state.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
@@ -52,7 +57,7 @@ export function ProfessionalForm({
               <Input id="email" name="email" type="email" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha inicial</Label>
+              <Label htmlFor="password">Senha provisória</Label>
               <Input
                 id="password"
                 name="password"
@@ -61,12 +66,21 @@ export function ProfessionalForm({
                 placeholder="mín. 6 caracteres"
                 required
               />
+              <p className="text-muted-foreground text-xs">
+                Serve só para o primeiro acesso — a pessoa cria a própria senha
+                ao entrar.
+              </p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" name="phone" inputMode="tel" />
+              <MaskedInput
+                mask="phone"
+                id="phone"
+                name="phone"
+                placeholder="(11) 98765-4321"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Função</Label>
@@ -75,7 +89,7 @@ export function ProfessionalForm({
                 name="role"
                 value={role}
                 onChange={(event) => setRole(event.target.value)}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
               >
                 <option value="professional">Profissional</option>
                 <option value="receptionist">Secretária</option>
@@ -85,66 +99,66 @@ export function ProfessionalForm({
           </div>
 
           {isProfessional ? (
-          <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="commissionRate">Comissão (%)</Label>
-              <Input
-                id="commissionRate"
-                name="commissionRate"
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
-                defaultValue="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="baseSalary">Salário fixo (R$)</Label>
-              <Input
-                id="baseSalary"
-                name="baseSalary"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue="0"
-              />
-            </div>
-          </div>
-
-          {services.length ? (
-            <div className="space-y-2">
-              <Label>Serviços que realiza</Label>
-              <div className="grid max-h-40 gap-1.5 overflow-y-auto rounded-lg border p-3">
-                {services.map((service) => (
-                  <label
-                    key={service.id}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      name="serviceIds"
-                      value={service.id}
-                      defaultChecked
-                      className="size-4 rounded border"
-                    />
-                    {service.name}
-                  </label>
-                ))}
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="commissionRate">Comissão (%)</Label>
+                  <Input
+                    id="commissionRate"
+                    name="commissionRate"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    defaultValue="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="baseSalary">Salário fixo (R$)</Label>
+                  <Input
+                    id="baseSalary"
+                    name="baseSalary"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue="0"
+                  />
+                </div>
               </div>
-            </div>
-          ) : null}
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="available"
-              defaultChecked
-              className="size-4 rounded border"
-            />
-            Disponível para novos agendamentos
-          </label>
-          </>
+              {services.length ? (
+                <div className="space-y-2">
+                  <Label>Serviços que realiza</Label>
+                  <div className="grid max-h-40 gap-1.5 overflow-y-auto rounded-lg border p-3">
+                    {services.map((service) => (
+                      <label
+                        key={service.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          name="serviceIds"
+                          value={service.id}
+                          defaultChecked
+                          className="size-4 rounded border"
+                        />
+                        {service.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="available"
+                  defaultChecked
+                  className="size-4 rounded border"
+                />
+                Disponível para novos agendamentos
+              </label>
+            </>
           ) : null}
 
           <Button disabled={pending} className="w-full">

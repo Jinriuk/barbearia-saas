@@ -557,9 +557,9 @@ export default async function DashboardPage({
                 </p>
                 <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                   {metric.trend === "up" ? (
-                    <TrendingUp className="size-3.5 text-emerald-600" />
+                    <TrendingUp className="text-success size-3.5" />
                   ) : metric.trend === "down" ? (
-                    <TrendingDown className="size-3.5 text-rose-600" />
+                    <TrendingDown className="text-destructive size-3.5" />
                   ) : null}
                   {metric.hint}
                 </p>
@@ -680,10 +680,10 @@ export default async function DashboardPage({
           </Card>
 
           {reminders.length ? (
-            <Card className="border-emerald-300 dark:border-emerald-900">
+            <Card className="border-success/40">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <MessageCircle className="text-success size-4" />
                   Lembretes de amanhã
                 </CardTitle>
                 <span className="text-muted-foreground text-xs">
@@ -716,7 +716,7 @@ export default async function DashboardPage({
                         asChild
                         size="sm"
                         variant="outline"
-                        className="text-emerald-700 dark:text-emerald-400"
+                        className="text-success"
                       >
                         <a
                           href={item.whatsappHref}
@@ -758,9 +758,7 @@ export default async function DashboardPage({
                   <span className="text-sm font-medium">Lucro (caixa)</span>
                   <span
                     className={`font-mono text-xl font-semibold ${
-                      profitMonth >= 0
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400"
+                      profitMonth >= 0 ? "text-success" : "text-destructive"
                     }`}
                   >
                     {formatBRL(profitMonth)}
@@ -814,7 +812,7 @@ export default async function DashboardPage({
                           asChild
                           size="sm"
                           variant="outline"
-                          className="text-emerald-700 dark:text-emerald-400"
+                          className="text-success"
                         >
                           <a
                             href={client.whatsappHref}
@@ -856,7 +854,7 @@ function Row({
       <span className="text-muted-foreground text-sm">{label}</span>
       <span
         className={`font-mono text-sm font-semibold ${
-          tone === "negative" ? "text-rose-600 dark:text-rose-400" : ""
+          tone === "negative" ? "text-destructive" : ""
         }`}
       >
         {value}

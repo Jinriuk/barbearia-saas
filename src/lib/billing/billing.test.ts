@@ -12,6 +12,8 @@ function sub(partial: Partial<SubscriptionInfo>): SubscriptionInfo {
     priceCents: 4990,
     trialEndsAt: null,
     currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    cancellationEffectiveAt: null,
     ...partial,
   };
 }
@@ -30,10 +32,7 @@ describe("accessState — regra 7 dias trial / +5 bloqueia / +15 cancela", () =>
     const at = (offsetDays: number) =>
       new Date(NOW - offsetDays * DAY).toISOString();
     const trial = (endOffset: number) =>
-      accessState(
-        sub({ status: "trialing", trialEndsAt: at(endOffset) }),
-        NOW,
-      );
+      accessState(sub({ status: "trialing", trialEndsAt: at(endOffset) }), NOW);
     expect(trial(-3)).toBe("ok"); // termina em 3 dias
     expect(trial(1)).toBe("warn"); // venceu ontem
     expect(trial(6)).toBe("locked"); // venceu há 6 dias

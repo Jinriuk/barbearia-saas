@@ -53,6 +53,16 @@ export async function registerMovement(
     created_by: tenant.profileId,
   });
   if (error) {
+    // A trava de saldo (Fase 0 §0.8) vive no banco, então vale para qualquer
+    // caminho de saída — inclusive perda e ajuste manual, que antes deixavam
+    // o estoque negativo sem reclamar.
+    if (error.message?.includes("INSUFFICIENT_STOCK")) {
+      return {
+        success: false,
+        message:
+          "Saldo insuficiente para essa saída. Confira o estoque do produto — registre a entrada que falta antes de dar baixa.",
+      };
+    }
     return {
       success: false,
       message: "Não foi possível registrar. Tente de novo.",

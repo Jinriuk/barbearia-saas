@@ -76,7 +76,7 @@ export function SellMembershipSheet({
               name="clientId"
               required
               defaultValue=""
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               <option value="" disabled>
                 Escolha o cliente
@@ -96,7 +96,7 @@ export function SellMembershipSheet({
               name="planId"
               required
               defaultValue=""
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               <option value="" disabled>
                 Escolha o plano
@@ -119,7 +119,7 @@ export function SellMembershipSheet({
               name="paymentMethod"
               required
               defaultValue=""
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               <option value="" disabled>
                 Como o cliente pagou?

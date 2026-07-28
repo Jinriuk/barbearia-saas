@@ -186,7 +186,7 @@ export function AppointmentDetailSheet({
                   asChild
                   size="sm"
                   variant="outline"
-                  className="text-emerald-700 dark:text-emerald-400"
+                  className="text-success"
                 >
                   <a href={whatsappHref} target="_blank" rel="noreferrer">
                     <MessageCircle className="size-3.5" /> WhatsApp
@@ -278,7 +278,7 @@ export function AppointmentDetailSheet({
                       name="paymentMethod"
                       required
                       defaultValue=""
-                      className="border-input bg-background h-11 w-full rounded-md border px-3 text-base sm:text-sm"
+                      className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm md:h-11"
                     >
                       <option value="" disabled>
                         Escolha a forma de pagamento
@@ -333,7 +333,7 @@ export function AppointmentDetailSheet({
                     "Não compareceu",
                     UserX,
                     "outline",
-                    "text-rose-600 dark:text-rose-400",
+                    "text-destructive",
                   )
                 : null}
 

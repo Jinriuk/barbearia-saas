@@ -213,11 +213,7 @@ export default async function ClientProfilePage({
         action={
           <div className="flex flex-wrap items-center gap-2">
             {whatsappHref ? (
-              <Button
-                asChild
-                variant="outline"
-                className="text-emerald-700 dark:text-emerald-400"
-              >
+              <Button asChild variant="outline" className="text-success">
                 <a href={whatsappHref} target="_blank" rel="noreferrer">
                   <MessageCircle className="size-4" /> Chamar no WhatsApp
                 </a>
@@ -235,7 +231,7 @@ export default async function ClientProfilePage({
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge variant="outline">{returnLabel}</Badge>
         {planMeta ? (
-          <Badge variant="outline" className={planMeta.className}>
+          <Badge variant={planMeta.tone}>
             {planMeta.label}
             {client.membership_plan_name
               ? ` · ${client.membership_plan_name}`
@@ -357,7 +353,7 @@ export default async function ClientProfilePage({
                       </div>
                       <div className="text-right">
                         {item.covered_by_plan ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+                          <span className="text-warning inline-flex items-center gap-1 text-xs">
                             <Crown className="size-3.5" /> Coberto pelo plano
                           </span>
                         ) : item.amount !== null ? (
@@ -405,10 +401,9 @@ export default async function ClientProfilePage({
                     </div>
                     {membershipStatusMeta(membership.effective_status) ? (
                       <Badge
-                        variant="outline"
-                        className={
+                        variant={
                           membershipStatusMeta(membership.effective_status)!
-                            .className
+                            .tone
                         }
                       >
                         {

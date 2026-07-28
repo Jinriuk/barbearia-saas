@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { track } from "@vercel/analytics";
 import { LoaderCircle, Send } from "lucide-react";
+import {
+  CONSENT_TEXT_VERSION,
+  consentText,
+  type LeadVertical,
+} from "@/lib/leads/consent";
 
 /**
  * Captura de lead da landing (Fase 5): etapa curta — nome, um contato com
@@ -12,8 +18,29 @@ import { LoaderCircle, Send } from "lucide-react";
 export function LeadCaptureForm({
   vertical = "barber",
 }: {
-  vertical?: "barber" | "salon";
+  vertical?: LeadVertical;
 }) {
+  // A landing de salão é CLARA e este formulário nasceu na landing escura:
+  // os campos ficavam com texto quase branco sobre fundo quase branco — quem
+  // digitava não enxergava o que escreveu (item 5.9 do plano, antecipado aqui
+  // porque a Fase 0 já mexeu neste componente pelo §0.5).
+  const light = vertical === "salon";
+  const fieldClass = light
+    ? "h-12 rounded-xl border border-[#33202b]/15 bg-white px-4 text-[15px] text-[#33202b] placeholder:text-[#33202b]/40"
+    : "h-12 rounded-xl border border-white/15 bg-white/5 px-4 text-[15px] text-stone-100 placeholder:text-stone-500";
+  const selectClass = light
+    ? "h-12 rounded-xl border border-[#33202b]/15 bg-white px-3 text-sm text-[#33202b]"
+    : "h-12 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-stone-100";
+  const consentClass = light
+    ? "flex items-start gap-2 text-xs leading-5 text-[#33202b]/70"
+    : "flex items-start gap-2 text-xs leading-5 text-stone-400";
+  const checkboxClass = light
+    ? "mt-0.5 size-4 rounded border-[#33202b]/25"
+    : "mt-0.5 size-4 rounded border-white/20 bg-white/5";
+  const buttonClass = light
+    ? "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#c2497c] px-6 text-[15px] font-semibold text-white transition-colors hover:bg-[#a93a69] disabled:opacity-50"
+    : "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-500 px-6 text-[15px] font-semibold text-stone-950 transition-colors hover:bg-amber-400 disabled:opacity-50";
+
   const [channel, setChannel] = useState<"whatsapp" | "email">("whatsapp");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">(
     "idle",
@@ -51,6 +78,8 @@ export function LeadCaptureForm({
           vertical,
           utm,
           sourcePage: window.location.pathname,
+          // Qual redação a pessoa leu ao marcar a caixa (Fase 0 §0.4).
+          consentTextVersion: CONSENT_TEXT_VERSION,
         }),
       });
       const result = (await response.json().catch(() => null)) as {
@@ -73,11 +102,29 @@ export function LeadCaptureForm({
 
   if (status === "done") {
     return (
-      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
-        <p className="font-medium text-emerald-300">
+      <div
+        className={
+          light
+            ? "rounded-2xl border border-emerald-600/30 bg-emerald-50 p-6 text-center"
+            : "rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center"
+        }
+      >
+        <p
+          className={
+            light
+              ? "font-medium text-emerald-800"
+              : "font-medium text-emerald-300"
+          }
+        >
           Recebido! Vamos falar com você em breve.
         </p>
-        <p className="mt-1 text-sm text-stone-400">
+        <p
+          className={
+            light
+              ? "mt-1 text-sm text-[#33202b]/70"
+              : "mt-1 text-sm text-stone-400"
+          }
+        >
           Enquanto isso, você já pode começar o teste grátis por conta própria.
         </p>
       </div>
@@ -93,7 +140,7 @@ export function LeadCaptureForm({
         maxLength={100}
         placeholder="Seu nome"
         aria-label="Seu nome"
-        className="h-12 rounded-xl border border-white/15 bg-white/5 px-4 text-[15px] text-stone-100 placeholder:text-stone-500"
+        className={fieldClass}
       />
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <select
@@ -102,7 +149,7 @@ export function LeadCaptureForm({
             setChannel(event.target.value as "whatsapp" | "email")
           }
           aria-label="Canal de contato"
-          className="h-12 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-stone-100"
+          className={selectClass}
         >
           <option value="whatsapp">WhatsApp</option>
           <option value="email">E-mail</option>
@@ -117,28 +164,33 @@ export function LeadCaptureForm({
             channel === "email" ? "voce@email.com" : "(11) 98765-4321"
           }
           aria-label="Seu contato"
-          className="h-12 rounded-xl border border-white/15 bg-white/5 px-4 text-[15px] text-stone-100 placeholder:text-stone-500"
+          className={fieldClass}
         />
       </div>
       <select
         name="plan"
         defaultValue=""
         aria-label="Plano de interesse"
-        className="h-12 rounded-xl border border-white/15 bg-white/5 px-3 text-sm text-stone-100"
+        className={selectClass}
       >
         <option value="">Plano de interesse (opcional)</option>
         <option value="starter">Padrão</option>
         <option value="plus">Plus</option>
       </select>
-      <label className="flex items-start gap-2 text-xs leading-5 text-stone-400">
+      <label className={consentClass}>
         <input
           type="checkbox"
           name="consent"
           required
-          className="mt-0.5 size-4 rounded border-white/20 bg-white/5"
+          className={checkboxClass}
         />
-        Autorizo o contato do NexoBarber sobre o produto por este canal. Sem
-        spam — e você pode pedir para parar quando quiser.
+        <span>
+          {consentText(vertical)}{" "}
+          <Link href="/privacidade" className="underline underline-offset-2">
+            Política de privacidade
+          </Link>
+          .
+        </span>
       </label>
       {status === "error" ? (
         <p className="text-sm text-red-400">{message}</p>
@@ -146,7 +198,7 @@ export function LeadCaptureForm({
       <button
         type="submit"
         disabled={status === "sending"}
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-500 px-6 text-[15px] font-semibold text-stone-950 transition-colors hover:bg-amber-400 disabled:opacity-50"
+        className={buttonClass}
       >
         {status === "sending" ? (
           <LoaderCircle className="size-4 animate-spin" />

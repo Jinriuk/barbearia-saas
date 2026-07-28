@@ -20,8 +20,7 @@ const actionsByStatus: Record<
       label: "Confirmar",
       icon: Check,
       variant: "outline",
-      className:
-        "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900 dark:text-emerald-400",
+      className: "border-success/40 text-success hover:bg-success-bg",
     },
     // Horário que passou sem nunca ter sido confirmado também é falta — o
     // balcão não deve precisar confirmar um atendimento que não aconteceu.
@@ -31,7 +30,7 @@ const actionsByStatus: Record<
       icon: UserX,
       variant: "ghost",
       notInFuture: true,
-      className: "text-rose-600 dark:text-rose-400",
+      className: "text-destructive",
     },
     {
       status: "canceled",
@@ -49,7 +48,7 @@ const actionsByStatus: Record<
       variant: "outline",
       notInFuture: true,
       className:
-        "border-violet-300 text-violet-700 hover:bg-violet-50 hover:text-violet-800 dark:border-violet-900 dark:text-violet-400",
+        "border-accent-purple/40 text-accent-purple hover:bg-accent-purple/10",
     },
     {
       status: "completed",
@@ -57,8 +56,7 @@ const actionsByStatus: Record<
       icon: CheckCheck,
       variant: "outline",
       notInFuture: true,
-      className:
-        "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900 dark:text-emerald-400",
+      className: "border-success/40 text-success hover:bg-success-bg",
     },
     {
       status: "no_show",
@@ -66,7 +64,7 @@ const actionsByStatus: Record<
       icon: UserX,
       variant: "ghost",
       notInFuture: true,
-      className: "text-rose-600 dark:text-rose-400",
+      className: "text-destructive",
     },
     {
       status: "canceled",
@@ -82,8 +80,7 @@ const actionsByStatus: Record<
       label: "Concluir",
       icon: CheckCheck,
       variant: "outline",
-      className:
-        "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900 dark:text-emerald-400",
+      className: "border-success/40 text-success hover:bg-success-bg",
     },
     {
       status: "confirmed",

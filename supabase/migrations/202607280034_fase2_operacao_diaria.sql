@@ -220,93 +220,40 @@ grant execute on function public.get_agenda_month(uuid, timestamptz, timestamptz
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. Estoque: saldo somado no banco (item 0.6) e trava de negativo (0.8).
---
--- O painel somava as 400 movimentações mais recentes no navegador, então a
--- partir da 401ª as entradas antigas sumiam do cálculo e o saldo exibido
--- tendia ao negativo. Agora a soma é do ledger inteiro, uma linha por
--- produto, no banco.
-create or replace function public.get_product_stock(p_barbershop uuid)
-returns table (
-  product_id uuid,
-  balance numeric,
-  reserved numeric,
-  last_movement_at timestamptz
-)
-language sql
-stable
-security invoker
-set search_path = public
-as $$
-  select
-    p.id,
-    coalesce(mv.balance, 0)::numeric,
-    coalesce(rs.reserved, 0)::numeric,
-    mv.last_movement_at
-  from public.products p
-  left join lateral (
-    select
-      sum(case when m.type in ('purchase', 'adjustment_in', 'return')
-            then m.quantity else -m.quantity end) as balance,
-      max(m.created_at) as last_movement_at
-    from public.inventory_movements m
-    where m.barbershop_id = p.barbershop_id and m.product_id = p.id
-  ) mv on true
-  left join lateral (
-    select sum(ap.quantity) as reserved
-    from public.appointment_products ap
-    where ap.barbershop_id = p.barbershop_id
-      and ap.product_id = p.id
-      and ap.status = 'pending'
-  ) rs on true
-  where p.barbershop_id = p_barbershop;
-$$;
-revoke all on function public.get_product_stock(uuid) from public, anon;
-grant execute on function public.get_product_stock(uuid) to authenticated;
-
--- Trava de estoque negativo: valia só no caminho da venda reservada, então
--- uma "Saída — perda" de 100 unidades num produto zerado deixava −100.
-create or replace function public.enforce_stock_never_negative()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_balance numeric;
-begin
-  if new.type in ('purchase', 'adjustment_in', 'return') then
-    return new;
-  end if;
-
-  -- Serializa as saídas concorrentes do mesmo produto.
-  perform 1 from public.products
-  where id = new.product_id and barbershop_id = new.barbershop_id
-  for update;
-
-  select coalesce(sum(
+-- 3. Estoque: a Fase 0 já resolveu o saldo (view product_stock_balances) e a
+--    trava de negativo (trigger trg_enforce_inventory_balance). Aqui a view
+--    só ganha a data da última movimentação, que a lista de produtos passa a
+--    exibir por linha (§7.6). `create or replace view` aceita acrescentar
+--    coluna no fim — a ordem das existentes não muda.
+create or replace view public.product_stock_balances
+with (security_invoker = true) as
+select
+  p.id as product_id,
+  p.barbershop_id,
+  coalesce(mv.on_hand, 0)::numeric(12, 3) as on_hand,
+  coalesce(rv.reserved, 0)::numeric(12, 3) as reserved,
+  (coalesce(mv.on_hand, 0) - coalesce(rv.reserved, 0))::numeric(12, 3)
+    as available,
+  mv.last_movement_at
+from public.products p
+left join lateral (
+  select sum(
     case when m.type in ('purchase', 'adjustment_in', 'return')
       then m.quantity else -m.quantity end
-  ), 0)
-  into v_balance
+  ) as on_hand,
+  max(m.created_at) as last_movement_at
   from public.inventory_movements m
-  where m.barbershop_id = new.barbershop_id and m.product_id = new.product_id;
+  where m.product_id = p.id and m.barbershop_id = p.barbershop_id
+) mv on true
+left join lateral (
+  select sum(ap.quantity) as reserved
+  from public.appointment_products ap
+  where ap.product_id = p.id
+    and ap.barbershop_id = p.barbershop_id
+    and ap.status = 'pending'
+) rv on true;
 
-  if v_balance - new.quantity < 0 then
-    raise exception 'INSUFFICIENT_STOCK' using errcode = 'P0001';
-  end if;
-
-  return new;
-end;
-$$;
-revoke all on function public.enforce_stock_never_negative()
-  from public, anon, authenticated;
-
-drop trigger if exists trg_enforce_stock_never_negative on public.inventory_movements;
-create trigger trg_enforce_stock_never_negative
-before insert on public.inventory_movements
-for each row
-execute function public.enforce_stock_never_negative();
+grant select on public.product_stock_balances to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Venda de balcão (item 2.6): venda avulsa, sem agendamento.
@@ -474,8 +421,9 @@ begin
     values
       (p_barbershop, v_sale_id, v_product_id, v_quantity, v_price);
 
-    -- A trava de estoque negativo mora no trigger da tabela: se faltar
-    -- saldo, INSUFFICIENT_STOCK derruba a venda inteira.
+    -- A trava de estoque negativo é o trigger da Fase 0.8
+    -- (trg_enforce_inventory_balance): se faltar saldo, INSUFFICIENT_STOCK
+    -- derruba a venda inteira, itens e receita junto.
     insert into public.inventory_movements
       (barbershop_id, product_id, type, quantity, reason, created_by)
     values
@@ -577,51 +525,104 @@ $$;
 revoke all on function public.get_top_products(uuid, integer) from public, anon;
 grant execute on function public.get_top_products(uuid, integer) to authenticated;
 
--- Relatório de produtos vendidos no período — reserva do agendamento E
--- venda de balcão. Antes o Financeiro lia só appointment_products, e uma
--- venda avulsa apareceria no total sem aparecer na tabela.
-create or replace function public.get_product_sales(
+-- O relatório do Financeiro é o revenue_breakdown da Fase 0, que só conhecia
+-- a reserva do agendamento. Sem esta reescrita, uma venda de balcão entraria
+-- no total do mês e sumiria da tabela "Vendas de produtos" ao lado dele.
+-- O desconto é da venda inteira; rateado por item, a soma da tabela fecha
+-- com o "vendido" em vez de ficar sempre maior.
+create or replace function public.revenue_breakdown(
   p_barbershop uuid,
   p_from timestamptz,
   p_to timestamptz
+) returns table (
+  kind text,
+  ref_id uuid,
+  label text,
+  total numeric,
+  quantity numeric
 )
-returns table (product_name text, units numeric, revenue numeric)
 language sql
 stable
 security invoker
 set search_path = public
 as $$
-  select pd.name,
-         sum(s.units)::numeric,
-         sum(s.revenue)::numeric
-  from (
-    -- O desconto é da venda inteira; rateado por item, a soma da tabela
-    -- fecha com o "vendido" do Financeiro em vez de ficar sempre maior.
+  with product_lines as (
+    -- Porta 1: produto reservado no agendamento e confirmado no balcão.
+    select ap.product_id,
+           a.professional_id,
+           (ap.quantity * ap.unit_price)::numeric as total,
+           ap.quantity::numeric as quantity
+    from public.appointment_products ap
+    join public.appointments a on a.id = ap.appointment_id
+    where ap.barbershop_id = p_barbershop
+      and ap.status = 'confirmed'
+      and ap.confirmed_at >= p_from and ap.confirmed_at < p_to
+
+    union all
+
+    -- Porta 2: venda de balcão (Fase 2.6), com o vendedor escolhido na tela.
     select ci.product_id,
-           ci.quantity::numeric as units,
+           cs.professional_id,
            (ci.quantity * ci.unit_price
              * case when cs.subtotal > 0 then cs.total / cs.subtotal else 1 end
-           )::numeric as revenue
+           )::numeric,
+           ci.quantity::numeric
     from public.counter_sale_items ci
     join public.counter_sales cs on cs.id = ci.sale_id
     where ci.barbershop_id = p_barbershop
       and ci.created_at >= p_from and ci.created_at < p_to
-    union all
-    select ap.product_id,
-           ap.quantity::numeric,
-           (ap.quantity * ap.unit_price)::numeric
-    from public.appointment_products ap
-    where ap.barbershop_id = p_barbershop
-      and ap.status = 'confirmed'
-      and ap.confirmed_at >= p_from and ap.confirmed_at < p_to
-  ) s
-  join public.products pd on pd.id = s.product_id
-  group by pd.name
-  order by sum(s.revenue) desc;
+  )
+  -- Serviço: receita de atendimento (produto é tratado à parte, pelo ledger de
+  -- reservas confirmadas, que é onde a quantidade existe).
+  select 'professional'::text, pr.id, pr.name,
+         coalesce(sum(ft.amount), 0)::numeric, count(*)::numeric
+  from public.financial_transactions ft
+  join public.appointments a on a.id = ft.appointment_id
+  join public.professionals pr on pr.id = a.professional_id
+  where ft.barbershop_id = p_barbershop
+    and ft.type = 'income'
+    and ft.status <> 'canceled'
+    and ft.category <> 'product'
+    and ft.created_at >= p_from and ft.created_at < p_to
+  group by pr.id, pr.name
+
+  union all
+
+  select 'service'::text, s.id, s.name,
+         coalesce(sum(ft.amount), 0)::numeric, count(*)::numeric
+  from public.financial_transactions ft
+  join public.appointments a on a.id = ft.appointment_id
+  join public.services s on s.id = a.service_id
+  where ft.barbershop_id = p_barbershop
+    and ft.type = 'income'
+    and ft.status <> 'canceled'
+    and ft.category <> 'product'
+    and ft.created_at >= p_from and ft.created_at < p_to
+  group by s.id, s.name
+
+  union all
+
+  select 'product'::text, pd.id, pd.name,
+         coalesce(sum(pl.total), 0)::numeric,
+         coalesce(sum(pl.quantity), 0)::numeric
+  from product_lines pl
+  join public.products pd on pd.id = pl.product_id
+  group by pd.id, pd.name
+
+  union all
+
+  -- Produto vendido, por profissional — o painel mostra os dois cortes lado
+  -- a lado. Venda de balcão sem vendedor escolhido não entra neste corte.
+  select 'product_professional'::text, pr.id, pr.name,
+         coalesce(sum(pl.total), 0)::numeric,
+         coalesce(sum(pl.quantity), 0)::numeric
+  from product_lines pl
+  join public.professionals pr on pr.id = pl.professional_id
+  group by pr.id, pr.name;
 $$;
-revoke all on function public.get_product_sales(uuid, timestamptz, timestamptz)
+revoke all on function public.revenue_breakdown(uuid, timestamptz, timestamptz)
   from public, anon;
-grant execute on function public.get_product_sales(uuid, timestamptz, timestamptz)
+grant execute on function public.revenue_breakdown(uuid, timestamptz, timestamptz)
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -701,18 +702,20 @@ grant execute on function public.complete_and_receive_appointment(
 ) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 6. Inteligência de clientes v2 (itens 2.4, 2.5 e 0.13).
+-- 6. Inteligência de clientes v3 (itens 2.4 e 2.5).
 --
--- Mudanças em relação a 202607240026:
---   a) segmentos 'assinantes' e 'inadimplentes' (prometidos na Fase 3,
---      adiados para a 4 e nunca entregues);
---   b) colunas membership_status / membership_plan_name, para a situação do
---      plano aparecer por linha e no perfil;
---   c) p_client_id, que devolve UM cliente sem filtro de segmento — é a
---      mesma fonte de verdade alimentando o perfil em /clientes/[id];
---   d) o gasto passa a incluir o pagamento de plano. Antes o total vinha só
---      de receitas amarradas a um agendamento, então o assinante — cujo
---      atendimento é coberto e não gera receita — aparecia com R$ 0,00.
+-- Parte da versão da Fase 0 (que já corrigiu o gasto do assinante, §0.13) e
+-- acrescenta o que a Fase 2 precisa:
+--   a) segmentos 'assinantes' e 'inadimplentes' — prometidos na Fase 3 do
+--      plano antigo, adiados para a 4 e nunca entregues;
+--   b) colunas membership_status / membership_plan_name / membership_period_end,
+--      para a situação do plano aparecer por linha e no perfil;
+--   c) notes e no_show_count, que o perfil do cliente exibe;
+--   d) p_client_id, que devolve UM cliente sem filtro de segmento — é a mesma
+--      fonte de verdade alimentando /clientes e /clientes/[id];
+--   e) a venda de balcão (Fase 2.6) no gasto do cliente. Ela entra pela
+--      financial_transactions sem appointment_id, igual à mensalidade do
+--      plano, então precisa do mesmo tratamento por transaction_id.
 drop function if exists public.get_client_insights(uuid, text, text, integer, integer);
 create function public.get_client_insights(
   p_barbershop uuid,
@@ -797,33 +800,50 @@ begin
     where a.barbershop_id = p_barbershop and a.status = 'no_show'
     group by a.client_id
   ),
-  -- Gasto do cliente: receita paga amarrada a um atendimento dele MAIS os
-  -- pagamentos de plano do clube. Sem a segunda parte o assinante — o
-  -- cliente mais valioso — aparecia zerado.
+  paid_entries as (
+    -- Receita ligada a atendimento (serviço e produto).
+    select a.client_id, ft.amount
+    from public.financial_transactions ft
+    join public.appointments a on a.id = ft.appointment_id
+    where ft.barbershop_id = p_barbershop
+      and ft.type = 'income'
+      and ft.status = 'paid'
+    union all
+    -- Mensalidade do plano do cliente (Fase 0 §0.13): chega sem
+    -- appointment_id e era o que zerava o gasto do assinante.
+    --
+    -- Passa pela financial_transactions em vez de somar mp.amount direto para
+    -- manter o mesmo critério do ramo de cima (status = 'paid'): cobrança
+    -- estornada por revert_income_payment ou anulada por
+    -- cancel_income_transaction não pode contar como gasto. Não duplica —
+    -- essas transações têm appointment_id nulo, então nunca caem no ramo de
+    -- cima.
+    select m.client_id, ft.amount
+    from public.membership_payments mp
+    join public.customer_memberships m on m.id = mp.membership_id
+    join public.financial_transactions ft on ft.id = mp.transaction_id
+    where mp.barbershop_id = p_barbershop
+      and ft.barbershop_id = p_barbershop
+      and ft.type = 'income'
+      and ft.status = 'paid'
+    union all
+    -- Venda de balcão identificada (Fase 2.6): mesmo caso da mensalidade —
+    -- receita sem agendamento, ligada ao cliente pela venda.
+    select cs.client_id, ft.amount
+    from public.counter_sales cs
+    join public.financial_transactions ft on ft.id = cs.transaction_id
+    where cs.barbershop_id = p_barbershop
+      and cs.client_id is not null
+      and ft.barbershop_id = p_barbershop
+      and ft.type = 'income'
+      and ft.status = 'paid'
+  ),
   spend as (
-    select s.client_id,
-           sum(s.amount) as total_spent,
+    select pe.client_id,
+           sum(pe.amount) as total_spent,
            count(*) as paid_count
-    from (
-      select a.client_id, ft.amount
-      from public.financial_transactions ft
-      join public.appointments a on a.id = ft.appointment_id
-      where ft.barbershop_id = p_barbershop
-        and ft.type = 'income'
-        and ft.status = 'paid'
-      union all
-      select cs.client_id, cs.total
-      from public.counter_sales cs
-      where cs.barbershop_id = p_barbershop
-        and cs.client_id is not null
-        and cs.payment_method is not null
-      union all
-      select m.client_id, mp.amount
-      from public.membership_payments mp
-      join public.customer_memberships m on m.id = mp.membership_id
-      where mp.barbershop_id = p_barbershop
-    ) s
-    group by s.client_id
+    from paid_entries pe
+    group by pe.client_id
   ),
   contacts as (
     select distinct on (cc.client_id)
@@ -962,6 +982,7 @@ revoke all on function public.get_client_insights(
 grant execute on function public.get_client_insights(
   uuid, text, text, integer, integer, uuid
 ) to authenticated;
+
 
 -- count_clients_to_call chamava a assinatura antiga (5 argumentos).
 create or replace function public.count_clients_to_call(p_barbershop uuid)
@@ -1194,19 +1215,24 @@ begin
       and a.client_id = p_client_id
       and ft.type = 'income' and ft.status = 'paid'
     union all
-    select cs.created_at, 'Venda de balcão', cs.total, cs.payment_method,
+    -- Pela financial_transactions, e não por cs.payment_method: venda
+    -- estornada depois não pode continuar aparecendo como dinheiro pago.
+    select ft.paid_at, 'Venda de balcão', ft.amount, ft.payment_method,
            'product'
     from public.counter_sales cs
+    join public.financial_transactions ft on ft.id = cs.transaction_id
     where cs.barbershop_id = p_barbershop
       and cs.client_id = p_client_id
-      and cs.payment_method is not null
+      and ft.type = 'income' and ft.status = 'paid'
     union all
-    select mp.paid_at, 'Plano ' || pl.name, mp.amount, mp.payment_method,
+    select ft.paid_at, 'Plano ' || pl.name, ft.amount, ft.payment_method,
            'membership'
     from public.membership_payments mp
     join public.customer_memberships m on m.id = mp.membership_id
     join public.customer_membership_plans pl on pl.id = m.plan_id
+    join public.financial_transactions ft on ft.id = mp.transaction_id
     where mp.barbershop_id = p_barbershop and m.client_id = p_client_id
+      and ft.type = 'income' and ft.status = 'paid'
   ) pay
   order by pay.paid_at desc nulls last
   limit least(greatest(coalesce(p_limit, 20), 1), 100);

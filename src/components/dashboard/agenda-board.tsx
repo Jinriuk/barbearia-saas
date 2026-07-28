@@ -369,7 +369,7 @@ export function AgendaBoard({
                             </p>
                           ) : null}
                           {!compact && item.status === "completed" ? (
-                            <p className="truncate font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            <p className="text-success truncate font-mono text-[11px] font-semibold">
                               {formatBRL(item.price)}
                             </p>
                           ) : null}
@@ -389,12 +389,12 @@ export function AgendaBoard({
                     nowMinute <= windowEnd ? (
                       <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-rose-500"
+                        className="border-destructive pointer-events-none absolute inset-x-0 z-10 border-t-2"
                         style={{
                           top: (nowMinute - windowStart) * PX_PER_MIN,
                         }}
                       >
-                        <span className="absolute -top-1 -left-0.5 size-2 rounded-full bg-rose-500" />
+                        <span className="bg-destructive absolute -top-1 -left-0.5 size-2 rounded-full" />
                       </div>
                     ) : null}
                   </div>

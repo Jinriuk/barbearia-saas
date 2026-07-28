@@ -23,6 +23,7 @@ import {
   toggleProductVisible,
 } from "@/modules/products/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { ProductFormSheet } from "@/components/dashboard/product-form-sheet";
@@ -61,9 +62,10 @@ export default async function ProductsPage() {
 
   const [
     { data: productData },
+    { data: balanceData },
     { data: movementData },
     { data: reservationData },
-    { data: stockData },
+    { count: reservationCount },
   ] = await Promise.all([
     supabase
       .from("products")
@@ -72,12 +74,21 @@ export default async function ProductsPage() {
       )
       .eq("barbershop_id", tenant.id)
       .order("name"),
+    // Saldo somado no banco (Fase 0 §0.6). Antes o ledger era somado aqui
+    // sobre as 400 movimentações mais recentes: da 401ª em diante o estoque
+    // exibido era ficção, e ninguém via que estava errado.
+    supabase
+      .from("product_stock_balances")
+      .select("product_id,on_hand,reserved,last_movement_at")
+      .eq("barbershop_id", tenant.id),
+    // A lista abaixo é só o histórico visível na tela (12 linhas); nenhuma
+    // conta depende dela.
     supabase
       .from("inventory_movements")
       .select("id,product_id,type,quantity,reason,created_at")
       .eq("barbershop_id", tenant.id)
       .order("created_at", { ascending: false })
-      .limit(400),
+      .limit(20),
     // Reservas pendentes (produtos escolhidos no agendamento, ainda não vendidos).
     supabase
       .from("appointment_products")
@@ -88,38 +99,32 @@ export default async function ProductsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(100),
-    // Saldo somado NO BANCO, sobre o ledger inteiro. A soma no navegador
-    // usava as 400 movimentações mais recentes: passando disso, as entradas
-    // antigas sumiam da conta e o estoque exibido virava ficção.
-    supabase.rpc("get_product_stock", { p_barbershop: tenant.id }),
+    // Contagem real das reservas pendentes: a lista acima é uma página de 100
+    // e o selo anunciava o tamanho da página como se fosse o total.
+    supabase
+      .from("appointment_products")
+      .select("id", { count: "exact", head: true })
+      .eq("barbershop_id", tenant.id)
+      .eq("status", "pending"),
   ]);
 
   const products = productData ?? [];
   const movements = movementData ?? [];
   const reservations = reservationData ?? [];
 
-  const stockRows = (stockData ?? []) as Array<{
-    product_id: string;
-    balance: number;
-    reserved: number;
-    last_movement_at: string | null;
-  }>;
-  const stockByProduct = new Map(
-    stockRows.map((row) => [
-      row.product_id,
-      {
-        balance: Number(row.balance),
-        reserved: Number(row.reserved),
-        lastMovementAt: row.last_movement_at,
-      },
-    ]),
-  );
+  const stockByProduct = new Map<string, number>();
+  const reservedByProduct = new Map<string, number>();
+  const lastMovementByProduct = new Map<string, string | null>();
+  for (const balance of balanceData ?? []) {
+    stockByProduct.set(balance.product_id, Number(balance.on_hand));
+    reservedByProduct.set(balance.product_id, Number(balance.reserved));
+    lastMovementByProduct.set(balance.product_id, balance.last_movement_at);
+  }
   const productNames = new Map(products.map((item) => [item.id, item.name]));
 
-  const stockOf = (id: string) => stockByProduct.get(id)?.balance ?? 0;
-  const reservedOf = (id: string) => stockByProduct.get(id)?.reserved ?? 0;
-  const lastMovementOf = (id: string) =>
-    stockByProduct.get(id)?.lastMovementAt ?? null;
+  const stockOf = (id: string) => stockByProduct.get(id) ?? 0;
+  const reservedOf = (id: string) => reservedByProduct.get(id) ?? 0;
+  const lastMovementOf = (id: string) => lastMovementByProduct.get(id) ?? null;
   const activeProducts = products.filter((product) => product.active);
   const stockValue = activeProducts.reduce(
     (total, product) =>
@@ -185,12 +190,13 @@ export default async function ProductsPage() {
           </div>
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
 
       {!plus ? (
         <Alert className="mb-6">
           <Sparkles className="size-4" />
           <AlertDescription>
-            O upsell de produtos no checkout é exclusivo do plano{" "}
+            Oferecer produtos ao cliente no agendamento é exclusivo do plano{" "}
             <strong>Plus</strong>. No Padrão você ainda gerencia o catálogo e o
             estoque, mas ele não aparece no agendamento do cliente.
           </AlertDescription>
@@ -214,15 +220,23 @@ export default async function ProductsPage() {
       </div>
 
       {reservations.length ? (
-        <Card className="mb-6 border-amber-300 dark:border-amber-900">
+        <Card className="border-warning/40 mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingBag className="size-4" /> Reservas de produtos pendentes
-              <Badge variant="secondary">{reservations.length}</Badge>
+              <Badge variant="secondary">
+                {reservationCount ?? reservations.length}
+              </Badge>
             </CardTitle>
+            {(reservationCount ?? 0) > reservations.length ? (
+              <p className="text-muted-foreground text-sm">
+                Mostrando as {reservations.length} mais recentes de{" "}
+                {reservationCount}.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -248,16 +262,25 @@ export default async function ProductsPage() {
                         <TableCell className="font-medium">
                           {clientName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-label="Produto">
                           {first(reservation.product)?.name ?? "Produto"}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Qtd."
+                          className="text-right font-mono"
+                        >
                           {reservation.quantity}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Total"
+                          className="text-right font-mono"
+                        >
                           {formatBRL(total)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell
+                          data-label="Profissional"
+                          className="text-muted-foreground"
+                        >
                           {professionalName}
                         </TableCell>
                         <TableCell className="text-right">
@@ -280,7 +303,7 @@ export default async function ProductsPage() {
       {!products.length ? (
         <EmptyState
           title="Nenhum produto ainda"
-          description="Cadastre produtos para vender no balcão e no checkout do agendamento."
+          description="Cadastre produtos para vender no balcão e oferecer ao cliente no agendamento."
         />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -289,7 +312,7 @@ export default async function ProductsPage() {
               <CardTitle className="text-base">Catálogo e saldo</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -322,43 +345,61 @@ export default async function ProductsPage() {
                               {product.description || "Sem descrição"}
                             </p>
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Preço"
+                            className="text-right font-mono"
+                          >
                             {formatBRL(Number(product.sale_price))}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            <span className={low ? "text-amber-600" : ""}>
+                          <TableCell
+                            data-label="Estoque"
+                            className="text-right font-mono"
+                          >
+                            <span className={low ? "text-warning" : ""}>
                               {stock.toLocaleString("pt-BR")}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right font-mono">
+                          <TableCell
+                            data-label="Reservado"
+                            className="text-muted-foreground text-right font-mono"
+                          >
                             {reserved.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Disponível"
+                            className="text-right font-mono"
+                          >
                             {available.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right font-mono">
+                          <TableCell
+                            data-label="Mínimo"
+                            className="text-muted-foreground text-right font-mono"
+                          >
                             {Number(product.minimum_stock) > 0
                               ? Number(product.minimum_stock).toLocaleString(
                                   "pt-BR",
                                 )
                               : "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-xs">
+                          <TableCell
+                            data-label="Última movimentação"
+                            className="text-muted-foreground text-xs"
+                          >
                             {lastMovement
                               ? `${formatShortDateInTz(lastMovement, tenant.timezone)} ${formatTimeInTz(lastMovement, tenant.timezone)}`
                               : "Nunca"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Situação">
                             <div className="flex flex-wrap gap-1">
                               <Badge
-                                variant={
-                                  product.active ? "default" : "secondary"
-                                }
+                                variant={product.active ? "success" : "neutral"}
                               >
                                 {product.active ? "Ativo" : "Oculto"}
                               </Badge>
                               {product.public_visible ? (
-                                <Badge variant="outline">Checkout</Badge>
+                                <Badge variant="outline">
+                                  Oferecido no agendamento
+                                </Badge>
                               ) : null}
                             </div>
                           </TableCell>
@@ -387,10 +428,10 @@ export default async function ProductsPage() {
                                     }
                                     title={
                                       product.public_visible
-                                        ? "Tirar do checkout do agendamento"
-                                        : "Oferecer no checkout do agendamento"
+                                        ? "Parar de oferecer no agendamento"
+                                        : "Oferecer ao cliente no agendamento"
                                     }
-                                    aria-label="Alternar checkout"
+                                    aria-label="Alternar oferta no agendamento"
                                   >
                                     <ShoppingBag className="size-4" />
                                   </Button>
@@ -455,9 +496,9 @@ export default async function ProductsPage() {
                 }))}
               />
               {lowStock.length ? (
-                <Card className="border-amber-300 dark:border-amber-900">
+                <Card className="border-warning/40">
                   <CardContent className="flex items-center gap-3 pt-6 text-sm">
-                    <AlertTriangle className="size-4 shrink-0 text-amber-600" />
+                    <AlertTriangle className="text-warning size-4 shrink-0" />
                     <span>
                       <strong>{lowStock.length}</strong> produto(s) abaixo do
                       estoque mínimo:{" "}
@@ -483,7 +524,7 @@ export default async function ProductsPage() {
                             className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm"
                           >
                             <span
-                              className={`font-mono ${isIn ? "text-emerald-600" : "text-rose-600"}`}
+                              className={`font-mono ${isIn ? "text-success" : "text-destructive"}`}
                             >
                               {isIn ? "+" : "−"}
                               {Number(movement.quantity).toLocaleString(
@@ -516,7 +557,7 @@ export default async function ProductsPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-6 text-center text-sm">
-                      Nenhuma movimentação registrada ainda.
+                      Nenhuma entrada ou saída registrada ainda.
                     </p>
                   )}
                 </CardContent>

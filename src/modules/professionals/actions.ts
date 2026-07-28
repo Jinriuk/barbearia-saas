@@ -103,6 +103,15 @@ export async function createProfessionalWithAccess(
     return { success: false, message: "Falha ao vincular o perfil." };
   }
 
+  // A senha aqui foi digitada pelo DONO, na frente da pessoa, e fica visível
+  // no formulário. Ela serve só para o primeiro acesso: o painel obriga a
+  // troca antes de qualquer uso (Fase 0 §0.17). O convite por e-mail, em que
+  // o colaborador nunca recebe senha de terceiro, é a Fase 3.
+  await admin
+    .from("profiles")
+    .update({ must_change_password: true })
+    .eq("id", profileId);
+
   const { data: existingMembership } = await admin
     .from("memberships")
     .select("id")
@@ -135,7 +144,7 @@ export async function createProfessionalWithAccess(
     revalidatePath("/profissionais");
     return {
       success: true,
-      message: `${parsed.data.name} (${roleLabels[parsed.data.role]}) já pode acessar com o e-mail e a senha definidos.`,
+      message: `${parsed.data.name} (${roleLabels[parsed.data.role]}) já pode entrar com o e-mail e a senha provisória — no primeiro acesso vai criar a própria senha.`,
     };
   }
 
@@ -208,7 +217,7 @@ export async function createProfessionalWithAccess(
   revalidatePath("/usuarios");
   return {
     success: true,
-    message: `${parsed.data.name} pode acessar com o e-mail e a senha definidos.`,
+    message: `${parsed.data.name} pode entrar com o e-mail e a senha provisória — no primeiro acesso vai criar a própria senha.`,
   };
 }
 

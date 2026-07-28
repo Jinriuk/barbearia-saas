@@ -8,24 +8,14 @@ import {
 } from "lucide-react";
 import { requireTenant } from "@/lib/auth/dal";
 import { can } from "@/lib/permissions";
-import { getUtcDayRange } from "@/lib/dates";
+import { getUtcDayRange, getUtcMonthRange } from "@/lib/dates";
 import { formatBRL, paymentMethodLabel } from "@/lib/financial";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-function yearMonthInTz(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(date);
-  const year = parts.find((p) => p.type === "year")?.value ?? "";
-  const month = parts.find((p) => p.type === "month")?.value ?? "";
-  return `${year}-${month}`;
-}
 
 export default async function ReportsPage() {
   const tenant = await requireTenant();
@@ -48,50 +38,46 @@ export default async function ReportsPage() {
 
   const supabase = await createSupabaseServerClient();
   const { start: dayStart, end: dayEnd } = getUtcDayRange(tenant.timezone);
-  const currentYm = yearMonthInTz(new Date(), tenant.timezone);
+  const { start: monthStart, end: monthEnd } = getUtcMonthRange(
+    tenant.timezone,
+  );
 
-  const [{ data: paidRows }, todayCount] = await Promise.all([
-    supabase
-      .from("financial_transactions")
-      .select("amount,paid_at,payment_method")
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .eq("status", "paid"),
-    supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .eq("barbershop_id", tenant.id)
-      .gte("starts_at", dayStart.toISOString())
-      .lt("starts_at", dayEnd.toISOString())
-      .neq("status", "canceled"),
-  ]);
+  // Somas no banco (Fase 0 §0.7). A consulta que ficava aqui pedia TODAS as
+  // receitas pagas da barbearia — sem limite e sem recorte de data — e somava
+  // no cliente. O PostgREST devolve ~1000 linhas: da 1001ª em diante o "Saldo
+  // total" era o saldo de uma barbearia menor, e nada na tela dizia isso.
+  const [{ data: cashRows }, { data: methodRows }, todayCount] =
+    await Promise.all([
+      supabase.rpc("cash_summary", {
+        p_barbershop: tenant.id,
+        p_day_from: dayStart.toISOString(),
+        p_day_to: dayEnd.toISOString(),
+        p_month_from: monthStart.toISOString(),
+        p_month_to: monthEnd.toISOString(),
+      }),
+      supabase.rpc("income_by_payment_method", { p_barbershop: tenant.id }),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("barbershop_id", tenant.id)
+        .gte("starts_at", dayStart.toISOString())
+        .lt("starts_at", dayEnd.toISOString())
+        .neq("status", "canceled"),
+    ]);
 
-  const paid = paidRows ?? [];
-  const dayStartMs = dayStart.getTime();
-  const dayEndMs = dayEnd.getTime();
+  const cash = Array.isArray(cashRows) ? cashRows[0] : cashRows;
+  const saldoTotal = Number(cash?.total ?? 0);
+  const saldoDia = Number(cash?.day_total ?? 0);
+  const saldoMes = Number(cash?.month_total ?? 0);
 
-  const saldoTotal = paid.reduce((total, row) => total + Number(row.amount), 0);
-  const saldoDia = paid.reduce((total, row) => {
-    const ms = row.paid_at ? new Date(row.paid_at).getTime() : 0;
-    return ms >= dayStartMs && ms < dayEndMs
-      ? total + Number(row.amount)
-      : total;
-  }, 0);
-  const saldoMes = paid.reduce((total, row) => {
-    if (!row.paid_at) return total;
-    return yearMonthInTz(new Date(row.paid_at), tenant.timezone) === currentYm
-      ? total + Number(row.amount)
-      : total;
-  }, 0);
-
-  const byMethod = new Map<string, number>();
-  for (const row of paid) {
-    // Sem método registrado (dados anteriores à Fase 0) → "Não informado",
-    // nunca somado como se fosse "Outro".
-    const key = row.payment_method ?? "";
-    byMethod.set(key, (byMethod.get(key) ?? 0) + Number(row.amount));
-  }
-  const methodBreakdown = [...byMethod.entries()].sort((a, b) => b[1] - a[1]);
+  // Sem método registrado (dados anteriores à Fase 0) → "Não informado",
+  // nunca somado como se fosse "Outro".
+  const methodBreakdown: Array<[string, number]> = (
+    (methodRows ?? []) as Array<{
+      payment_method: string | null;
+      total: number | string;
+    }>
+  ).map((row) => [row.payment_method ?? "", Number(row.total)]);
 
   const metrics = [
     {
@@ -125,6 +111,7 @@ export default async function ReportsPage() {
           ) : undefined
         }
       />
+      <SectionNav section="financeiro" role={tenant.role} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <Card

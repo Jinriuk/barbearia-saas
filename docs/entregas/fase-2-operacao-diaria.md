@@ -3,7 +3,8 @@
 Referência: [`docs/14-plano-de-fases.md`](../14-plano-de-fases.md) §Fase 2, derivada da
 [auditoria de julho de 2026](../13-auditoria-julho-2026.md).
 
-Estado da verificação: `npm run lint`, `npm run typecheck`, `npm test` (54 testes) e
+Estado da verificação: `npm run lint`, `npm run typecheck`, `npm test` (84 testes, já com os
+das Fases 0 e 1) e
 `npm run build` passam. Os testes de banco desta fase estão em
 `supabase/tests/fase2_operacao_diaria.sql` (transação com `rollback`, como os anteriores)
 e **não foram executados contra um Postgres** nesta entrega — precisam rodar na
@@ -15,8 +16,8 @@ homologação junto com as migrations.
 
 | Arquivo                                        | Conteúdo                                                                                                                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `202607280030_fase2_estado_em_atendimento.sql` | Só o valor `in_progress` no enum. Mora sozinho porque o Postgres proíbe **usar** um valor de enum na mesma transação em que ele é criado — e a exclusion constraint precisa citá-lo. |
-| `202607280031_fase2_operacao_diaria.sql`       | Todo o resto: máquina de estados, estoque, venda de balcão, "finalizar e receber", clientes v2 e perfil.                                                                             |
+| `202607280033_fase2_estado_em_atendimento.sql` | Só o valor `in_progress` no enum. Mora sozinho porque o Postgres proíbe **usar** um valor de enum na mesma transação em que ele é criado — e a exclusion constraint precisa citá-lo. |
+| `202607280034_fase2_operacao_diaria.sql`       | Todo o resto: máquina de estados, estoque, venda de balcão, "finalizar e receber", clientes v2 e perfil.                                                                             |
 
 ---
 
@@ -115,33 +116,27 @@ de produtos ganhou as colunas "Mínimo" e "Última movimentação".
 
 ---
 
-## Itens da Fase 0 puxados para cá
+## Como esta fase se encaixa com as Fases 0 e 1
 
-Três correções da Fase 0 entraram nesta entrega porque a Fase 2 é construída em cima delas.
-Estão registradas aqui para não parecerem escopo perdido:
+Esta entrega foi escrita antes de as Fases 0 e 1 entrarem em `main` e depois rebaseada em
+cima delas. O que mudou no caminho:
 
-| Item                                                                | Por que veio junto                                                                                                                                                                                                          |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **0.6** — saldo de estoque somado sobre 400 movimentações truncadas | A tela de venda e o alerta de estoque mínimo leem esse saldo. Construir a venda sobre um número que vira ficção na 401ª movimentação seria construir sobre areia. Agora `get_product_stock` soma o ledger inteiro no banco. |
-| **0.8** — estoque negativo possível                                 | A venda de balcão precisa de uma trava transacional; a que existia valia só no caminho da reserva. Trigger `BEFORE INSERT` em `inventory_movements`, com `FOR UPDATE` no produto.                                           |
-| **0.13** — gasto do assinante aparece como R$ 0,00                  | O perfil do cliente é a vitrine do pilar G2. Abrir a tela do cliente mais valioso mostrando zero era inaceitável. O gasto agora soma receita de atendimento, venda de balcão e pagamento de plano.                          |
+| Item                                                                | Como ficou                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **0.6** — saldo de estoque somado sobre 400 movimentações truncadas | A Fase 0 criou a view `product_stock_balances`. A Fase 2 só acrescenta a coluna `last_movement_at`, que a lista de produtos passou a exibir por linha. O RPC concorrente que esta fase tinha escrito foi descartado.                                                                                                                                                                       |
+| **0.8** — estoque negativo possível                                 | A trava é o trigger `trg_enforce_inventory_balance` da Fase 0. A venda de balcão se apoia nele: falta de saldo em qualquer item derruba a venda inteira.                                                                                                                                                                                                                                   |
+| **0.13** — gasto do assinante em R$ 0,00                            | A Fase 0 corrigiu somando a mensalidade **pela `financial_transactions`**, e não por `membership_payments`, para que uma cobrança estornada não conte como gasto. A Fase 2 acrescentou a venda de balcão identificada seguindo exatamente o mesmo critério.                                                                                                                                |
+| **0.16** — `/clientes` sem checagem de papel                        | A Fase 0 resolveu com uma tela "Acesso restrito" e registro do erro da RPC. A Fase 2 manteve as duas coisas e só somou os segmentos e indicadores novos.                                                                                                                                                                                                                                   |
+| **0.7** — Financeiro somando no cliente                             | A Fase 0 trocou as varreduras pelo RPC `revenue_breakdown`. A Fase 2 reescreveu esse RPC para a parte de produto cobrir as **duas** portas de venda — reserva do agendamento e balcão — com o desconto rateado por item.                                                                                                                                                                   |
+| **Fase 1** — fundação visual                                        | As telas novas nasceram sem a fundação e foram adaptadas a ela no merge: selos por tom (`success`/`warning`/`info`/`danger`/`neutral`), tokens de campo (`border-border-control`, `bg-field`, anel de foco), alturas de 48/44px, máscara de telefone no cadastro de cliente e toast nos painéis que fecham. "Em atendimento" recebeu o tom **roxo**, o único dos tons do §5.6 ainda livre. |
 
-Uma correção de segurança da Fase 0 também entrou, pelo mesmo motivo:
-
-- **0.16** — `/clientes` não checava permissão e engolia o erro da RPC em silêncio. Como a
-  página foi reescrita para os segmentos novos, o `can(...)` e o estado de erro entraram
-  junto. Qualquer `NOT_AUTHORIZED` virava a tela "Nenhum cliente cadastrado".
+O `/vendas` não virou um oitavo item do menu lateral: entrou na navegação de seção do
+catálogo (`SECTION_NAV.catalogo`), preservando os 7 destinos do §9.1 que a Fase 1 fixou.
 
 ---
 
 ## O que ficou de fora, e por quê
 
-- **Fase 1 não foi executada.** A Fase 2 depende dela no plano. As telas novas usam os
-  componentes como estão hoje: sem toast (a mensagem de sucesso aparece em `Alert` dentro
-  do próprio painel), sem máscaras, com o painel lateral em `w-3/4` no celular e com os
-  selos de situação ainda com `canceled`/`no_show` invertidos. **Quando a Fase 1 rodar,
-  essas telas herdam as correções sem precisar ser refeitas** — nenhuma delas fixa cor,
-  altura ou máscara por conta própria.
 - **Produtos reservados não são baixados pelo "Finalizar e receber".** A ação conclui o
   atendimento e recebe o serviço; a reserva de produto continua sendo confirmada em
   Produtos e Estoque. Juntar as duas faria um item sem estoque derrubar a conclusão do
@@ -151,8 +146,8 @@ Uma correção de segurança da Fase 0 também entrou, pelo mesmo motivo:
   empilhar as folgas de toda a equipe numa coluna por dia engana mais do que informa.
   Escolha um profissional e eles aparecem.
 - **Área única com abas Serviços | Produtos | Estoque | Vendas** (§7.6) não foi feita:
-  `/vendas` nasceu como rota própria. A reorganização em abas é reforma de navegação e
-  pertence à discussão do §9 (o menu tem 15 destinos onde o guia pede 7), que é da Fase 1.
+  `/vendas` é uma rota própria dentro da seção de catálogo. As abas são reforma de
+  navegação e mexem no que a Fase 1 acabou de fixar.
 
 ---
 

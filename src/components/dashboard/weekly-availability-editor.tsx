@@ -97,7 +97,7 @@ export function WeeklyAvailabilityEditor({
       <input type="hidden" name="rules" value={rulesJson} />
 
       {state.message ? (
-        <Alert variant={state.success ? "default" : "destructive"}>
+        <Alert variant={state.success ? "success" : "destructive"}>
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
       ) : null}
@@ -139,7 +139,7 @@ export function WeeklyAvailabilityEditor({
                         onChange={(event) =>
                           updateWindow(w.key, { startsAt: event.target.value })
                         }
-                        className="border-input bg-background h-11 rounded-lg border px-2 font-mono text-sm"
+                        className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 font-mono text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                       />
                       <span className="text-muted-foreground text-sm">às</span>
                       <input
@@ -149,7 +149,7 @@ export function WeeklyAvailabilityEditor({
                         onChange={(event) =>
                           updateWindow(w.key, { endsAt: event.target.value })
                         }
-                        className="border-input bg-background h-11 rounded-lg border px-2 font-mono text-sm"
+                        className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 font-mono text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                       />
                       <select
                         value={w.slotIntervalMinutes}
@@ -159,7 +159,7 @@ export function WeeklyAvailabilityEditor({
                             slotIntervalMinutes: Number(event.target.value),
                           })
                         }
-                        className="border-input bg-background h-11 rounded-lg border px-2 text-sm"
+                        className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                       >
                         {INTERVALS.map((minutes) => (
                           <option key={minutes} value={minutes}>

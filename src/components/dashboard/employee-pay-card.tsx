@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 const initialState: ActionState = { success: false, message: "" };
 
 const selectClass =
-  "border-input bg-background h-9 w-full rounded-md border px-2 text-sm";
+  "border-border-control bg-field h-12 rounded-lg border px-3 text-sm outline-none transition-colors focus-visible:border-focus-ring focus-visible:ring-3 focus-visible:ring-focus-ring/45 disabled:cursor-not-allowed disabled:opacity-50 md:h-11 w-full";
 
 export type EmployeePaySettings = {
   model: "commission" | "fixed" | "hybrid";
@@ -141,7 +141,7 @@ export function EmployeePayCard({
           {settingsState.message ? (
             <Alert variant={settingsState.success ? "default" : "destructive"}>
               {settingsState.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{settingsState.message}</AlertDescription>
             </Alert>
@@ -199,7 +199,7 @@ export function EmployeePayCard({
           {paymentState.message ? (
             <Alert variant={paymentState.success ? "default" : "destructive"}>
               {paymentState.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{paymentState.message}</AlertDescription>
             </Alert>

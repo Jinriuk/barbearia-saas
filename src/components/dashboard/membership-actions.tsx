@@ -8,6 +8,7 @@ import {
 } from "@/modules/memberships/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,6 +48,7 @@ export function MembershipActions({
     },
     initialState,
   );
+  useActionToast(state);
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -83,7 +85,7 @@ export function MembershipActions({
                   name="paymentMethod"
                   required
                   defaultValue=""
-                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                  className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                 >
                   <option value="" disabled>
                     Como o cliente pagou?

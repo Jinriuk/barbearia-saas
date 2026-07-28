@@ -27,6 +27,7 @@ import {
   revertPayment,
 } from "@/modules/financial/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import {
@@ -58,14 +59,50 @@ const monthLabel = new Intl.DateTimeFormat("pt-BR", {
 });
 
 type ProfessionalAgg = {
+  id: string;
   name: string;
   count: number;
   service: number;
   product: number;
   total: number;
 };
-type ServiceAgg = { name: string; count: number; revenue: number };
-type ProductAgg = { name: string; qty: number; revenue: number };
+type ServiceAgg = { id: string; name: string; count: number; revenue: number };
+type ProductAgg = { id: string; name: string; qty: number; revenue: number };
+
+/**
+ * Rótulo da linha em "A receber". Era binário (produto ou serviço) e passou a
+ * mentir quando o fiado e a mensalidade de plano entraram na mesma lista
+ * (Fase 0 §0.10): "Fiado do João" aparecia como "Serviço", sugerindo um
+ * atendimento que não existe.
+ */
+function incomeCategoryLabel(category: string): string {
+  switch (category) {
+    case "product":
+      return "Produto";
+    case "service":
+      return "Serviço";
+    case "conta_a_receber":
+      return "Fiado";
+    case "membership":
+      return "Plano do cliente";
+    default:
+      return "Outros";
+  }
+}
+
+/** Linhas de `revenue_breakdown` e `income_by_day` (Fase 0 §0.7). */
+type BreakdownRow = {
+  kind: "professional" | "service" | "product" | "product_professional";
+  ref_id: string;
+  label: string;
+  total: number | string;
+  quantity: number | string;
+};
+type IncomeByDayRow = {
+  paid_on: string;
+  category: string;
+  total: number | string;
+};
 
 export default async function FinanceiroPage() {
   const tenant = await requireTenant();
@@ -95,11 +132,6 @@ export default async function FinanceiroPage() {
     month,
   } = getUtcMonthRange(tenant.timezone);
 
-  const monthKeyFmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tenant.timezone,
-    year: "numeric",
-    month: "2-digit",
-  });
   const monthShortFmt = new Intl.DateTimeFormat("pt-BR", {
     month: "short",
     timeZone: "UTC",
@@ -118,14 +150,11 @@ export default async function FinanceiroPage() {
 
   const [
     { data: appointmentRows },
-    { data: incomeRows },
-    { data: saleRows },
+    { data: breakdownRows },
     { data: chartRows },
     { data: summaryRows },
     { data: receivableRows },
     { count: completedCount },
-    { data: productSalesRows },
-    { data: counterSaleRows },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -137,37 +166,25 @@ export default async function FinanceiroPage() {
       .lt("starts_at", dayEnd.toISOString())
       .neq("status", "canceled")
       .order("starts_at"),
-    // Vendas de serviço do mês (pagas ou a receber) — produto é tratado à
-    // parte. Cancelada não conta.
-    supabase
-      .from("financial_transactions")
-      .select(
-        "amount,category,appointment:appointments(professional:professionals(id,name),service:services(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .neq("status", "canceled")
-      .neq("category", "product")
-      .gte("created_at", monthStart.toISOString())
-      .lt("created_at", monthEnd.toISOString()),
-    // Vendas de produto confirmadas no mês.
-    supabase
-      .from("appointment_products")
-      .select(
-        "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(professional:professionals(id,name))",
-      )
-      .eq("barbershop_id", tenant.id)
-      .eq("status", "confirmed")
-      .gte("confirmed_at", monthStart.toISOString())
-      .lt("confirmed_at", monthEnd.toISOString()),
-    supabase
-      .from("financial_transactions")
-      .select("amount,category,paid_at")
-      .eq("barbershop_id", tenant.id)
-      .eq("type", "income")
-      .eq("status", "paid")
-      .gte("paid_at", chartStart.toISOString())
-      .lt("paid_at", monthEnd.toISOString()),
+    // Vendas do mês por profissional, serviço e produto — somadas no banco
+    // (Fase 0 §0.7). As três varreduras que ficavam aqui não tinham limite:
+    // o PostgREST devolve ~1000 linhas e a página somava o pedaço achando que
+    // era o mês inteiro, sem nada na tela indicando o corte. Desde a Fase 2.6
+    // a parte de produto cobre as duas portas de venda: reserva do
+    // agendamento e venda de balcão.
+    supabase.rpc("revenue_breakdown", {
+      p_barbershop: tenant.id,
+      p_from: monthStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+    }),
+    // Série do gráfico: agregada por dia no banco (limite natural de ~180
+    // linhas em 6 meses) e agrupada por mês aqui.
+    supabase.rpc("income_by_day", {
+      p_barbershop: tenant.id,
+      p_from: chartStart.toISOString(),
+      p_to: monthEnd.toISOString(),
+      p_timezone: tenant.timezone,
+    }),
     // Verdade financeira (Fase 0/4): vendido × recebido × a receber ×
     // despesas × lucro, somados no banco.
     supabase.rpc("income_summary", {
@@ -192,28 +209,19 @@ export default async function FinanceiroPage() {
       .eq("status", "completed")
       .gte("starts_at", monthStart.toISOString())
       .lt("starts_at", monthEnd.toISOString()),
-    // Produtos vendidos no mês pelas DUAS portas: reserva do agendamento e
-    // venda de balcão. Somado no banco — antes a tabela lia só a primeira,
-    // então uma venda avulsa entrava no total do mês e sumia do relatório.
-    supabase.rpc("get_product_sales", {
-      p_barbershop: tenant.id,
-      p_from: monthStart.toISOString(),
-      p_to: monthEnd.toISOString(),
-    }),
-    // Atribuição da venda de balcão ao vendedor.
-    supabase
-      .from("counter_sales")
-      .select("total,professional:professionals(id,name)")
-      .eq("barbershop_id", tenant.id)
-      .gte("created_at", monthStart.toISOString())
-      .lt("created_at", monthEnd.toISOString())
-      .limit(1000),
   ]);
 
   const summary0 = Array.isArray(summaryRows) ? summaryRows[0] : summaryRows;
   const soldMonth = Number(summary0?.sold ?? 0);
   const receivedMonth = Number(summary0?.received ?? 0);
+  // Dois números diferentes, cada um com o próprio rótulo (Fase 0 §0.11): o
+  // que foi vendido no mês e ainda não entrou, e o saldo devedor inteiro. Antes
+  // era só o total, dentro de um cartão que anuncia o mês.
   const receivableTotal = Number(summary0?.receivable ?? 0);
+  const receivablePeriod = Number(summary0?.receivable_period ?? 0);
+  // Contagem real do que está pendente. A lista abaixo é uma página de 100 e o
+  // título anunciava o tamanho da página como se fosse o total (§0.12).
+  const receivableCount = Number(summary0?.receivable_count ?? 0);
   const expensesMonth = Number(summary0?.expenses_paid ?? 0);
   const profitMonth = Number(summary0?.profit ?? 0);
   const receivables = receivableRows ?? [];
@@ -235,12 +243,14 @@ export default async function FinanceiroPage() {
     return `${delta >= 0 ? "+" : ""}${delta}% vs mês anterior`;
   };
 
+  // As somas já vêm prontas do banco; aqui só se organiza por corte.
   const byProfessional = new Map<string, ProfessionalAgg>();
   const byService = new Map<string, ServiceAgg>();
   const byProduct = new Map<string, ProductAgg>();
 
   const professionalEntry = (id: string, name: string) => {
     const current = byProfessional.get(id) ?? {
+      id,
       name,
       count: 0,
       service: 0,
@@ -251,70 +261,55 @@ export default async function FinanceiroPage() {
     return current;
   };
 
-  for (const row of incomeRows ?? []) {
-    const amount = Number(row.amount);
-    const appt = first(row.appointment);
-    if (!appt) continue;
-    const professional = first(appt.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.count += 1;
-      entry.service += amount;
-      entry.total += amount;
+  for (const row of (breakdownRows ?? []) as BreakdownRow[]) {
+    const total = Number(row.total);
+    const quantity = Number(row.quantity);
+    switch (row.kind) {
+      case "professional": {
+        const entry = professionalEntry(row.ref_id, row.label);
+        entry.count += quantity;
+        entry.service += total;
+        entry.total += total;
+        break;
+      }
+      case "product_professional": {
+        const entry = professionalEntry(row.ref_id, row.label);
+        entry.product += total;
+        entry.total += total;
+        break;
+      }
+      case "service":
+        byService.set(row.ref_id, {
+          id: row.ref_id,
+          name: row.label,
+          count: quantity,
+          revenue: total,
+        });
+        break;
+      case "product":
+        // Agrupado por id, não por nome: duas "Pomada 100g" de SKUs diferentes
+        // são duas linhas, e o React precisa de chave estável para cada uma.
+        byProduct.set(row.ref_id, {
+          id: row.ref_id,
+          name: row.label,
+          qty: quantity,
+          revenue: total,
+        });
+        break;
     }
-    const service = first(appt.service);
-    if (service) {
-      const current = byService.get(service.id) ?? {
-        name: service.name,
-        count: 0,
-        revenue: 0,
-      };
-      current.count += 1;
-      current.revenue += amount;
-      byService.set(service.id, current);
-    }
-  }
-
-  // A tabela de produtos vem agregada do banco (as duas fontes de venda).
-  for (const row of (productSalesRows ?? []) as Array<{
-    product_name: string;
-    units: number;
-    revenue: number;
-  }>) {
-    byProduct.set(row.product_name, {
-      name: row.product_name,
-      qty: Number(row.units),
-      revenue: Number(row.revenue),
-    });
-  }
-
-  // A atribuição por profissional continua item a item: a reserva conhece o
-  // profissional do atendimento; a venda de balcão, o vendedor escolhido.
-  for (const row of saleRows ?? []) {
-    const professional = first(first(row.appointment)?.professional);
-    if (!professional) continue;
-    const entry = professionalEntry(professional.id, professional.name);
-    const revenue = Number(row.quantity) * Number(row.unit_price);
-    entry.product += revenue;
-    entry.total += revenue;
-  }
-  for (const row of counterSaleRows ?? []) {
-    const professional = first(row.professional);
-    if (!professional) continue;
-    const entry = professionalEntry(professional.id, professional.name);
-    entry.product += Number(row.total);
-    entry.total += Number(row.total);
   }
 
   const monthBuckets = new Map<string, { service: number; product: number }>(
     chartMonths.map((m) => [m.key, { service: 0, product: 0 }]),
   );
-  for (const row of chartRows ?? []) {
-    if (!row.paid_at) continue;
-    const bucket = monthBuckets.get(monthKeyFmt.format(new Date(row.paid_at)));
+  for (const row of (chartRows ?? []) as IncomeByDayRow[]) {
+    if (!row.paid_on) continue;
+    // paid_on é `date` (YYYY-MM-DD): a chave do mês sai do próprio texto, sem
+    // passar por Date, para não deslocar o dia 1 por fuso.
+    const bucket = monthBuckets.get(row.paid_on.slice(0, 7));
     if (!bucket) continue;
-    if (row.category === "product") bucket.product += Number(row.amount);
-    else bucket.service += Number(row.amount);
+    if (row.category === "product") bucket.product += Number(row.total);
+    else bucket.service += Number(row.total);
   }
   const chartData: MonthlyRevenuePoint[] = chartMonths.map((m) => ({
     label: m.label,
@@ -350,11 +345,16 @@ export default async function FinanceiroPage() {
       hint: compare(receivedMonth, Number(prev0?.received ?? 0)),
     },
     {
-      label: "A receber",
+      label: "A receber (saldo total)",
       value: formatBRL(receivableTotal),
       icon: HandCoins,
       href: "#a-receber",
-      hint: null,
+      // O card fica ao lado de números do mês, então precisa dizer que não é
+      // do mês — e quanto do saldo nasceu dentro dele.
+      hint:
+        receivablePeriod > 0
+          ? `${formatBRL(receivablePeriod)} vendidos neste mês`
+          : "Saldo acumulado, não apenas do mês",
     },
     {
       label: "Despesas pagas no mês",
@@ -433,6 +433,7 @@ export default async function FinanceiroPage() {
           </div>
         }
       />
+      <SectionNav section="financeiro" role={tenant.role} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {summary.map((metric) => {
@@ -475,14 +476,18 @@ export default async function FinanceiroPage() {
       </div>
 
       {receivables.length ? (
-        <Card
-          className="mt-6 scroll-mt-20 border-amber-300 dark:border-amber-900"
-          id="a-receber"
-        >
+        <Card className="border-warning/40 mt-6 scroll-mt-20" id="a-receber">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <HandCoins className="size-4" /> A receber ({receivables.length})
+              <HandCoins className="size-4" /> A receber ({receivableCount})
             </CardTitle>
+            {/* O corte é dito na tela, em vez de a lista fingir ser o total. */}
+            {receivableCount > receivables.length ? (
+              <p className="text-muted-foreground text-sm">
+                Mostrando os {receivables.length} lançamentos mais recentes de{" "}
+                {receivableCount}.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-2">
             {receivables.map((item) => (
@@ -495,8 +500,7 @@ export default async function FinanceiroPage() {
                     {item.description}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {item.category === "product" ? "Produto" : "Serviço"} ·
-                    vendido em{" "}
+                    {incomeCategoryLabel(item.category)} · vendido em{" "}
                     {formatShortDateInTz(item.created_at, tenant.timezone)}
                   </p>
                 </div>
@@ -512,7 +516,7 @@ export default async function FinanceiroPage() {
                     name="paymentMethod"
                     defaultValue="pix"
                     aria-label={`Forma de pagamento de ${item.description}`}
-                    className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                    className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                   >
                     {PAYMENT_METHODS.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -559,6 +563,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={services.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.revenue,
                 hint: `${item.count}x`,
@@ -576,6 +581,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={products.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.revenue,
                 hint: `${item.qty} un`,
@@ -593,6 +599,7 @@ export default async function FinanceiroPage() {
           <CardContent>
             <BarList
               items={professionals.slice(0, 5).map((item) => ({
+                id: item.id,
                 label: item.name,
                 value: item.total,
                 hint: `${item.count} atend.`,
@@ -614,7 +621,7 @@ export default async function FinanceiroPage() {
                 {/* Celular: cards resumidos no lugar da tabela larga. */}
                 <div className="space-y-3 sm:hidden">
                   {professionals.map((item) => (
-                    <div key={item.name} className="rounded-xl border p-4">
+                    <div key={item.id} className="rounded-xl border p-4">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="min-w-0 truncate font-medium">
                           {item.name}
@@ -628,7 +635,7 @@ export default async function FinanceiroPage() {
                         · Produtos {formatBRL(item.product)}
                       </p>
                       <p className="text-muted-foreground mt-0.5 text-xs">
-                        Ticket médio{" "}
+                        Gasto médio{" "}
                         {formatBRL(item.count ? item.total / item.count : 0)}
                       </p>
                     </div>
@@ -644,13 +651,13 @@ export default async function FinanceiroPage() {
                         <TableHead className="text-right">Produtos</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead className="text-right">
-                          Ticket médio
+                          Gasto médio
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {professionals.map((item) => (
-                        <TableRow key={item.name}>
+                        <TableRow key={item.id}>
                           <TableCell className="font-medium">
                             {item.name}
                           </TableCell>
@@ -701,7 +708,7 @@ export default async function FinanceiroPage() {
                 </TableHeader>
                 <TableBody>
                   {services.map((item) => (
-                    <TableRow key={item.name}>
+                    <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-right font-mono">
                         {item.count}
@@ -740,7 +747,7 @@ export default async function FinanceiroPage() {
               </TableHeader>
               <TableBody>
                 {products.map((item) => (
-                  <TableRow key={item.name}>
+                  <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-right font-mono">
                       {item.qty.toLocaleString("pt-BR")}
@@ -797,9 +804,7 @@ export default async function FinanceiroPage() {
                     <div className="mt-3 border-t pt-3">
                       {item.paid ? (
                         <div className="flex items-center justify-between gap-2">
-                          <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                            Recebido
-                          </Badge>
+                          <Badge variant="success">Recebido</Badge>
                           <form action={revertPayment}>
                             <input
                               type="hidden"
@@ -825,7 +830,7 @@ export default async function FinanceiroPage() {
                             name="paymentMethod"
                             defaultValue="pix"
                             aria-label="Forma de pagamento"
-                            className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
+                            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 min-w-0 flex-1 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                           >
                             {PAYMENT_METHODS.map((method) => (
                               <option key={method.value} value={method.value}>
@@ -833,7 +838,7 @@ export default async function FinanceiroPage() {
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" className="h-10 shrink-0">
+                          <Button size="sm" className="shrink-0">
                             Confirmar
                           </Button>
                         </form>
@@ -876,9 +881,7 @@ export default async function FinanceiroPage() {
                         <TableCell>
                           {item.paid ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                Recebido
-                              </Badge>
+                              <Badge variant="success">Recebido</Badge>
                               <form action={revertPayment}>
                                 <input
                                   type="hidden"
@@ -904,7 +907,7 @@ export default async function FinanceiroPage() {
                                 name="paymentMethod"
                                 defaultValue="pix"
                                 aria-label="Forma de pagamento"
-                                className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                                className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                               >
                                 {PAYMENT_METHODS.map((method) => (
                                   <option
