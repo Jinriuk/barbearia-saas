@@ -1,10 +1,13 @@
 -- Fase 3 — Gestão. Transação com ROLLBACK.
 --
 -- O que prova:
---  1) commission_summary: total produzido (serviços + produtos), precedência
---     da taxa do SERVIÇO sobre a do PROFISSIONAL, vale e pagamento abatidos,
---     valor a pagar calculado e nunca negativo. Modelo fixo/híbrido somam
---     salário; profissional sem regra cai em comissão zero.
+--  1) commission_summary: total produzido (serviços + produtos das DUAS
+--     portas da Fase 2.6), precedência da taxa do SERVIÇO sobre a do
+--     PROFISSIONAL sobre o valor CONGELADO na conclusão (Fase 0 §0.9), vale e
+--     pagamento abatidos, valor a pagar calculado e nunca negativo. Modelo
+--     fixo/híbrido somam salário; profissional sem regra cai em comissão
+--     zero. As colunas da Fase 0 (received_produced/received_commission)
+--     seguem intactas.
 --  2) income_summary: comissão apurada por competência e lucro depois dela,
 --     devolvendo a comissão JÁ PAGA no período (senão a equipe seria
 --     descontada duas vezes). As colunas antigas mantêm o significado.
@@ -75,6 +78,19 @@ values
   ('90000000-0000-4000-8000-00000000000a', '93000000-0000-4000-8000-000000000001',
    '94000000-0000-4000-8000-000000000001', 2, 20, 'confirmed', now() - interval '2 days');
 
+-- Porta 2 (Fase 2.6): venda de balcão do Bruno, 1 × 30 com 10 de desconto na
+-- venda inteira → 20 rateados. Produção em produto do Bruno = 40 + 20 = 60.
+insert into public.counter_sales
+  (id, barbershop_id, professional_id, subtotal, discount, total, payment_method)
+values
+  ('96000000-0000-4000-8000-000000000001', '90000000-0000-4000-8000-00000000000a',
+   '92000000-0000-4000-8000-000000000001', 30, 10, 20, 'pix');
+insert into public.counter_sale_items
+  (barbershop_id, sale_id, product_id, quantity, unit_price)
+values
+  ('90000000-0000-4000-8000-00000000000a', '96000000-0000-4000-8000-000000000001',
+   '94000000-0000-4000-8000-000000000001', 1, 30);
+
 -- Vale de 10 para o Bruno e pagamento de 5 já feito.
 insert into public.employee_advances
   (barbershop_id, professional_id, amount, reference_date)
@@ -90,9 +106,10 @@ values
 -- 1. Fechamento do Bruno.
 select 'Fechamento por profissional (comissão)' as teste,
   cs.completed_count = 2 as atendimentos_ok,
-  cs.produced_services = 150 as produzido_servicos_ok,
-  cs.produced_products = 40 as produzido_produtos_ok,
-  cs.produced_total = 190 as produzido_total_ok,
+  cs.produced = 150 as produzido_servicos_ok,
+  -- 40 da reserva confirmada + 20 do balcão com desconto rateado
+  cs.produced_products = 60 as duas_portas_de_produto_ok,
+  cs.produced_total = 210 as produzido_total_ok,
   -- 100 × 30% (taxa do SERVIÇO) + 50 × 10% (taxa do PROFISSIONAL)
   cs.commission = 35 as precedencia_da_taxa_ok,
   cs.advances = 10 as vale_ok,

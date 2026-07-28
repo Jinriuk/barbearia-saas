@@ -4,6 +4,13 @@
 > [auditoria de julho de 2026](../13-auditoria-julho-2026.md). Os 12 itens
 > (3.1 a 3.12) foram entregues. É a fase que sustenta os pilares **G3**
 > (lucro) e **G4** (equipe) na hora da demonstração.
+>
+> Entregue **sobre** as Fases 0, 1 e 2, que entraram na `main` enquanto esta
+> estava em curso. Nada aqui desfaz aquilo: a migração 0035 ESTENDE as
+> funções da Fase 0 (§0.9 preço congelado, §0.11/§0.12 a receber, §0.14
+> competência × caixa), as telas adotam as primitivas da Fase 1 (MaskedInput,
+> `Alert variant="success"`, alturas de toque) e as somas usam
+> `revenue_breakdown`, que a Fase 2.6 ensinou a enxergar a venda de balcão.
 
 ## O que entrou, item a item
 
@@ -50,13 +57,18 @@ que este projeto realmente usa — e não por `prefers-color-scheme` nem
 
 ### 3.4 Comissões completas
 
-O fechamento saiu do cliente, que somava até 3.000 atendimentos e, acima
-disso, exibia comissão fictícia em silêncio. Agora é `commission_summary`,
-no banco. Entraram as três peças que faltavam:
+A Fase 0 §0.9 já tinha levado o fechamento para o banco e congelado o preço
+na conclusão. Esta fase **acrescenta colunas à mesma função**, sem tocar na
+base de cálculo — `produced`, `commission`, `received_produced`,
+`received_commission` e `completed_count` continuam idênticos. Entraram as
+três peças que faltavam:
 
 - **Total produzido** (serviços + produtos) — sem ele o profissional não
   consegue conferir a própria comissão, e conferência de comissão é o que
-  evita briga;
+  evita briga. O produto vem das **duas portas** da Fase 2.6 (reserva
+  confirmada no agendamento e venda de balcão, esta com o desconto rateado e
+  arredondado ao centavo), para a ficha do profissional não divergir do
+  Financeiro;
 - **Adiantamento/vale** — prática universal em barbearia. O vale sai do
   caixa na hora (despesa paga) e é abatido do fechamento, nunca somado duas
   vezes;
@@ -78,9 +90,10 @@ Cliente vinculado ao recebível e **"Cobrar no WhatsApp"** com o texto pronto
 e editável — quem cobra é o dono, não o sistema. Sem dono, "A receber" era
 uma lista de dívidas sem devedor.
 
-Junto: a lista de vendas a receber era capada em 100 com o título anunciando
-`A receber (100)` como se fosse o total (item 0.12). Agora é paginada e o
-número no título é a contagem real do banco.
+A contagem real do título (§0.12) e a distinção entre saldo total e recorte
+do período (§0.11) vieram da Fase 0; a seção mostra os dois números com
+rótulos que dizem qual é qual, e usa o rótulo de categoria dela — fiado
+aparece como "Fiado", não como "Serviço".
 
 ### 3.7 Lucro que desconta comissão
 
@@ -95,7 +108,7 @@ sem isso a equipe seria descontada duas vezes.
 
 ### 3.8 Convite de colaborador (regra crítica do §7.7)
 
-O guia é categórico: *o proprietário não deve criar a senha do colaborador*.
+O guia é categórico: _o proprietário não deve criar a senha do colaborador_.
 Até aqui o dono digitava a senha da pessoa e a passava por WhatsApp — uma
 senha que ela não escolheu, que trafega em texto puro e que o dono conhece.
 
@@ -142,6 +155,7 @@ editado depois do cadastro. Digitou errado no cadastro, ficava errado para
 sempre.
 
 Dois detalhes que o formulário único exige:
+
 - as seções inativas são **escondidas por CSS, não desmontadas** — campo
   desmontado não entra no FormData, e um "salvar tudo" que só grava a aba
   aberta seria pior que o problema original;
@@ -207,8 +221,9 @@ Migração `202607280030_fase3_gestao.sql`:
   do salário já pago, série do gráfico, mapa de calor ignorando cancelado,
   unicidade do convite pendente com revogado liberando novo, isolamento entre
   tenants).
-- Regressão: as 8 suítes anteriores (`vistoria`, `fase0`…`fase4b`) verdes
-  contra um banco reconstruído do zero com as 30 migrações em ordem.
+- Regressão: as **12 suítes** anteriores (`vistoria`, `fase0`…`fase4b`,
+  incluindo as três novas da Fase 0 e as duas da Fase 2) verdes contra um
+  banco reconstruído do zero com as **36 migrações** em ordem.
 - `src/lib/dates/period.test.ts`: 9 casos do filtro de período. Um deles
   pegou um defeito real durante a implementação — o rótulo do intervalo era
   formatado em UTC e mostrava um dia a mais no fim da janela.
@@ -216,28 +231,46 @@ Migração `202607280030_fase3_gestao.sql`:
 
 ## Deploy
 
-A migração 0030 precisa ser aplicada **junto** do deploy deste código.
-`income_summary` é recriada com duas colunas novas no fim; o código antigo lê
-por nome e não é afetado, mas o código novo não funciona sem ela.
+As migrações **0035 e 0036** precisam ser aplicadas **junto** do deploy deste
+código.
+
+`income_summary` e `commission_summary` são recriadas com colunas novas no
+fim, preservando as anteriores com o mesmo significado — quem lê por nome não
+quebra, mas o código novo não funciona sem elas. A 0036 é independente e pode
+ir antes: só conserta a venda de balcão.
 
 O convite por e-mail depende de o Supabase Auth estar com o remetente
 configurado e com `${NEXT_PUBLIC_APP_URL}/auth/callback` na lista de URLs de
 redirecionamento permitidas.
 
+## Achado durante o merge: a venda de balcão não gravava
+
+Rodando `supabase/tests/fase2_operacao_diaria.sql` contra um banco
+reconstruído do zero, `create_counter_sale` falhava em **toda** chamada:
+
+    column "status" is of type financial_status but expression is of type text
+
+Um `CASE` cujos dois braços são literais sem tipo resolve para `text`
+(`pg_typeof` confirma), e Postgres não converte `text` para enum
+implicitamente. A exceção derrubava a transação inteira — nenhuma venda de
+balcão era gravada, o estoque não baixava e a receita não entrava. A tela
+"Nova venda" do §7.6 (pilar G5) estava inteiramente inoperante.
+
+**Não é regressão desta fase**: reproduz na 0034 sozinha, sem a 0035.
+Corrigido na migração `202607280036_fix_venda_balcao_status.sql`, que recria
+a função com o cast explícito e nada mais — migração aplicada não se edita.
+
+Como a suíte abortava naquele ponto, tudo depois dela nunca era avaliado.
+Ao destravar apareceu um segundo problema, este na **fixture** do teste: ela
+inseria `membership_payments` sem `transaction_id`, e `get_client_insights`
+soma o gasto do assinante pela transação de propósito (cobrança estornada não
+pode contar como gasto). A fixture passou a gravar o pagamento como
+`sell_customer_membership` grava.
+
 ## Fora desta entrega (registrado)
 
-Itens de outras fases que encostam nestas telas e **continuam abertos**:
-
-- **0.7 / 0.9 / 0.10 / 0.14** — as agregações por profissional, serviço e
-  produto da seção "Caixa e vendas" ainda são somadas no cliente. A tela
-  agora **avisa** quando a consulta bate no teto de linhas, em vez de mostrar
-  um total menor calado, mas a migração dessas somas para o banco é da Fase 0.
-  Também da Fase 0: congelar o valor transacionado da comissão e unificar o
-  fiado de `accounts_receivable` com os indicadores (o cartão do Resumo diz
-  explicitamente que não inclui o fiado lançado à mão).
-- **Fase 1** — a fundação visual (tema claro, tokens, alturas de toque, toast
-  e Desfazer, máscaras) não faz parte desta entrega. As telas novas usam os
-  componentes atuais; quando a Fase 1 trocar botão, campo e selo, elas
-  acompanham.
-- **2.7** — a coluna `products.minimum_stock` já existe no banco; falta o
-  campo no cadastro de produto (Fase 2).
+- **Fase 1** — a fundação visual entrou na `main` e as telas desta fase
+  adotaram as primitivas dela. O que segue fora daqui é o que a própria Fase
+  1 deixou aberto, não algo que esta fase devia.
+- **2.7** — a coluna `products.minimum_stock` existe no banco; o campo no
+  cadastro de produto é da Fase 2.

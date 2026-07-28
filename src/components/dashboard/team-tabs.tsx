@@ -2,12 +2,7 @@
 
 import type { ReactNode } from "react";
 import { KeyRound, Users } from "lucide-react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
  * Unifica "Profissionais" e "Acessos & papéis" numa única área com abas

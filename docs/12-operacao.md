@@ -37,7 +37,7 @@
 
 - `npm run lint && npm run typecheck && npm test && npm run build`;
 - suítes SQL de `supabase/tests/` num banco local/staging
-  (vistoria + fase0–fase4b + fase3_gestao);
+  (vistoria + fase0–fase4b + fase2_operacao_diaria + fase3_gestao);
 - migrations aplicadas ANTES do deploy que as consome (ou junto, quando o
   código antigo é compatível — checar a nota de cada entrega em
   `docs/entregas/`);

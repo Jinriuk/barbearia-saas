@@ -23,6 +23,27 @@ import { first } from "./shared";
 const PAGE_SIZE = 25;
 
 /**
+ * Rótulo da linha em "A receber". Era binário (produto ou serviço) e passou a
+ * mentir quando o fiado e a mensalidade de plano entraram na mesma lista
+ * (Fase 0 §0.10): "Fiado do João" aparecia como "Serviço", sugerindo um
+ * atendimento que não existe.
+ */
+function incomeCategoryLabel(category: string): string {
+  switch (category) {
+    case "product":
+      return "Produto";
+    case "service":
+      return "Serviço";
+    case "conta_a_receber":
+      return "Fiado";
+    case "membership":
+      return "Plano do cliente";
+    default:
+      return "Outros";
+  }
+}
+
+/**
  * A receber (Fase 3 — itens 3.1 e 3.6).
  *
  * Duas origens, cada uma com o seu total explícito:
@@ -112,7 +133,7 @@ export async function AReceberSection({
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
             <span className="flex items-center gap-2">
-              <HandCoins className="size-4" /> Vendas concluídas a receber (
+              <HandCoins className="size-4" /> A receber (
               {total})
             </span>
             {total > PAGE_SIZE ? (
@@ -135,8 +156,7 @@ export async function AReceberSection({
                       {item.description}
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      {item.category === "product" ? "Produto" : "Serviço"} ·
-                      vendido em{" "}
+                      {incomeCategoryLabel(item.category)} · vendido em{" "}
                       {formatShortDateInTz(item.created_at, timezone)}
                     </p>
                   </div>

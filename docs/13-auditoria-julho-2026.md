@@ -16,29 +16,29 @@ prontos.
 
 ## Resultado geral
 
-| Situação | Itens | % |
-|---|---:|---:|
-| Atendido | 96 | 25% |
-| Parcial | 138 | 36% |
-| Não atendido | 145 | 38% |
-| Não aplicável | 1 | 0% |
-| **Total auditado** | **380** | |
+| Situação           |   Itens |   % |
+| ------------------ | ------: | --: |
+| Atendido           |      96 | 25% |
+| Parcial            |     138 | 36% |
+| Não atendido       |     145 | 38% |
+| Não aplicável      |       1 |  0% |
+| **Total auditado** | **380** |     |
 
 ## Cobertura por dimensão
 
-| Dimensão | Atendido | Parcial | Não atendido |
-|---|---:|---:|---:|
-| Fundação visual — cores, tipografia, tokens (§3, §4, §11) | 10 | 10 | 9 |
-| Padrão de componentes (§5) | 12 | 16 | 12 |
-| Linguagem e navegação (§8, §9) | 8 | 15 | 11 |
-| Telas Início e Agenda (§7.1, §7.2) | 8 | 9 | 17 |
-| Telas Clientes e Planos (§7.3, §7.4) + pilar G2 | 5 | 8 | 5 |
-| Tela Financeiro (§7.5) + pilar G3 | 6 | 14 | 16 |
-| Serviços, produtos e estoque (§7.6) + pilar G5 | 2 | 10 | 9 |
-| Equipe, Configurações e Minha conta (§7.7–§7.9) + pilar G4 | 17 | 15 | 22 |
-| Página pública e fluxo de agendamento (§7.10, §7.11) + pilar G1 | 11 | 16 | 15 |
-| Mobile, acessibilidade e gráficos (§6, §10, §12) | 11 | 16 | 14 |
-| Camada comercial — landing, preços e leads | 6 | 9 | 15 |
+| Dimensão                                                        | Atendido | Parcial | Não atendido |
+| --------------------------------------------------------------- | -------: | ------: | -----------: |
+| Fundação visual — cores, tipografia, tokens (§3, §4, §11)       |       10 |      10 |            9 |
+| Padrão de componentes (§5)                                      |       12 |      16 |           12 |
+| Linguagem e navegação (§8, §9)                                  |        8 |      15 |           11 |
+| Telas Início e Agenda (§7.1, §7.2)                              |        8 |       9 |           17 |
+| Telas Clientes e Planos (§7.3, §7.4) + pilar G2                 |        5 |       8 |            5 |
+| Tela Financeiro (§7.5) + pilar G3                               |        6 |      14 |           16 |
+| Serviços, produtos e estoque (§7.6) + pilar G5                  |        2 |      10 |            9 |
+| Equipe, Configurações e Minha conta (§7.7–§7.9) + pilar G4      |       17 |      15 |           22 |
+| Página pública e fluxo de agendamento (§7.10, §7.11) + pilar G1 |       11 |      16 |           15 |
+| Mobile, acessibilidade e gráficos (§6, §10, §12)                |       11 |      16 |           14 |
+| Camada comercial — landing, preços e leads                      |        6 |       9 |           15 |
 
 ---
 
@@ -157,7 +157,7 @@ A fundação de cor do TEMA ESCURO foi realmente construída e é a parte mais s
 - A família mono provavelmente nunca é aplicada, e o auditor não percebeu: src/app/globals.css:11 define `--font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace` com nomes LITERAIS, enquanto src/app/layout.tsx:16-19 expõe a fonte sob a variável `--font-geist-mono` — que `grep -rn 'font-geist-mono' src` mostra ser referenciada em exatamente 1 lugar (a própria declaração). next/font gera famílias com hash (__Geist_Mono_xxxx), então as 72 classes `font-mono` caem em ui-monospace (mono do sistema) e a webfont Geist Mono é baixada em toda página sem nunca ser usada. Isso muda a natureza do achado dele: a segunda família não é Geist Mono, é a mono do SO — e há um custo de rede inútil.
 - Existe uma TERCEIRA família de fonte, não checada: `font-serif` aparece 9 vezes em src/app/salao/page.tsx (linhas 223, 352, 425, 432, 453, 484, 521, 624, 658). O §4.1 diz 'o sistema deve usar apenas uma família de fonte' sem restringir ao painel.
 - Os tokens --chart-1 a --chart-5 do tema escuro (globals.css:117-121) foram definidos com as cores certas do guia e são ignorados pelo único gráfico do painel (monthly-revenue-chart.tsx:35-40). O auditor tratou esse arquivo só sob o ângulo do data-theme, sem registrar que ele também descarta os tokens de gráfico.
-- O escopo pedia 'existe alternância de tema… persistida?' e ele respondeu só olhando o painel do lojista. Faltou registrar que src/app/admin/*, src/app/(auth)/* e src/app/onboarding não têm NENHUM tema aplicado (nem escuro nem o claro do §3.2) — são as telas de primeira impressão do produto e rodam no preset neutro do shadcn.
+- O escopo pedia 'existe alternância de tema… persistida?' e ele respondeu só olhando o painel do lojista. Faltou registrar que src/app/admin/_, src/app/(auth)/_ e src/app/onboarding não têm NENHUM tema aplicado (nem escuro nem o claro do §3.2) — são as telas de primeira impressão do produto e rodam no preset neutro do shadcn.
 - Precisão das citações: várias linhas estão deslocadas em 1-2 e devem ser corrigidas antes de virar backlog — --card é globals.css:101 (não :102), --popover é :103 (não :104); `hover:bg-primary/80` é button.tsx:12 (não :14); `focus-visible:ring-ring/50` é button.tsx:8 (não :14); o <h1> do PageHeader é page-header.tsx:20 (não :21); o AlertDialogContent é alert-dialog.tsx:60 (não :61). O conteúdo das afirmações confere em todos esses casos — só o ponteiro está errado.
 
 ---
@@ -199,7 +199,7 @@ O sistema de componentes é o shadcn/ui "base" instalado praticamente sem custom
 ### Parcial (16)
 
 - **§5.1 Botão de baixa ênfase (sem fundo)**
-  - Evidência: src/components/ui/button.tsx:17-18 define variant ghost (sem fundo) e :21 define variant link; 31 usos de variant="ghost" em src/**/*.tsx. Porém a busca por 'Limpar filtros'/'Mais filtros' em src/**/*.tsx não retorna nenhuma ocorrência (o único hit de 'filtro' é o comentário em src/app/(dashboard)/agenda/page.tsx:177).
+  - Evidência: src/components/ui/button.tsx:17-18 define variant ghost (sem fundo) e :21 define variant link; 31 usos de variant="ghost" em src/**/\*.tsx. Porém a busca por 'Limpar filtros'/'Mais filtros' em src/**/*.tsx não retorna nenhuma ocorrência (o único hit de 'filtro' é o comentário em src/app/(dashboard)/agenda/page.tsx:177).
   - O que falta: A variante existe e é usada, mas os casos que o guia cita como típicos de baixa ênfase — 'Limpar filtros', 'Adicionar detalhes' — não foram implementados em lugar nenhum.
   - Impacto: BAIXO · Esforço: P
 - **§5.1 Botão destrutivo: contornado na primeira exposição, preenchido só na confirmação final**
@@ -1613,7 +1613,7 @@ A camada comercial tem a INFRAESTRUTURA construída e a NARRATIVA ausente. O que
   - O que falta: O lead entra e morre no banco. Falta tudo: (1) provedor de e-mail transacional; (2) rota de cron que leia saas_leads sem conversão após 24h/72h; (3) template da oferta; (4) atualização de funnel_stage e regra de parada por compra/descadastro; (5) opt-in de WhatsApp em template oficial (a infra de WhatsApp Cloud existe em src/lib/whatsapp-cloud.ts, mas só para lembrete de agendamento). docs/entregas/fase-5.md declara isso honestamente como 'planejado'.
   - Impacto: ALTO · Esforço: G
 - **Pedido (d) do sócio: existir cupom/desconto no sistema para a oferta imperdível do anual**
-  - Evidência: Busca case-insensitive por 'cupom|coupon|discount|desconto' em src/ (--include=*.ts --include=*.tsx): ZERO resultados. Busca por 'desconto' em supabase/migrations/: nenhuma tabela de cupom. As únicas menções a desconto nos docs são sobre desconto em venda de produto ao cliente final da barbearia (docs/05-regras-de-negocio.md:103, docs/entregas/fase-0.md:87), não sobre o SaaS.
+  - Evidência: Busca case-insensitive por 'cupom|coupon|discount|desconto' em src/ (--include=_.ts --include=_.tsx): ZERO resultados. Busca por 'desconto' em supabase/migrations/: nenhuma tabela de cupom. As únicas menções a desconto nos docs são sobre desconto em venda de produto ao cliente final da barbearia (docs/05-regras-de-negocio.md:103, docs/entregas/fase-0.md:87), não sobre o SaaS.
   - O que falta: Não existe entidade de cupom, código promocional, preço promocional por lead, nem campo de desconto em subscriptions/plan_prices. Sem isso a 'oferta imperdível no pacote anual' não tem como ser aplicada nem rastreada — precisaria de tabela de cupons (código, percentual/valor, validade, uso único, vínculo ao lead) e leitura no futuro checkout.
   - Impacto: ALTO · Esforço: M
 - **Pedido (d) do sócio: ser possível ao menos VER e trabalhar os leads capturados**
@@ -1649,7 +1649,7 @@ A camada comercial tem a INFRAESTRUTURA construída e a NARRATIVA ausente. O que
   - O que falta: A promessa central do posicionamento é simplicidade, e a landing não mostra uma única tela real. Faltam capturas de /agenda, /clientes (lista de retorno), /financeiro e /comissoes, e o vídeo de 30-90s no celular previsto na §7.
   - Impacto: ALTO · Esforço: M
 - **Apresentação §7: iscas de lead com utilidade real (diagnóstico dos 5 Gs, calculadora de lucro, calculadora de comissão, checklist)**
-  - Evidência: Busca por 'calculadora|diagnóstico|diagnostico|checklist|quiz' em src/ (--include=*.ts --include=*.tsx): o único resultado é src/components/dashboard/activation-checklist.tsx, que é o checklist de ativação DENTRO do painel (usado em src/app/(dashboard)/dashboard/page.tsx:384), não uma isca pública. Não existe nenhuma rota pública de ferramenta: src/app/ tem apenas as landings, (auth), (dashboard), (legal), (print), (public), admin, api e onboarding.
+  - Evidência: Busca por 'calculadora|diagnóstico|diagnostico|checklist|quiz' em src/ (--include=_.ts --include=_.tsx): o único resultado é src/components/dashboard/activation-checklist.tsx, que é o checklist de ativação DENTRO do painel (usado em src/app/(dashboard)/dashboard/page.tsx:384), não uma isca pública. Não existe nenhuma rota pública de ferramenta: src/app/ tem apenas as landings, (auth), (dashboard), (legal), (print), (public), admin, api e onboarding.
   - O que falta: A única oferta de captura é 'Prefere que a gente fale com você?' (src/app/page.tsx:729-735), que exige que o visitante queira ser abordado — a isca de menor conversão possível. Falta pelo menos uma ferramenta pública de valor imediato; a calculadora de comissão é a mais barata de construir e a mais alinhada com a dor recorrente do nicho.
   - Impacto: ALTO · Esforço: M
 - **Guia visual §7.9: a página de plano do sistema deve se chamar 'Meu plano NexoBarber', nunca apenas 'Assinatura' (para não confundir com os planos vendidos aos clientes da barbearia)**
@@ -1670,4 +1670,3 @@ A camada comercial tem a INFRAESTRUTURA construída e a NARRATIVA ausente. O que
 - A LANDING DO SALÃO (src/app/salao/page.tsx, 743 linhas) só foi auditada em três pontos (preço, lead, depoimentos). Todos os itens de arquitetura de comunicação — h1 (linha 221-227), sequência de seções, marquee, ausência de FAQ, único CTA — foram avaliados apenas contra src/app/page.tsx, embora o escopo liste as duas landings como alvo.
 
 ---
-

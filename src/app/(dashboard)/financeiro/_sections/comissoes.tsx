@@ -22,16 +22,18 @@ import {
 type SummaryRow = {
   professional_id: string;
   professional_name: string;
+  produced: number | string;
+  produced_products: number | string;
+  produced_total: number | string;
+  commission: number | string;
+  received_produced: number | string;
+  received_commission: number | string;
   completed_count: number;
-  produced_services: number;
-  produced_products: number;
-  produced_total: number;
-  commission: number;
-  base_salary: number;
+  base_salary: number | string;
   model: string;
-  advances: number;
-  paid: number;
-  to_pay: number;
+  advances: number | string;
+  paid: number | string;
+  to_pay: number | string;
 };
 
 /**
@@ -95,10 +97,12 @@ export async function ComissoesSection({
     professionalId: row.professional_id,
     name: row.professional_name,
     completedCount: Number(row.completed_count ?? 0),
-    producedServices: Number(row.produced_services ?? 0),
+    producedServices: Number(row.produced ?? 0),
     producedProducts: Number(row.produced_products ?? 0),
     producedTotal: Number(row.produced_total ?? 0),
     commission: Number(row.commission ?? 0),
+    receivedProduced: Number(row.received_produced ?? 0),
+    receivedCommission: Number(row.received_commission ?? 0),
     baseSalary: Number(row.base_salary ?? 0),
     model: (row.model as CommissionClosing["model"]) ?? "commission",
     advances: Number(row.advances ?? 0),

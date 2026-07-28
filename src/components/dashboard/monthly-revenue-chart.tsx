@@ -12,10 +12,19 @@ const compact = new Intl.NumberFormat("pt-BR", {
 });
 
 /**
- * Evolução mensal da receita (serviços vs produtos), empilhada.
- * SVG server-side, theme-aware. Cores categóricas validadas (dataviz):
- * azul = serviços, aqua = produtos. Legenda + rótulos diretos atendem à
- * regra de relevo (contraste do aqua no claro fica abaixo de 3:1).
+ * Evolução mensal do recebido (serviços vs produtos), empilhada.
+ *
+ * Fase 1.2 — o componente decidia a cor por `prefers-color-scheme` e por um
+ * `:root[data-theme]` que nada no sistema definia, então num aparelho com
+ * tema claro do sistema ele desenhava texto cinza-escuro sobre o cartão
+ * escuro. A correção é não decidir cor nenhuma: usar os tokens, que já viram
+ * com o tema. Isso também conserta o reuso no PDF de fundo branco, que roda
+ * fora do painel e portanto no tema claro.
+ *
+ * Cores da tabela obrigatória do §6.1: verde de "recebido" para serviços e
+ * dourado de faturamento para produtos — os dois lados são dinheiro que
+ * entrou. A Fase 3.3 troca o eixo por recebido × despesas e acrescenta o
+ * período anterior tracejado.
  */
 export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
   const max = Math.max(1, ...data.map((d) => d.service + d.product));
@@ -30,28 +39,14 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
   const hasData = data.some((d) => d.service + d.product > 0);
 
   return (
-    <div className="revchart">
-      <style>{`
-        .revchart { --svc:#2a78d6; --prd:#1baf7a; --ink:#52514e; --muted:#898781; --base:#c3c2b7; }
-        @media (prefers-color-scheme: dark) {
-          .revchart { --svc:#3987e5; --prd:#199e70; --ink:#c3c2b7; --muted:#898781; --base:#383835; }
-        }
-        :root[data-theme="dark"] .revchart { --svc:#3987e5; --prd:#199e70; --ink:#c3c2b7; --muted:#898781; --base:#383835; }
-        :root[data-theme="light"] .revchart { --svc:#2a78d6; --prd:#1baf7a; --ink:#52514e; --muted:#898781; --base:#c3c2b7; }
-      `}</style>
-      <div className="mb-3 flex items-center gap-4 text-xs">
+    <div>
+      <div className="mb-3 flex items-center gap-4 text-sm">
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block size-2.5 rounded-sm"
-            style={{ background: "var(--svc)" }}
-          />
+          <span className="bg-chart-received inline-block size-2.5 rounded-sm" />
           Serviços
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block size-2.5 rounded-sm"
-            style={{ background: "var(--prd)" }}
-          />
+          <span className="bg-chart-billed inline-block size-2.5 rounded-sm" />
           Produtos
         </span>
       </div>
@@ -59,14 +54,14 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
         viewBox={`0 0 ${width} ${height}`}
         className="h-auto w-full"
         role="img"
-        aria-label="Evolução mensal da receita por serviços e produtos"
+        aria-label="Evolução mensal do recebido por serviços e produtos"
       >
         <line
           x1={padX}
           y1={padTop + plotH}
           x2={width - padX}
           y2={padTop + plotH}
-          stroke="var(--base)"
+          stroke="var(--border-control)"
           strokeWidth={1}
         />
         {data.map((point, index) => {
@@ -81,6 +76,20 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
           const prdY = svcY - gap - prdH;
           return (
             <g key={point.label}>
+              {/* §6.2/§12: todo gráfico precisa de tooltip. <title> dentro do
+                  <g> cobre a coluna inteira, inclusive o espaço vazio. */}
+              <title>
+                {`${point.label}: ${formatBRL(total)} — serviços ${formatBRL(
+                  point.service,
+                )}, produtos ${formatBRL(point.product)}`}
+              </title>
+              <rect
+                x={cx - slot / 2}
+                y={padTop}
+                width={slot}
+                height={plotH}
+                fill="transparent"
+              />
               {point.service > 0 ? (
                 <rect
                   x={x}
@@ -88,7 +97,7 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
                   width={barW}
                   height={svcH}
                   rx={4}
-                  fill="var(--svc)"
+                  fill="var(--chart-received)"
                 />
               ) : null}
               {point.product > 0 ? (
@@ -98,7 +107,7 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
                   width={barW}
                   height={prdH}
                   rx={4}
-                  fill="var(--prd)"
+                  fill="var(--chart-billed)"
                 />
               ) : null}
               {total > 0 ? (
@@ -106,8 +115,8 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
                   x={cx}
                   y={(point.product > 0 ? prdY : svcY) - 6}
                   textAnchor="middle"
-                  fontSize={11}
-                  fill="var(--ink)"
+                  fontSize={12}
+                  fill="var(--foreground)"
                 >
                   {compact.format(total)}
                 </text>
@@ -116,8 +125,8 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
                 x={cx}
                 y={height - 12}
                 textAnchor="middle"
-                fontSize={11}
-                fill="var(--muted)"
+                fontSize={12}
+                fill="var(--foreground-subtle)"
               >
                 {point.label}
               </text>
@@ -127,11 +136,11 @@ export function MonthlyRevenueChart({ data }: { data: MonthlyRevenuePoint[] }) {
       </svg>
       {!hasData ? (
         <p className="text-muted-foreground py-2 text-center text-sm">
-          Ainda sem receita nos últimos meses. Conclua atendimentos para ver a
-          evolução aqui.
+          Ainda sem recebimento nos últimos meses. Conclua atendimentos para ver
+          a evolução aqui.
         </p>
       ) : (
-        <p className="text-muted-foreground mt-1 text-right text-xs">
+        <p className="text-foreground-subtle mt-1 text-right text-sm">
           Total no período:{" "}
           {formatBRL(data.reduce((s, d) => s + d.service + d.product, 0))}
         </p>

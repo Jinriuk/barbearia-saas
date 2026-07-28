@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { membershipChargeMessage, reminderWhatsAppHref } from "@/lib/whatsapp";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,15 @@ type OverviewRow = {
   period: string;
   price: number;
   status: "active" | "paused";
-  effective_status: "active" | "paused" | "past_due";
+  effective_status: "active" | "due_soon" | "paused" | "past_due";
   current_period_start: string;
   current_period_end: string;
-  usage: { serviceId: string; serviceName: string; limit: number; used: number }[];
+  usage: {
+    serviceId: string;
+    serviceName: string;
+    limit: number;
+    used: number;
+  }[];
 };
 
 function money(value: number) {
@@ -84,7 +90,10 @@ export default async function MembershipPlansPage() {
       .eq("active", true)
       .order("name")
       .limit(500),
-    supabase.rpc("get_membership_overview", { p_barbershop: tenant.id }),
+    supabase.rpc("get_membership_overview", {
+      p_barbershop: tenant.id,
+      p_client_id: null,
+    }),
   ]);
 
   const services = serviceData ?? [];
@@ -154,6 +163,7 @@ export default async function MembershipPlansPage() {
           </div>
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
 
       <Card>
         <CardHeader>
@@ -180,21 +190,23 @@ export default async function MembershipPlansPage() {
                         {membership.client_phone ?? "Sem telefone"}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Plano">
                       <p>{membership.plan_name}</p>
                       <p className="text-muted-foreground text-xs">
                         {money(Number(membership.price))} ·{" "}
                         {PERIOD_LABELS[membership.period] ?? membership.period}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Situação">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {membership.effective_status === "past_due" ? (
-                          <Badge variant="destructive">Vencido</Badge>
+                          <Badge variant="danger">Vencido</Badge>
                         ) : membership.effective_status === "paused" ? (
-                          <Badge variant="secondary">Pausado</Badge>
+                          <Badge variant="neutral">Pausado</Badge>
+                        ) : membership.effective_status === "due_soon" ? (
+                          <Badge variant="warning">Vence em breve</Badge>
                         ) : (
-                          <Badge>Em dia</Badge>
+                          <Badge variant="success">Em dia</Badge>
                         )}
                         <span className="text-muted-foreground text-xs">
                           até {periodEndLabel}
@@ -207,18 +219,14 @@ export default async function MembershipPlansPage() {
                           variant="outline"
                           className="mt-1.5"
                         >
-                          <a
-                            href={chargeHref}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
+                          <a href={chargeHref} target="_blank" rel="noreferrer">
                             <MessageCircle className="size-3.5" /> Cobrar no
                             WhatsApp
                           </a>
                         </Button>
                       ) : null}
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Uso do período">
                       {membership.usage.length ? (
                         <ul className="space-y-0.5 text-sm">
                           {membership.usage.map((item) => (
@@ -273,7 +281,7 @@ export default async function MembershipPlansPage() {
                   <TableHead>Plano</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Incluídos</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Situação</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -286,14 +294,14 @@ export default async function MembershipPlansPage() {
                         {plan.description || "Sem descrição"}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Preço">
                       {money(Number(plan.price))}
                       <span className="text-muted-foreground text-xs">
                         {" "}
                         /{PERIOD_LABELS[plan.period] ?? plan.period}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Incluídos">
                       <ul className="space-y-0.5 text-sm">
                         {plan.entitlements.map((item) => (
                           <li key={item.service_id}>
@@ -307,8 +315,8 @@ export default async function MembershipPlansPage() {
                         ))}
                       </ul>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={plan.active ? "default" : "secondary"}>
+                    <TableCell data-label="Situação">
+                      <Badge variant={plan.active ? "success" : "neutral"}>
                         {plan.active ? "À venda" : "Desativado"}
                       </Badge>
                     </TableCell>

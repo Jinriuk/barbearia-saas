@@ -50,16 +50,18 @@ function first<T>(value: T | T[] | null | undefined): T | null {
 type SummaryRow = {
   professional_id: string;
   professional_name: string;
+  produced: number | string;
+  produced_products: number | string;
+  produced_total: number | string;
+  commission: number | string;
+  received_produced: number | string;
+  received_commission: number | string;
   completed_count: number;
-  produced_services: number;
-  produced_products: number;
-  produced_total: number;
-  commission: number;
-  base_salary: number;
+  base_salary: number | string;
   model: string;
-  advances: number;
-  paid: number;
-  to_pay: number;
+  advances: number | string;
+  paid: number | string;
+  to_pay: number | string;
 };
 
 /**
@@ -241,10 +243,12 @@ export default async function ProfessionalProfilePage({
         professionalId: summary.professional_id,
         name: summary.professional_name,
         completedCount: Number(summary.completed_count ?? 0),
-        producedServices: Number(summary.produced_services ?? 0),
+        producedServices: Number(summary.produced ?? 0),
         producedProducts: Number(summary.produced_products ?? 0),
         producedTotal: Number(summary.produced_total ?? 0),
         commission: Number(summary.commission ?? 0),
+        receivedProduced: Number(summary.received_produced ?? 0),
+        receivedCommission: Number(summary.received_commission ?? 0),
         baseSalary: Number(summary.base_salary ?? 0),
         model: (summary.model as CommissionClosing["model"]) ?? "commission",
         advances: Number(summary.advances ?? 0),

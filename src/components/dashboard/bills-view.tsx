@@ -1,4 +1,4 @@
-import { Check, Trash2 } from "lucide-react";
+import { Ban, Check, Trash2 } from "lucide-react";
 import { formatBRL, PAYMENT_METHODS } from "@/lib/financial";
 import { formatShortDateInTz } from "@/lib/dates";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -35,10 +35,17 @@ export function BillsView({
   /** Recebimentos exigem forma de pagamento (regra da Fase 0). */
   askPaymentMethod?: boolean;
 }) {
+  // "Em aberto" é pendente/vencido — não "tudo que não está pago". Desde a
+  // Fase 0 o recebível acompanha a receita no Financeiro, e anular a venda por
+  // lá deixa o lançamento como 'canceled': ele não é mais uma dívida do
+  // cliente e não pode entrar na soma nem cobrar ninguém.
   const pending = bills
-    .filter((bill) => bill.status !== "paid")
+    .filter((bill) => bill.status === "pending" || bill.status === "overdue")
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
   const paid = bills.filter((bill) => bill.status === "paid").slice(0, 10);
+  const canceled = bills
+    .filter((bill) => bill.status === "canceled")
+    .slice(0, 10);
   const overdueTotal = pending
     .filter((bill) => bill.due_date < today)
     .reduce((total, bill) => total + Number(bill.amount), 0);
@@ -62,7 +69,9 @@ export function BillsView({
             </p>
           </CardContent>
         </Card>
-        <Card className={overdueTotal > 0 ? "border-rose-300" : undefined}>
+        <Card
+          className={overdueTotal > 0 ? "border-destructive/40" : undefined}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-muted-foreground text-sm font-medium">
               Vencido
@@ -70,7 +79,7 @@ export function BillsView({
           </CardHeader>
           <CardContent>
             <p
-              className={`font-mono text-2xl font-semibold ${overdueTotal > 0 ? "text-rose-600" : ""}`}
+              className={`font-mono text-2xl font-semibold ${overdueTotal > 0 ? "text-destructive" : ""}`}
             >
               {formatBRL(overdueTotal)}
             </p>
@@ -111,11 +120,7 @@ export function BillsView({
                         </p>
                       ) : null}
                     </div>
-                    {overdue ? (
-                      <Badge className="border-transparent bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
-                        Vencida
-                      </Badge>
-                    ) : null}
+                    {overdue ? <Badge variant="danger">Vencida</Badge> : null}
                     <span className="font-mono text-sm font-semibold">
                       {formatBRL(Number(bill.amount))}
                     </span>
@@ -130,7 +135,7 @@ export function BillsView({
                             name="paymentMethod"
                             defaultValue="pix"
                             aria-label={`Forma de pagamento de ${bill.description}`}
-                            className="border-input bg-background h-8 rounded-lg border px-2 text-xs"
+                            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                           >
                             {PAYMENT_METHODS.map((item) => (
                               <option key={item.value} value={item.value}>
@@ -142,7 +147,7 @@ export function BillsView({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900 dark:text-emerald-400"
+                          className="border-success/40 text-success hover:bg-success-bg"
                         >
                           <Check className="size-3.5" /> {settleLabel}
                         </Button>
@@ -183,13 +188,51 @@ export function BillsView({
                 key={bill.id}
                 className="text-muted-foreground flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm"
               >
-                <Check className="size-4 text-emerald-600" />
+                <Check className="text-success size-4" />
                 <span className="min-w-0 flex-1 truncate">
                   {bill.description}
                 </span>
                 <span className="font-mono">
                   {formatBRL(Number(bill.amount))}
                 </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canceled.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Anuladas</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Lançamentos cancelados no Financeiro. Não entram no total em
+              aberto e não devem ser cobrados.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {canceled.map((bill) => (
+              <div
+                key={bill.id}
+                className="text-muted-foreground flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm"
+              >
+                <Ban className="size-4" />
+                <span className="min-w-0 flex-1 truncate line-through">
+                  {bill.description}
+                </span>
+                <span className="font-mono line-through">
+                  {formatBRL(Number(bill.amount))}
+                </span>
+                <form action={deleteAction}>
+                  <input type="hidden" name="id" value={bill.id} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Excluir ${bill.description}`}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </form>
               </div>
             ))}
           </CardContent>

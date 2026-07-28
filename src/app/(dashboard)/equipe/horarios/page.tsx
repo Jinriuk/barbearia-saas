@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireTenant } from "@/lib/auth/dal";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import {
   WeeklyAvailabilityEditor,
@@ -122,6 +123,7 @@ export default async function TeamSchedulePage({
         title="Horários e folgas"
         description="Expediente semanal por profissional, folgas, férias e bloqueios pontuais. A página de agendamento respeita tudo isso na hora."
       />
+      <SectionNav section="equipe" role={tenant.role} />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <Card>

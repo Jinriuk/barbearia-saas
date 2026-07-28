@@ -1,19 +1,17 @@
 import Link from "next/link";
 import {
   Banknote,
-  CalendarClock,
   CalendarDays,
   CircleAlert,
   Contact,
-  Crown,
+  CreditCard,
   LayoutDashboard,
   LogOut,
   Scissors,
   Settings,
-  ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Store,
+  UserCog,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,104 +19,39 @@ import { Separator } from "@/components/ui/separator";
 import { signOut } from "@/modules/auth/actions";
 import type { TenantContext } from "@/types/domain";
 import { accessState, daysLeft } from "@/lib/billing";
-import { can, type Permission } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
+import { MAIN_NAV } from "@/lib/navigation";
 import { PlanBadge } from "@/components/dashboard/plan-badge";
 import { NotificationsBell } from "@/components/dashboard/notifications-bell";
 import { UserMenu } from "@/components/layout/user-menu";
 import { NavLink } from "@/components/layout/nav-link";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  permission?: Permission;
+/**
+ * Ícone de cada um dos 7 destinos do §9.1 (Fase 1.14). Antes eram 15 links,
+ * e quatro dos sete nomes prescritos existiam apenas como cabeçalho de grupo
+ * inerte: "Financeiro" era rótulo de seção e o link real chamava-se "Resumo e
+ * caixa". A lista em si mora em @/lib/navigation; as telas que saíram do menu
+ * continuam alcançáveis pela faixa de seção de cada área (SectionNav).
+ */
+const navIcons: Record<string, typeof LayoutDashboard> = {
+  "/dashboard": LayoutDashboard,
+  "/agenda": CalendarDays,
+  "/clientes": Contact,
+  "/financeiro": Banknote,
+  "/servicos": Scissors,
+  "/profissionais": Users,
+  "/configuracoes": Settings,
 };
 
-type NavGroup = {
-  label?: string;
-  items: NavItem[];
-};
+const navItems = MAIN_NAV.map((item) => ({
+  ...item,
+  icon: navIcons[item.href] ?? LayoutDashboard,
+}));
 
-// Navegação agrupada (Fase 1 — §6.2 do plano): as rotas existentes
-// continuam, organizadas por área. A filtragem por papel é preservada.
-const navGroups: NavGroup[] = [
-  {
-    items: [
-      { href: "/dashboard", label: "Início", icon: LayoutDashboard },
-      { href: "/agenda", label: "Agenda", icon: CalendarDays },
-      {
-        href: "/clientes",
-        label: "Clientes",
-        icon: Contact,
-        permission: "clients:manage",
-      },
-    ],
-  },
-  {
-    label: "Financeiro",
-    items: [
-      // Uma entrada só (Fase 3 — item 3.1): despesas, a receber, comissões e
-      // relatórios viraram seções internas de /financeiro. As rotas antigas
-      // continuam existindo e redirecionam para a seção correspondente.
-      {
-        href: "/financeiro",
-        label: "Financeiro",
-        icon: Banknote,
-        permission: "finance:view",
-      },
-    ],
-  },
-  {
-    label: "Serviços e produtos",
-    items: [
-      { href: "/servicos", label: "Serviços", icon: Scissors },
-      {
-        href: "/planos",
-        label: "Planos de clientes",
-        icon: Crown,
-        permission: "clients:manage",
-      },
-      {
-        href: "/produtos",
-        label: "Produtos e estoque",
-        icon: ShoppingBag,
-        permission: "catalog:manage",
-      },
-    ],
-  },
-  {
-    label: "Equipe",
-    items: [
-      { href: "/profissionais", label: "Profissionais", icon: Users },
-      {
-        href: "/equipe/horarios",
-        label: "Horários e folgas",
-        icon: CalendarClock,
-        permission: "appointments:manage",
-      },
-      {
-        href: "/permissoes",
-        label: "Permissões",
-        icon: ShieldCheck,
-        permission: "memberships:manage",
-      },
-    ],
-  },
-  {
-    label: "Configurações",
-    items: [
-      {
-        href: "/configuracoes",
-        label: "Configurações",
-        icon: Settings,
-        permission: "settings:manage",
-      },
-    ],
-  },
-];
+type NavItem = (typeof navItems)[number];
 
-// Itens fixos da barra inferior do celular (§6.2): Início, Agenda, Clientes,
+// Itens fixos da barra inferior do celular (§9.2): Início, Agenda, Clientes,
 // Financeiro — o restante vive no botão Menu.
 const mobilePrimaryHrefs = [
   "/dashboard",
@@ -136,31 +69,59 @@ export function DashboardShell({
   isPlatformAdmin?: boolean;
   children: React.ReactNode;
 }) {
-  const visibleGroups = navGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) => !item.permission || can(tenant.role, item.permission),
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleItems = navItems.filter(
+    (item) => !item.permission || can(tenant.role, item.permission),
+  );
 
-  const allVisible = visibleGroups.flatMap((group) => group.items);
   const mobilePrimary = mobilePrimaryHrefs
-    .map((href) => allVisible.find((item) => item.href === href))
+    .map((href) => visibleItems.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item));
-  const mobileMenuGroups = visibleGroups
-    .map((group) => ({
-      label: group.label,
-      items: group.items.filter(
-        (item) => !mobilePrimaryHrefs.includes(item.href),
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
+
+  // §9.2 — o Menu do celular tem seis itens: as áreas que não couberam na
+  // barra inferior mais os três destinos que só existiam no menu do usuário
+  // do cabeçalho e eram inalcançáveis no celular.
+  const mobileMenuGroups = [
+    {
+      label: "Áreas",
+      items: visibleItems
+        .filter((item) => !mobilePrimaryHrefs.includes(item.href))
+        .map((item) => ({
+          href: item.href,
+          label: item.label,
+          icon: <item.icon className="size-4" />,
+        })),
+    },
+    {
+      label: "Sua conta",
+      items: [
+        {
+          href: `/${tenant.slug}`,
+          label: "Página de agendamento",
+          icon: <Store className="size-4" />,
+          external: true,
+        },
+        {
+          href: "/minha-conta",
+          label: "Minha conta",
+          icon: <UserCog className="size-4" />,
+        },
+        ...(tenant.role === "owner"
+          ? [
+              {
+                href: "/assinatura",
+                label: "Meu plano NexoBarber",
+                icon: <CreditCard className="size-4" />,
+              },
+            ]
+          : []),
+      ],
+    },
+  ].filter((group) => group.items.length > 0);
 
   return (
     <div className="bg-background min-h-screen">
-      <aside className="bg-sidebar fixed inset-y-0 left-0 hidden w-64 border-r lg:flex lg:flex-col">
+      {/* §9.1 pede 240px de largura no menu lateral. */}
+      <aside className="bg-sidebar fixed inset-y-0 left-0 hidden w-60 border-r lg:flex lg:flex-col">
         <div className="flex h-16 items-center gap-3 px-5">
           <span className="bg-primary text-primary-foreground grid size-9 place-items-center rounded-xl">
             <Scissors className="size-4" />
@@ -176,23 +137,12 @@ export function DashboardShell({
             <p className="text-muted-foreground mt-1 text-xs">/{tenant.slug}</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-          {visibleGroups.map((group, index) => (
-            <div key={group.label ?? index}>
-              {group.label ? (
-                <p className="text-muted-foreground mb-1 px-3 text-[11px] font-semibold tracking-wide uppercase">
-                  {group.label}
-                </p>
-              ) : null}
-              <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavLink key={item.href} href={item.href}>
-                    <item.icon className="size-4 shrink-0" />
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
+          {visibleItems.map((item) => (
+            <NavLink key={item.href} href={item.href}>
+              <item.icon className="size-4 shrink-0" />
+              {item.label}
+            </NavLink>
           ))}
         </nav>
         <div className="p-4">
@@ -207,7 +157,7 @@ export function DashboardShell({
           </form>
         </div>
       </aside>
-      <div className="lg:pl-64">
+      <div className="lg:pl-60">
         <header className="bg-background/90 sticky top-0 z-30 flex h-16 items-center justify-between border-b px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-3 lg:hidden">
             <Store className="text-primary size-5" />
@@ -244,17 +194,10 @@ export function DashboardShell({
       <MobileTabBar
         items={mobilePrimary.map((item) => ({
           href: item.href,
-          label: item.label,
+          label: item.mobileLabel ?? item.label,
           icon: <item.icon className="size-5" />,
         }))}
-        menuGroups={mobileMenuGroups.map((group) => ({
-          label: group.label,
-          items: group.items.map((item) => ({
-            href: item.href,
-            label: item.label,
-            icon: <item.icon className="size-4" />,
-          })),
-        }))}
+        menuGroups={mobileMenuGroups}
       />
     </div>
   );

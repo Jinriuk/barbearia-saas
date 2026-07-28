@@ -53,7 +53,7 @@ export function ScheduleBlocksCard({
     <div className="space-y-5">
       <form action={formAction} className="space-y-3 rounded-xl border p-4">
         {state.message ? (
-          <Alert variant={state.success ? "default" : "destructive"}>
+          <Alert variant={state.success ? "success" : "destructive"}>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
         ) : null}
@@ -64,7 +64,7 @@ export function ScheduleBlocksCard({
               id="block-professional"
               name="professionalId"
               required
-              className="border-input bg-background h-11 w-full rounded-lg border px-2 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               {professionals.map((professional) => (
                 <option key={professional.id} value={professional.id}>

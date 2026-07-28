@@ -100,7 +100,9 @@ export async function saveMembershipPlan(
         plan_id: planId,
         service_id: serviceId,
         uses_per_period:
-          Number.isFinite(uses) && uses >= 1 && uses <= 99 ? Math.floor(uses) : 1,
+          Number.isFinite(uses) && uses >= 1 && uses <= 99
+            ? Math.floor(uses)
+            : 1,
       };
     });
   if (!entitlements.length) {

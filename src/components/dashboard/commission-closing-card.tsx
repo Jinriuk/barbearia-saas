@@ -18,16 +18,20 @@ import { Label } from "@/components/ui/label";
 const initialState: ActionState = { success: false, message: "" };
 
 const selectClass =
-  "border-input bg-background h-10 w-full rounded-lg border px-2 text-sm";
+  "border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 md:h-11";
 
 export type CommissionClosing = {
   professionalId: string;
   name: string;
   completedCount: number;
+  /** Serviços, sobre o valor congelado na conclusão (Fase 0 §0.9). */
   producedServices: number;
   producedProducts: number;
   producedTotal: number;
   commission: number;
+  /** Quanto da competência já virou caixa (Fase 0 §0.14). */
+  receivedProduced: number;
+  receivedCommission: number;
   baseSalary: number;
   model: "commission" | "fixed" | "hybrid";
   advances: number;
@@ -113,11 +117,15 @@ export function CommissionClosingCard({
           <Row
             label="Total produzido"
             value={formatBRL(closing.producedTotal)}
-            hint={`Serviços ${formatBRL(closing.producedServices)} · produtos ${formatBRL(closing.producedProducts)}`}
+            hint={`Serviços ${formatBRL(closing.producedServices)} · produtos ${formatBRL(closing.producedProducts)} · ${formatBRL(closing.receivedProduced)} recebido`}
             strong
           />
           {closing.model !== "fixed" ? (
-            <Row label="Comissão" value={formatBRL(closing.commission)} />
+            <Row
+              label="Comissão apurada"
+              value={formatBRL(closing.commission)}
+              hint={`${formatBRL(closing.receivedCommission)} já entrou em caixa`}
+            />
           ) : null}
           {closing.model !== "commission" ? (
             <Row label="Salário" value={formatBRL(closing.baseSalary)} />
@@ -218,9 +226,9 @@ export function CommissionClosingCard({
         </button>
 
         {paymentState.message ? (
-          <Alert variant={paymentState.success ? "default" : "destructive"}>
+          <Alert variant={paymentState.success ? "success" : "destructive"}>
             {paymentState.success ? (
-              <CheckCircle2 className="size-4 text-emerald-600" />
+              <CheckCircle2 className="text-success size-4" />
             ) : null}
             <AlertDescription>{paymentState.message}</AlertDescription>
           </Alert>
@@ -289,10 +297,10 @@ export function CommissionClosingCard({
               </div>
               {advanceState.message ? (
                 <Alert
-                  variant={advanceState.success ? "default" : "destructive"}
+                  variant={advanceState.success ? "success" : "destructive"}
                 >
                   {advanceState.success ? (
-                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <CheckCircle2 className="text-success size-4" />
                   ) : null}
                   <AlertDescription>{advanceState.message}</AlertDescription>
                 </Alert>
@@ -401,10 +409,10 @@ export function CommissionClosingCard({
               </div>
               {settingsState.message ? (
                 <Alert
-                  variant={settingsState.success ? "default" : "destructive"}
+                  variant={settingsState.success ? "success" : "destructive"}
                 >
                   {settingsState.success ? (
-                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <CheckCircle2 className="text-success size-4" />
                   ) : null}
                   <AlertDescription>{settingsState.message}</AlertDescription>
                 </Alert>

@@ -17,7 +17,10 @@ import { loadCashFlowSeries } from "./shared";
 type Summary = {
   sold: number;
   received: number;
+  /** Saldo TOTAL em aberto — independe da janela (Fase 0 §0.11). */
   receivable: number;
+  /** Vendido dentro da janela e ainda não recebido (Fase 0 §0.11). */
+  receivable_period: number;
   expenses_paid: number;
   profit: number;
   commissions_accrued: number;
@@ -32,6 +35,7 @@ function readSummary(rows: unknown): Summary {
     sold: num("sold"),
     received: num("received"),
     receivable: num("receivable"),
+    receivable_period: num("receivable_period"),
     expenses_paid: num("expenses_paid"),
     profit: num("profit"),
     commissions_accrued: num("commissions_accrued"),
@@ -109,15 +113,14 @@ export async function ResumoSection({
       hint: compare(summary.received, previous.received),
     },
     {
-      label: "Vendas a receber",
-      value: formatBRL(summary.receivable),
+      label: "A receber no período",
+      value: formatBRL(summary.receivable_period),
       icon: HandCoins,
-      // Saldo, não fluxo: ignora a janela por definição — o rótulo diz isso
-      // em vez de fingir que respeita o período (item 0.11). E conta só as
-      // vendas concluídas: o fiado lançado à mão ainda vive noutra tabela e
-      // por isso não entra aqui (item 0.10, Fase 0). A seção "A receber"
-      // mostra os dois lados com totais separados.
-      hint: "Saldo de vendas concluídas — não inclui o fiado lançado à mão",
+      // Dois números diferentes, os dois certos (Fase 0 §0.11): o que foi
+      // vendido DENTRO da janela e ainda não entrou, e o saldo devedor
+      // inteiro. O fiado lançado à mão entra nos dois desde a Fase 0 §0.10,
+      // que passou a criar a transação junto do recebível.
+      hint: `Saldo total em aberto: ${formatBRL(summary.receivable)}`,
       href: `/financeiro?secao=a-receber`,
     },
     {

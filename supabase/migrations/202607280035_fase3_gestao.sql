@@ -4,43 +4,45 @@
 --   3.4  Comissões completas — total produzido, adiantamento/vale e o valor
 --        a pagar como campo CALCULADO (não default de input editável).
 --   3.5  Despesas progressivas — categoria e observação no lançamento.
---   3.6  A receber com dono — observação no recebível (o client_id já existe
---        no schema desde 202607020001; faltava a tela preencher).
---   3.7  Lucro que desconta comissão — income_summary passa a devolver a
---        comissão apurada e o lucro depois dela.
+--   3.6  A receber com dono — observação no recebível.
+--   3.7  Lucro que desconta comissão.
 --   3.8  Convite de colaborador — o dono deixa de criar a senha.
 --   3.12 Mapa de calor de dias × horários.
 --
--- Decisões registradas (docs/05):
+-- ESTA MIGRAÇÃO ESTENDE A FASE 0 (0030), NÃO A SUBSTITUI.
 --
--- A) REGIME. income_summary continua em CAIXA para receita e despesa
---    (recebido − despesas pagas). A comissão é apurada por COMPETÊNCIA
---    (atendimento concluído no período), porque é assim que a barbearia
---    fecha o mês da equipe. Os dois números convivem em colunas separadas:
---    `profit` (caixa, como antes) e `profit_after_commissions`
---    (caixa − comissão apurada). A tela diz qual é qual — a auditoria
---    reclamava justamente da mistura silenciosa (item 0.14).
+-- A Fase 0 já resolveu, e nada aqui desfaz:
+--   §0.9  o preço e a taxa da comissão são CONGELADOS na conclusão
+--         (appointments.charged_price / .commission_rate). commission_summary
+--         continua lendo o valor congelado — o que esta fase acrescenta são
+--         colunas, não uma base de cálculo nova.
+--   §0.11 `receivable` (saldo total) e `receivable_period` (recorte da
+--         janela) convivem em income_summary. As duas continuam iguais.
+--   §0.12 `receivable_count` — a contagem real do pendente.
+--   §0.14 `received_produced` / `received_commission` — quanto da competência
+--         já virou caixa. Preservados na íntegra.
 --
--- B) BASE DA COMISSÃO. Mantida a regra vigente e documentada da Fase 4:
---    taxa do SERVIÇO quando > 0, senão a taxa padrão do PROFISSIONAL, sobre
---    o preço do serviço. Congelar o valor transacionado é o item 0.9 da
---    Fase 0 e NÃO é feito aqui — trocar a base junto com a reorganização da
---    tela tornaria impossível saber qual mudança moveu o número. O que muda
---    aqui é onde a conta roda: sai do cliente (que truncava em 3.000 linhas)
---    e passa para o banco.
+-- Decisões desta fase (docs/05):
 --
--- C) TOTAL PRODUZIDO. Usa a MESMA base da comissão para os serviços, mais a
---    receita de produtos confirmados atribuída ao profissional. Sem isso o
---    profissional não consegue conferir a própria comissão — que é o pedido
---    literal do item 3.4.
+-- A) REGIME. income_summary continua em CAIXA para receita e despesa. A
+--    comissão é apurada por COMPETÊNCIA, como a Fase 0 definiu. O que entra
+--    é `profit_after_commissions`, ao lado de `profit` (caixa) — as duas
+--    colunas convivem e a tela diz qual é qual.
 --
--- D) ADIANTAMENTO/VALE. Entra como despesa paga no financeiro na hora (o
+-- B) TOTAL PRODUZIDO EM PRODUTO. Usa as MESMAS DUAS PORTAS de
+--    `revenue_breakdown` (Fase 2.6): produto reservado no agendamento e
+--    confirmado, mais venda de balcão com o vendedor escolhido na tela —
+--    esta com o desconto rateado proporcionalmente, igual lá. Contar só uma
+--    das portas faria a ficha do profissional divergir do Financeiro.
+--
+-- C) ADIANTAMENTO/VALE. Entra como despesa paga no financeiro na hora (o
 --    dinheiro saiu do caixa) e é abatido do valor a pagar do período. Nunca
 --    é somado duas vezes: o pagamento final registra só o saldo.
 --
--- E) CONVITE. O convite guarda apenas o destino e o papel pretendido; a
---    senha nasce com o colaborador, no fluxo do Supabase Auth. O token não
---    é guardado aqui — quem emite o link é o próprio Auth.
+-- D) CONVITE. O convite guarda apenas o destino e o papel pretendido; a
+--    senha nasce com o colaborador, no fluxo do Supabase Auth. Substitui o
+--    paliativo do §0.17 (senha provisória do dono + troca obrigatória), que
+--    a própria Fase 0 registrou como "o convite por e-mail é a Fase 3".
 
 begin;
 
@@ -175,9 +177,11 @@ revoke all on function public.profile_id_by_email(uuid, text) from public, anon;
 grant execute on function public.profile_id_by_email(uuid, text) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. Despesa progressiva (item 3.5) e recebível com dono (item 3.6).
+-- 3. Despesa progressiva (item 3.5) e recebível com observação (item 3.6).
 --    A primeira linha do formulário continua sendo descrição, valor e
 --    vencimento; estas colunas alimentam o "Adicionar detalhes".
+--    `accounts_receivable.client_id` já existia desde 202607020001 — faltava
+--    a tela preencher.
 alter table public.accounts_payable
   add column if not exists category text
     check (category is null or char_length(category) <= 40),
@@ -193,27 +197,36 @@ create index if not exists accounts_receivable_client_idx
   where client_id is not null;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. Fechamento por profissional no banco (item 3.4).
---    Antes: a página somava 3.000 atendimentos no cliente — acima disso a
---    comissão exibida era ficção silenciosa (mesma família do item 0.7).
-create or replace function public.commission_summary(
+-- 4. Fechamento por profissional (item 3.4).
+--
+--    Mantém INTEGRALMENTE o núcleo da Fase 0 §0.9/§0.14: base congelada,
+--    exclusão de venda anulada, atendimento coberto por plano contando como
+--    recebido, e as colunas `produced`, `commission`, `received_produced`,
+--    `received_commission`, `completed_count`.
+--
+--    Acrescenta o que o §7.5 pede para fechar o mês da equipe: nome, produção
+--    em PRODUTO (as duas portas da Fase 2.6), vale, já pago, regra de
+--    pagamento e o valor a pagar calculado.
+drop function if exists public.commission_summary(uuid, timestamptz, timestamptz);
+drop function if exists public.commission_summary(uuid, timestamptz, timestamptz, text);
+create function public.commission_summary(
   p_barbershop uuid,
   p_from timestamptz,
   p_to timestamptz,
   -- O vale é datado em DIA (reference_date), não em instante. Converter a
   -- janela no fuso do tenant evita que um vale do último dia do período caia
   -- fora — ou que o do dia anterior entre — em fusos de offset positivo.
-  -- income_summary chama sem este argumento de propósito: a comissão apurada
-  -- não depende de vale.
   p_timezone text default 'America/Sao_Paulo'
 ) returns table (
   professional_id uuid,
   professional_name text,
-  completed_count bigint,
-  produced_services numeric,
+  produced numeric,
   produced_products numeric,
   produced_total numeric,
   commission numeric,
+  received_produced numeric,
+  received_commission numeric,
+  completed_count integer,
   base_salary numeric,
   model text,
   advances numeric,
@@ -225,51 +238,110 @@ stable
 security invoker
 set search_path = public
 as $$
-  with pros as (
-    select p.id, p.name
-    from public.professionals p
-    where p.barbershop_id = p_barbershop and p.active
-  ),
-  settings as (
-    select s.professional_id, s.model, s.base_salary, s.commission_rate
-    from public.employee_pay_settings s
-    where s.barbershop_id = p_barbershop
-  ),
-  -- Serviços concluídos no período. Precedência da taxa: serviço > padrão
-  -- do profissional (regra única — docs/05).
-  services_done as (
+  with services_done as (
     select
       a.professional_id,
-      count(*) as completed_count,
-      coalesce(sum(sv.price), 0)::numeric as produced,
-      coalesce(sum(
-        sv.price * (
-          case
-            when coalesce(sv.commission_rate, 0) > 0 then sv.commission_rate
-            else coalesce(st.commission_rate, 0)
-          end
-        ) / 100.0
-      ), 0)::numeric as commission
+      coalesce(sum(a.charged_price), 0)::numeric as produced,
+      coalesce(sum(a.charged_price * rate.pct / 100), 0)::numeric as commission,
+      coalesce(sum(a.charged_price) filter (where cash.settled), 0)::numeric
+        as received_produced,
+      coalesce(
+        sum(a.charged_price * rate.pct / 100) filter (where cash.settled),
+        0
+      )::numeric as received_commission,
+      count(*)::integer as completed_count
     from public.appointments a
-    join public.services sv on sv.id = a.service_id
-    left join settings st on st.professional_id = a.professional_id
+    -- Taxa congelada na conclusão. Só cai na taxa vigente do profissional
+    -- quando NENHUMA taxa estava configurada naquele momento (congelado =
+    -- null) — assim configurar a comissão depois não deixa o mês valendo
+    -- zero, e mexer numa taxa já aplicada continua sem reescrever mês
+    -- fechado. (Fase 0 §0.9 — preservado na íntegra.)
+    left join lateral (
+      select coalesce(a.commission_rate, (
+        select eps.commission_rate
+        from public.employee_pay_settings eps
+        where eps.barbershop_id = a.barbershop_id
+          and eps.professional_id = a.professional_id
+      ), 0) as pct
+    ) rate on true
+    left join lateral (
+      select (
+        exists (
+          select 1 from public.financial_transactions ft
+          where ft.appointment_id = a.id
+            and ft.type = 'income'
+            and ft.category = 'service'
+            and ft.status = 'paid'
+        )
+        or exists (
+          select 1 from public.membership_usage mu
+          where mu.appointment_id = a.id
+        )
+      ) as settled
+    ) cash on true
     where a.barbershop_id = p_barbershop
       and a.status = 'completed'
       and a.professional_id is not null
-      and a.starts_at >= p_from and a.starts_at < p_to
+      and a.starts_at >= p_from
+      and a.starts_at < p_to
+      -- Venda anulada não gera comissão. Atendimento SEM receita nenhuma
+      -- continua contando: é o caso do serviço coberto por plano, que não
+      -- gera receita de propósito. (Fase 0 — preservado.)
+      and (
+        not exists (
+          select 1 from public.financial_transactions ft
+          where ft.appointment_id = a.id
+            and ft.type = 'income'
+            and ft.category = 'service'
+        )
+        or exists (
+          select 1 from public.financial_transactions ft
+          where ft.appointment_id = a.id
+            and ft.type = 'income'
+            and ft.category = 'service'
+            and ft.status <> 'canceled'
+        )
+      )
     group by a.professional_id
   ),
+  -- As MESMAS duas portas de revenue_breakdown (Fase 2.6). Produto não gera
+  -- comissão pela regra vigente — entra só como produção.
   products_done as (
-    select
-      a.professional_id,
-      coalesce(sum(ap.quantity * ap.unit_price), 0)::numeric as produced
-    from public.appointment_products ap
-    join public.appointments a on a.id = ap.appointment_id
-    where ap.barbershop_id = p_barbershop
-      and ap.status = 'confirmed'
-      and a.professional_id is not null
-      and ap.confirmed_at >= p_from and ap.confirmed_at < p_to
-    group by a.professional_id
+    select professional_id, coalesce(sum(total), 0)::numeric as produced
+    from (
+      select a.professional_id,
+             (ap.quantity * ap.unit_price)::numeric as total
+      from public.appointment_products ap
+      join public.appointments a on a.id = ap.appointment_id
+      where ap.barbershop_id = p_barbershop
+        and ap.status = 'confirmed'
+        and a.professional_id is not null
+        and ap.confirmed_at >= p_from and ap.confirmed_at < p_to
+
+      union all
+
+      -- Arredondado ao centavo: o rateio do desconto é uma divisão, e sem o
+      -- round a produção fica com cauda binária (60,0000000000000000001).
+      -- `revenue_breakdown` mostra o mesmo valor formatado em duas casas, então
+      -- as duas telas continuam batendo — aqui o número já sai como dinheiro.
+      select cs.professional_id,
+             round(
+               ci.quantity * ci.unit_price
+                 * case when cs.subtotal > 0 then cs.total / cs.subtotal else 1 end,
+               2
+             )::numeric
+      from public.counter_sale_items ci
+      join public.counter_sales cs on cs.id = ci.sale_id
+      where ci.barbershop_id = p_barbershop
+        and cs.professional_id is not null
+        and ci.created_at >= p_from and ci.created_at < p_to
+    ) lines
+    group by professional_id
+  ),
+  settings as (
+    select s.professional_id, s.model, s.base_salary
+    from public.employee_pay_settings s
+    where s.barbershop_id = p_barbershop
   ),
   advances_given as (
     select adv.professional_id,
@@ -289,20 +361,22 @@ as $$
     group by pay.professional_id
   )
   select
-    pros.id,
-    pros.name,
-    coalesce(sd.completed_count, 0)::bigint,
+    p.id,
+    p.name,
     coalesce(sd.produced, 0)::numeric,
     coalesce(pd.produced, 0)::numeric,
     (coalesce(sd.produced, 0) + coalesce(pd.produced, 0))::numeric,
     coalesce(sd.commission, 0)::numeric,
+    coalesce(sd.received_produced, 0)::numeric,
+    coalesce(sd.received_commission, 0)::numeric,
+    coalesce(sd.completed_count, 0)::integer,
     coalesce(st.base_salary, 0)::numeric,
     coalesce(st.model, 'commission')::text,
     coalesce(ag.total, 0)::numeric,
     coalesce(pm.total, 0)::numeric,
     -- Valor a pagar = o que o modelo manda − vale − o que já foi pago.
-    -- Nunca negativo: vale maior que a produção fica em zero e a tela
-    -- mostra o saldo devedor separadamente.
+    -- Nunca negativo: vale maior que a produção fica em zero e a tela mostra
+    -- o vale separadamente.
     greatest(
       0,
       (case coalesce(st.model, 'commission')
@@ -313,13 +387,14 @@ as $$
       - coalesce(ag.total, 0)
       - coalesce(pm.total, 0)
     )::numeric
-  from pros
-  left join services_done sd on sd.professional_id = pros.id
-  left join products_done pd on pd.professional_id = pros.id
-  left join settings st on st.professional_id = pros.id
-  left join advances_given ag on ag.professional_id = pros.id
-  left join payments_made pm on pm.professional_id = pros.id
-  order by (coalesce(sd.produced, 0) + coalesce(pd.produced, 0)) desc, pros.name;
+  from public.professionals p
+  left join services_done sd on sd.professional_id = p.id
+  left join products_done pd on pd.professional_id = p.id
+  left join settings st on st.professional_id = p.id
+  left join advances_given ag on ag.professional_id = p.id
+  left join payments_made pm on pm.professional_id = p.id
+  where p.barbershop_id = p_barbershop and p.active
+  order by (coalesce(sd.produced, 0) + coalesce(pd.produced, 0)) desc, p.name;
 $$;
 revoke all on function public.commission_summary(uuid, timestamptz, timestamptz, text)
   from public, anon;
@@ -328,9 +403,10 @@ grant execute on function public.commission_summary(uuid, timestamptz, timestamp
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. Lucro que desconta comissão (item 3.7).
---    Mudar colunas de retorno exige drop + create. As colunas antigas
---    continuam com o mesmo nome e o mesmo significado — só entram duas
---    novas no fim, então quem lê por nome não quebra.
+--
+--    Mantém as SETE colunas da Fase 0 com o mesmo significado (inclusive
+--    `receivable` como saldo total, `receivable_period` e `receivable_count`
+--    dos §0.11/§0.12) e acrescenta duas no fim.
 drop function if exists public.income_summary(uuid, timestamptz, timestamptz);
 create function public.income_summary(
   p_barbershop uuid,
@@ -340,6 +416,8 @@ create function public.income_summary(
   sold numeric,
   received numeric,
   receivable numeric,
+  receivable_period numeric,
+  receivable_count bigint,
   expenses_paid numeric,
   profit numeric,
   commissions_accrued numeric,
@@ -371,6 +449,17 @@ as $$
       ), 0)::numeric as receivable,
       coalesce((
         select sum(amount) from public.financial_transactions
+        where barbershop_id = p_barbershop and type = 'income'
+          and status in ('pending', 'overdue')
+          and created_at >= p_from and created_at < p_to
+      ), 0)::numeric as receivable_period,
+      (
+        select count(*) from public.financial_transactions
+        where barbershop_id = p_barbershop and type = 'income'
+          and status in ('pending', 'overdue')
+      )::bigint as receivable_count,
+      coalesce((
+        select sum(amount) from public.financial_transactions
         where barbershop_id = p_barbershop and type = 'expense'
           and status = 'paid'
           and paid_at >= p_from and paid_at < p_to
@@ -378,13 +467,12 @@ as $$
       -- Comissão APURADA no período (competência), venha ela a ser paga
       -- neste mês ou no seguinte. É o que o dono ainda deve à equipe.
       coalesce((
-        select sum(cs.commission) from public.commission_summary(
-          p_barbershop, p_from, p_to
-        ) cs
+        select sum(cs.commission)
+        from public.commission_summary(p_barbershop, p_from, p_to) cs
       ), 0)::numeric as commissions_accrued,
       -- Comissão já paga dentro da janela — entra em expenses_paid como
-      -- despesa 'salary' e por isso precisa ser devolvida antes de
-      -- descontar a apurada, senão a equipe é descontada duas vezes.
+      -- despesa 'salary' e por isso precisa ser devolvida antes de descontar
+      -- a apurada, senão a equipe é descontada duas vezes.
       coalesce((
         select sum(amount) from public.financial_transactions
         where barbershop_id = p_barbershop and type = 'expense'
@@ -396,6 +484,8 @@ as $$
     s.sold,
     s.received,
     s.receivable,
+    s.receivable_period,
+    s.receivable_count,
     s.expenses_paid,
     (s.received - s.expenses_paid) as profit,
     s.commissions_accrued,
@@ -409,11 +499,12 @@ grant execute on function public.income_summary(uuid, timestamptz, timestamptz)
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 5b. Série do gráfico do §7.5 (item 3.3), agregada no banco.
---     O gráfico antigo somava as transações no cliente e por isso herdava o
---     teto de linhas do PostgREST (família do item 0.7): a partir de certo
---     volume a barra desenhada era menor que a realidade, em silêncio. Aqui
---     a soma é do Postgres, e a janela pode ser qualquer uma.
+-- 6. Série do gráfico do §7.5 (item 3.3).
+--
+--    Coexiste com `income_by_day` da Fase 0, que responde outra pergunta:
+--    lá é RECEITA quebrada por categoria, por dia; aqui é recebido CONTRA
+--    despesa, no mesmo balde, com bucket por dia ou por mês — que é o que a
+--    barra verde/coral com a linha tracejada do período anterior precisa.
 create or replace function public.cash_flow_series(
   p_barbershop uuid,
   p_from timestamptz,
@@ -449,9 +540,10 @@ grant execute on function public.cash_flow_series(uuid, timestamptz, timestamptz
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 6. Mapa de calor de dias × horários (item 3.12 / §6.2).
+-- 7. Mapa de calor de dias × horários (item 3.12 / §6.2).
 --    Agrega no banco e no fuso do tenant. Devolve só as células com
---    movimento; a tela desenha a grade completa.
+--    movimento; a tela desenha a grade completa. Usa o preço congelado
+--    quando existe — o mesmo valor que a comissão enxerga.
 create or replace function public.appointment_heatmap(
   p_barbershop uuid,
   p_from timestamptz,
@@ -472,7 +564,7 @@ as $$
     extract(dow from (a.starts_at at time zone p_timezone))::integer as weekday,
     extract(hour from (a.starts_at at time zone p_timezone))::integer as hour,
     count(*)::bigint as appointments,
-    coalesce(sum(sv.price), 0)::numeric as revenue
+    coalesce(sum(coalesce(a.charged_price, sv.price)), 0)::numeric as revenue
   from public.appointments a
   left join public.services sv on sv.id = a.service_id
   where a.barbershop_id = p_barbershop
@@ -486,12 +578,7 @@ grant execute on function public.appointment_heatmap(uuid, timestamptz, timestam
   to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 7. Índices que estas telas passam a exigir.
---    commission_summary varre atendimentos concluídos por período; o mapa de
---    calor varre uma janela longa (90 dias) da mesma tabela.
-create index if not exists appointments_status_period_idx
-  on public.appointments (barbershop_id, status, starts_at);
-
+-- 8. Índices que estas telas passam a exigir.
 create index if not exists employee_payments_period_idx
   on public.employee_payments (barbershop_id, paid_at desc, professional_id);
 

@@ -20,27 +20,36 @@ import {
 } from "@/components/ui/table";
 import { first } from "./shared";
 
+/** Linhas de `revenue_breakdown` (Fase 0 §0.7 + Fase 2.6). */
+type BreakdownRow = {
+  kind: "professional" | "service" | "product" | "product_professional";
+  ref_id: string;
+  label: string;
+  total: number | string;
+  quantity: number | string;
+};
+
 type ProfessionalAgg = {
+  id: string;
   name: string;
   count: number;
   service: number;
   product: number;
   total: number;
 };
-type ServiceAgg = { name: string; count: number; revenue: number };
-type ProductAgg = { name: string; qty: number; revenue: number };
 
-/** Teto padrão do PostgREST — acima disso a soma no cliente seria parcial. */
-const ROW_CEILING = 1000;
+const selectClass =
+  "border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11";
 
 /**
  * Caixa e vendas (Fase 3 — item 3.1 / §7.5).
  *
  * Junta o que o balcão usa (receber o atendimento de hoje) com o que o dono
- * confere (quem vendeu o quê no período). As agregações por profissional,
- * serviço e produto continuam sendo somadas aqui — quando a consulta bate no
- * teto de linhas, a tela AVISA em vez de mostrar um total menor calado. A
- * migração dessas somas para o banco é o item 0.7 da Fase 0.
+ * confere (quem vendeu o quê no período). As agregações vêm de
+ * `revenue_breakdown`, somadas no banco — a Fase 0 §0.7 tirou daqui as três
+ * varreduras sem limite que o PostgREST cortava em ~1000 linhas, e a Fase
+ * 2.6 fez a mesma função enxergar a venda de balcão. Esta seção herda as
+ * duas: nenhum total é somado no cliente.
  */
 export async function CaixaSection({
   supabase,
@@ -55,50 +64,31 @@ export async function CaixaSection({
 }) {
   const { start: dayStart, end: dayEnd } = getUtcDayRange(timezone);
 
-  const [{ data: appointmentRows }, { data: incomeRows }, { data: saleRows }] =
+  const [{ data: appointmentRows }, { data: breakdownRows }] =
     await Promise.all([
       supabase
         .from("appointments")
         .select(
-          "id,starts_at,status,client:clients(name),professional:professionals(name),service:services(name,price),payments:financial_transactions(category,type,status)",
+          "id,starts_at,status,client:clients(name),professional:professionals(name),service:services(name,price),charged_price,payments:financial_transactions(category,type,status)",
         )
         .eq("barbershop_id", tenantId)
         .gte("starts_at", dayStart.toISOString())
         .lt("starts_at", dayEnd.toISOString())
         .neq("status", "canceled")
         .order("starts_at"),
-      supabase
-        .from("financial_transactions")
-        .select(
-          "amount,category,appointment:appointments(professional:professionals(id,name),service:services(id,name))",
-        )
-        .eq("barbershop_id", tenantId)
-        .eq("type", "income")
-        .neq("status", "canceled")
-        .neq("category", "product")
-        .gte("created_at", period.start.toISOString())
-        .lt("created_at", period.end.toISOString()),
-      supabase
-        .from("appointment_products")
-        .select(
-          "quantity,unit_price,confirmed_at,product:products(name),appointment:appointments(professional:professionals(id,name))",
-        )
-        .eq("barbershop_id", tenantId)
-        .eq("status", "confirmed")
-        .gte("confirmed_at", period.start.toISOString())
-        .lt("confirmed_at", period.end.toISOString()),
+      supabase.rpc("revenue_breakdown", {
+        p_barbershop: tenantId,
+        p_from: period.start.toISOString(),
+        p_to: period.end.toISOString(),
+      }),
     ]);
 
-  const truncated =
-    (incomeRows?.length ?? 0) >= ROW_CEILING ||
-    (saleRows?.length ?? 0) >= ROW_CEILING;
+  const rows = (breakdownRows ?? []) as BreakdownRow[];
 
   const byProfessional = new Map<string, ProfessionalAgg>();
-  const byService = new Map<string, ServiceAgg>();
-  const byProduct = new Map<string, ProductAgg>();
-
   const professionalEntry = (id: string, name: string) => {
     const current = byProfessional.get(id) ?? {
+      id,
       name,
       count: 0,
       service: 0,
@@ -109,54 +99,33 @@ export async function CaixaSection({
     return current;
   };
 
-  for (const row of incomeRows ?? []) {
-    const amount = Number(row.amount);
-    const appointment = first(row.appointment);
-    if (!appointment) continue;
-    const professional = first(appointment.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.count += 1;
-      entry.service += amount;
-      entry.total += amount;
-    }
-    const service = first(appointment.service);
-    if (service) {
-      const current = byService.get(service.id) ?? {
-        name: service.name,
-        count: 0,
-        revenue: 0,
-      };
-      current.count += 1;
-      current.revenue += amount;
-      byService.set(service.id, current);
-    }
-  }
+  const services: Array<{ name: string; count: number; revenue: number }> = [];
+  const products: Array<{ name: string; qty: number; revenue: number }> = [];
 
-  for (const row of saleRows ?? []) {
-    const revenue = Number(row.quantity) * Number(row.unit_price);
-    const name = first(row.product)?.name ?? "Produto";
-    const current = byProduct.get(name) ?? { name, qty: 0, revenue: 0 };
-    current.qty += Number(row.quantity);
-    current.revenue += revenue;
-    byProduct.set(name, current);
-    const professional = first(first(row.appointment)?.professional);
-    if (professional) {
-      const entry = professionalEntry(professional.id, professional.name);
-      entry.product += revenue;
-      entry.total += revenue;
+  for (const row of rows) {
+    const total = Number(row.total);
+    const quantity = Number(row.quantity);
+    if (row.kind === "professional") {
+      const entry = professionalEntry(row.ref_id, row.label);
+      entry.service += total;
+      entry.total += total;
+      entry.count += quantity;
+    } else if (row.kind === "product_professional") {
+      const entry = professionalEntry(row.ref_id, row.label);
+      entry.product += total;
+      entry.total += total;
+    } else if (row.kind === "service") {
+      services.push({ name: row.label, count: quantity, revenue: total });
+    } else if (row.kind === "product") {
+      products.push({ name: row.label, qty: quantity, revenue: total });
     }
   }
 
   const professionals = [...byProfessional.values()].sort(
     (a, b) => b.total - a.total,
   );
-  const services = [...byService.values()].sort(
-    (a, b) => b.revenue - a.revenue,
-  );
-  const products = [...byProduct.values()].sort(
-    (a, b) => b.revenue - a.revenue,
-  );
+  services.sort((a, b) => b.revenue - a.revenue);
+  products.sort((a, b) => b.revenue - a.revenue);
 
   const dayAppointments = (appointmentRows ?? []).map((item) => {
     const service = first(item.service);
@@ -171,7 +140,9 @@ export async function CaixaSection({
       clientName: first(item.client)?.name ?? "Cliente",
       professionalName: first(item.professional)?.name ?? "",
       serviceName: service?.name ?? "Serviço",
-      amount: Number(service?.price ?? 0),
+      // Concluído mostra o valor congelado (Fase 0 §0.9); o que ainda não
+      // concluiu não tem valor congelado e usa o preço de catálogo.
+      amount: Number(item.charged_price ?? service?.price ?? 0),
       status: item.status as string,
       paid,
     };
@@ -193,9 +164,7 @@ export async function CaixaSection({
                   <div key={item.id} className="rounded-xl border p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {item.clientName}
-                        </p>
+                        <p className="truncate font-medium">{item.clientName}</p>
                         <p className="text-muted-foreground truncate text-xs">
                           {item.serviceName}
                           {item.professionalName
@@ -213,9 +182,7 @@ export async function CaixaSection({
                     <div className="mt-3 border-t pt-3">
                       {item.paid ? (
                         <div className="flex items-center justify-between gap-2">
-                          <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                            Recebido
-                          </Badge>
+                          <Badge variant="success">Recebido</Badge>
                           <form action={revertPayment}>
                             <input
                               type="hidden"
@@ -241,7 +208,7 @@ export async function CaixaSection({
                             name="paymentMethod"
                             defaultValue="pix"
                             aria-label="Forma de pagamento"
-                            className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
+                            className={`${selectClass} min-w-0 flex-1`}
                           >
                             {PAYMENT_METHODS.map((method) => (
                               <option key={method.value} value={method.value}>
@@ -249,7 +216,7 @@ export async function CaixaSection({
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" className="h-10 shrink-0">
+                          <Button size="sm" className="shrink-0">
                             Confirmar
                           </Button>
                         </form>
@@ -292,9 +259,7 @@ export async function CaixaSection({
                         <TableCell>
                           {item.paid ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                Recebido
-                              </Badge>
+                              <Badge variant="success">Recebido</Badge>
                               <form action={revertPayment}>
                                 <input
                                   type="hidden"
@@ -320,7 +285,7 @@ export async function CaixaSection({
                                 name="paymentMethod"
                                 defaultValue="pix"
                                 aria-label="Forma de pagamento"
-                                className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+                                className={selectClass}
                               >
                                 {PAYMENT_METHODS.map((method) => (
                                   <option
@@ -349,14 +314,6 @@ export async function CaixaSection({
           )}
         </CardContent>
       </Card>
-
-      {truncated ? (
-        <p className="border-warning/40 bg-warning/10 text-warning rounded-lg border px-4 py-2.5 text-sm">
-          O período escolhido tem mais lançamentos do que cabe numa consulta só
-          — os totais por profissional, serviço e produto abaixo estão
-          incompletos. Escolha um período mais curto para conferir.
-        </p>
-      ) : null}
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <Card>
@@ -421,7 +378,7 @@ export async function CaixaSection({
             <>
               <div className="space-y-3 sm:hidden">
                 {professionals.map((item) => (
-                  <div key={item.name} className="rounded-xl border p-4">
+                  <div key={item.id} className="rounded-xl border p-4">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="min-w-0 truncate font-medium">
                         {item.name}
@@ -457,7 +414,7 @@ export async function CaixaSection({
                   </TableHeader>
                   <TableBody>
                     {professionals.map((item) => (
-                      <TableRow key={item.name}>
+                      <TableRow key={item.id}>
                         <TableCell className="font-medium">
                           {item.name}
                         </TableCell>
@@ -559,8 +516,8 @@ export async function CaixaSection({
               </Table>
             ) : (
               <p className="text-muted-foreground py-6 text-center text-sm">
-                Nenhum produto vendido no período. Confirme reservas em Produtos
-                e Estoque.
+                Nenhum produto vendido no período. As vendas de balcão e as
+                reservas confirmadas no agendamento aparecem aqui.
               </p>
             )}
           </CardContent>

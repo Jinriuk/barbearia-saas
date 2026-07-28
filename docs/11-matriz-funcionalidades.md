@@ -28,20 +28,20 @@
 
 ## Financeiro
 
-| Funcionalidade                                    | Estado      | Observações                                                                                                         |
-| ------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| Vendido ≠ Recebido ≠ A receber                    | operacional | Fase 0: conclusão gera receita pendente; recebimento exige forma de pagamento.                                      |
-| Confirmação de pagamento idempotente              | operacional | Índice único por atendimento + categoria service.                                                                   |
-| Estorno auditado (sem apagar histórico)           | operacional | RPC `revert_income_payment` + `audit_logs`.                                                                         |
-| Venda de produto transacional (estoque + receita) | operacional | RPC `confirm_product_sale`; receita nasce pendente, com captura opcional do pagamento.                              |
-| Contas a pagar / a receber manuais                | operacional | Recebimento pede forma de pagamento. Fase 3 (Gestão): despesa progressiva com categoria; recebível com cliente vinculado e cobrança por WhatsApp. |
+| Funcionalidade                                    | Estado      | Observações                                                                                                                                                                                                   |
+| ------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vendido ≠ Recebido ≠ A receber                    | operacional | Fase 0: conclusão gera receita pendente; recebimento exige forma de pagamento.                                                                                                                                |
+| Confirmação de pagamento idempotente              | operacional | Índice único por atendimento + categoria service.                                                                                                                                                             |
+| Estorno auditado (sem apagar histórico)           | operacional | RPC `revert_income_payment` + `audit_logs`.                                                                                                                                                                   |
+| Venda de produto transacional (estoque + receita) | operacional | RPC `confirm_product_sale`; receita nasce pendente, com captura opcional do pagamento.                                                                                                                        |
+| Contas a pagar / a receber manuais                | operacional | Recebimento pede forma de pagamento. Fase 3 (Gestão): despesa progressiva com categoria; recebível com cliente vinculado e cobrança por WhatsApp.                                                             |
 | Comissões e pagamento de equipe                   | operacional | Fase 4: fonte única com precedência serviço > profissional; competência = concluídos (derivada, estorno recalcula). Fase 3 (Gestão): fechamento no banco com total produzido, vale e valor a pagar calculado. |
-| Adiantamento / vale para a equipe                 | operacional | Fase 3 (Gestão): sai do caixa na hora e é abatido do fechamento do período.                                          |
-| Relatórios (tela + PDF)                           | operacional | Derivados de `financial_transactions`. Fase 3 (Gestão): respeitam o período escolhido.                              |
-| Filtro de período livre (quinzena, intervalo)     | operacional | Fase 3 (Gestão): atalhos + de/até, com comparação contra janela de mesma duração.                                   |
-| Mapa de calor de dias × horários                  | operacional | Fase 3 (Gestão): agregado no banco, com melhores e piores horários em texto (§6.2).                                 |
-| Lucro (recebido − despesas pagas)                 | operacional | Fase 4: resumo com despesas, lucro (caixa) e comparação com o mês anterior.                                         |
-| Lucro depois da comissão apurada                  | operacional | Fase 3 (Gestão): cartão separado do lucro de caixa; devolve a comissão já paga para não descontar duas vezes.        |
+| Adiantamento / vale para a equipe                 | operacional | Fase 3 (Gestão): sai do caixa na hora e é abatido do fechamento do período.                                                                                                                                   |
+| Relatórios (tela + PDF)                           | operacional | Derivados de `financial_transactions`. Fase 3 (Gestão): respeitam o período escolhido.                                                                                                                        |
+| Filtro de período livre (quinzena, intervalo)     | operacional | Fase 3 (Gestão): atalhos + de/até, com comparação contra janela de mesma duração.                                                                                                                             |
+| Mapa de calor de dias × horários                  | operacional | Fase 3 (Gestão): agregado no banco, com melhores e piores horários em texto (§6.2).                                                                                                                           |
+| Lucro (recebido − despesas pagas)                 | operacional | Fase 4: resumo com despesas, lucro (caixa) e comparação com o mês anterior.                                                                                                                                   |
+| Lucro depois da comissão apurada                  | operacional | Fase 3 (Gestão): cartão separado do lucro de caixa; devolve a comissão já paga para não descontar duas vezes.                                                                                                 |
 
 ## Clientes
 
@@ -54,23 +54,23 @@
 
 ## Catálogo e estoque
 
-| Funcionalidade                                           | Estado      | Observações                                                                     |
-| -------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| Serviços com preço, duração, categoria e profissionais   | operacional |                                                                                 |
-| Regra de público do serviço (público/assinantes/interno) | operacional | Fase 0: serviço não-público não aparece na página nem no agendamento online.    |
-| Produtos com estoque em ledger                           | operacional | Saldo derivado de `inventory_movements`.                                        |
-| Upsell de produtos no agendamento (Plus)                 | operacional | Reserva → confirmação com baixa.                                                |
+| Funcionalidade                                           | Estado      | Observações                                                                                                    |
+| -------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
+| Serviços com preço, duração, categoria e profissionais   | operacional |                                                                                                                |
+| Regra de público do serviço (público/assinantes/interno) | operacional | Fase 0: serviço não-público não aparece na página nem no agendamento online.                                   |
+| Produtos com estoque em ledger                           | operacional | Saldo derivado de `inventory_movements`.                                                                       |
+| Upsell de produtos no agendamento (Plus)                 | operacional | Reserva → confirmação com baixa.                                                                               |
 | Planos/assinaturas vendidos aos clientes da barbearia    | operacional | Fase 4B: pré-pago com controle de uso por período, vencimento/inadimplência derivados e cobrança por WhatsApp. |
 
 ## Equipe e acessos
 
-| Funcionalidade                                      | Estado      | Observações                    |
-| --------------------------------------------------- | ----------- | ------------------------------ |
-| Papéis (owner, manager, receptionist, professional) | operacional | RLS + permissões de interface. |
+| Funcionalidade                                      | Estado      | Observações                                                                                                         |
+| --------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Papéis (owner, manager, receptionist, professional) | operacional | RLS + permissões de interface.                                                                                      |
 | Convite de membros por e-mail                       | operacional | Fase 3 (Gestão): §7.7 — o dono NÃO cria a senha; a pessoa define a própria ao aceitar. Situação do convite na tela. |
-| Ficha do profissional (5 abas)                      | operacional | Fase 3 (Gestão): `/profissionais/[id]` — dados, serviços e comissões, horários, clientes e resultados. |
-| Agenda restrita do profissional                     | operacional | RLS `is_own_professional`.     |
-| Metas por profissional                              | planejado   | Resultados já aparecem na ficha (Fase 3 — Gestão); definir e acompanhar META segue no backlog. |
+| Ficha do profissional (5 abas)                      | operacional | Fase 3 (Gestão): `/profissionais/[id]` — dados, serviços e comissões, horários, clientes e resultados.              |
+| Agenda restrita do profissional                     | operacional | RLS `is_own_professional`.                                                                                          |
+| Metas por profissional                              | planejado   | Resultados já aparecem na ficha (Fase 3 — Gestão); definir e acompanhar META segue no backlog.                      |
 
 ## SaaS (NexoBarber)
 
