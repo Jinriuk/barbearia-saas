@@ -226,36 +226,41 @@ que o §6.2 exige. É o gráfico mais vendável dos cinco.
 
 ---
 
-## Fase 4 — Público e mobile
+## Fase 4 — Público e mobile ✅ entregue
 
-**4.1 Fluxo em 7 etapas (§7.11)** — hoje são 5 numa página rolável. Faltam "Pagamento" e
-"Confira e confirme". No desktop falta o resumo fixo à direita; no celular falta uma decisão
-por tela.
+> Entrega registrada em [docs/entregas/plano-14-fase-4.md](entregas/plano-14-fase-4.md).
+> Migration `202607280030_fase4_publico_agendamento.sql` **já aplicada em produção**
+> (2026-07-28), antes do deploy do código — `create_public_appointment` mudou de assinatura.
 
-**4.2 Reconhecer cliente recorrente** — pedir WhatsApp primeiro e preencher o nome sozinho. É
-barato e é a diferença entre parecer um formulário e parecer um sistema que conhece o cliente.
+**4.1 Fluxo em 7 etapas (§7.11)** ✅ — eram 5 numa página rolável. Agora são as 7 do guia, com
+"Seus dados" na etapa 4 e produtos na 5. Celular: uma decisão por tela, "Continuar" fixo e
+"Ver resumo" recolhível. Desktop: trilha numerada no topo e resumo fixo à direita.
 
-**4.3 Remarcar sem falar com ninguém** — a RPC `reschedule_appointment` já existe para o painel,
-mas o cliente não tem acesso. Enquanto isso, o pilar G1 promete "menos mensagens" e entrega só a
-agenda. A página de autogestão ainda oferece "Remarcar" quando o prazo de cancelamento já passou.
+**4.2 Reconhecer cliente recorrente** ✅ — WhatsApp virou o primeiro campo e o nome se preenche
+sozinho pela RPC `get_public_client_hint` (só o primeiro nome, com limite por IP).
 
-**4.4 Confirmar o que foi gravado** — a tela final monta os dados do estado do navegador, não do
-que o servidor salvou (a API devolve só referência, situação e token).
+**4.3 Remarcar sem falar com ninguém** ✅ — `reschedule_public_appointment` move o horário pelo
+token, com as mesmas regras da reserva. O link contraditório sumiu: passado o prazo, a página
+não oferece nem remarcar nem cancelar.
 
-**4.5 Coerência da promessa** — a chamada final da página pública promete confirmação imediata em
-texto fixo, sem checar o modo de confirmação. O §7.11 proíbe isso.
+**4.4 Confirmar o que foi gravado** ✅ — a reserva volta inteira do banco e a tela final lê só
+dela. Títulos do §8.1 ("Horário confirmado" / "Pedido de horário enviado") e "Situação" no
+lugar de "Status".
 
-**4.6 Estoque na vitrine** — produto sem estoque precisa aparecer como "Indisponível" ou sumir; no
-passo de upsell os produtos aparecem **sem foto nenhuma**.
+**4.5 Coerência da promessa** ✅ — a chamada final depende do modo de confirmação configurado.
 
-**4.7 Capa curta** — hoje `min-h-[88svh]` com orbs animados, ken-burns, dois chips flutuantes e
-seta de rolagem, e o **nome do negócio não aparece na capa**. Três botões sólidos idênticos
-competem na mesma tela no celular.
+**4.6 Estoque na vitrine** ✅ — saldo exposto na RPC pública, "Indisponível" na página e no
+upsell, trava no `create_public_appointment` e foto nos produtos do upsell.
 
-**4.8 Horário de funcionamento** — o dado já vem do banco e não é renderizado.
+**4.7 Capa curta** ✅ — foto de fundo com camada escura de 65%, nome do negócio, título curto e
+um botão. Sem orbs, ken-burns, chips flutuantes nem seta de rolagem; no celular a barra do
+polegar só aparece depois que a capa sai da tela.
 
-**4.9 Subrotas mortas** — `/servicos`, `/profissionais` e `/produtos` do tenant são arquivos de 8
-linhas que redirecionam para âncoras.
+**4.8 Horário de funcionamento** ✅ — renderizado na seção 5 (endereço, horário e contato), que
+passou a existir. A faixa de ambiente virou a foto dessa seção e a ordem do §7.10 fechou.
+
+**4.9 Subrotas mortas** ✅ — `/servicos`, `/profissionais` e `/produtos` viraram páginas reais.
+O "Ver todos" dos produtos deixou de devolver o visitante para os mesmos 6 itens da home.
 
 ---
 
@@ -327,9 +332,9 @@ itens de maior impacto antes de mover a Fase 2.
 | ---- | -------------------------------------------- | -------------------------- |
 | 0 ✅ | Correção de risco e de número errado         | —                          |
 | 1    | Fundação visual e de componentes             | — (pode correr junto da 0) |
-| 2    | Agenda, Início, perfil do cliente, venda     | Fase 1                     |
+| 2 ✅ | Agenda, Início, perfil do cliente, venda     | Fase 1                     |
 | 3    | Financeiro, comissões, equipe, configurações | Fase 1 — **entregue**      |
-| 4    | Página pública e fluxo de agendamento        | Fase 1                     |
+| 4 ✅ | Página pública e fluxo de agendamento        | Fase 1                     |
 | 5    | Gateway, plano anual, régua de lead, landing | Fases 0 e 2                |
 
 As fases 2, 3 e 4 são independentes entre si e podem ser paralelizadas. A fase 5 é a única que

@@ -13,6 +13,13 @@ export function publicErrorMessage(error: { message?: string } | null) {
       "O prazo para cancelar online já passou. Fale direto com o estabelecimento.",
     TOO_MANY_PENDING:
       "Esse telefone já tem reservas em aberto. Fale com a barbearia para ajustar.",
+    // Fase 4 — trava de estoque e autogestão da reserva pelo cliente.
+    PRODUCT_UNAVAILABLE:
+      "Um dos produtos escolhidos acabou de esgotar. Remova o item e confirme de novo.",
+    APPOINTMENT_NOT_FOUND: "Reserva não encontrada.",
+    INVALID_STATUS_TRANSITION: "Essa reserva não pode mais ser alterada.",
+    INVALID_CLIENT_NAME: "Escreva o nome completo.",
+    INVALID_PHONE: "Revise o número do WhatsApp.",
   };
   return (
     known[code] ??

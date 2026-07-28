@@ -65,4 +65,35 @@ export const publicBookingSchema = z.object({
     )
     .max(50)
     .optional(),
+  // Etapa 6 (Fase 4): como o cliente pretende pagar NO LOCAL. Vazio =
+  // "decido na hora" e chega ao banco como null.
+  paymentPreference: z
+    .union([z.enum(["cash", "card", "pix", "other"]), z.literal("")])
+    .optional(),
+});
+
+/** Token público da reserva (autogestão sem login). */
+export const publicReservationToken = z
+  .string()
+  .regex(/^[A-Za-z0-9]{20,40}$/, "Reserva não encontrada.");
+
+/** Remarcação pelo cliente: token + novo início vindo da disponibilidade. */
+export const publicRescheduleSchema = z.object({
+  token: publicReservationToken,
+  startsAt: z.iso.datetime({ offset: true }),
+});
+
+/**
+ * Reconhecimento de cliente recorrente: exige o nacional completo (10+
+ * dígitos) para não virar varredura de "existe alguém com esse número?".
+ */
+export const publicClientLookupSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .transform((value) => value.replace(/\D/g, ""))
+    .refine((digits) => digits.length >= 10 && digits.length <= 15, {
+      message: "Telefone incompleto.",
+    }),
 });
