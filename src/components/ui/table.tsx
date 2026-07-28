@@ -4,14 +4,32 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * Tabela do painel. Com `responsive` (padrão) ela vira lista de cartões
+ * abaixo de sm — §10 e §12 não admitem tabela essencial que só se lê
+ * rolando na horizontal no celular (Fase 1.11). O empilhamento em si está
+ * em globals.css; aqui só entra o marcador que ele usa.
+ *
+ * Cada <TableCell> deve levar `data-label` com o texto do cabeçalho, que é
+ * o rótulo mostrado ao lado do valor no modo empilhado. Célula sem
+ * `data-label` vira título do cartão — use nas colunas de nome e de ações.
+ */
+function Table({
+  className,
+  responsive = true,
+  ...props
+}: React.ComponentProps<"table"> & { responsive?: boolean }) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className={cn(
+        "relative w-full",
+        responsive ? "sm:overflow-x-auto" : "overflow-x-auto",
+      )}
     >
       <table
         data-slot="table"
+        data-responsive={responsive}
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />

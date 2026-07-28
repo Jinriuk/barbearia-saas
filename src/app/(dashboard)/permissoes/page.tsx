@@ -5,6 +5,7 @@ import { requireTenant } from "@/lib/auth/dal";
 import { can, type Permission } from "@/lib/permissions";
 import type { MembershipRole } from "@/types/domain";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -51,6 +52,7 @@ export default async function PermissionsPage() {
           </Button>
         }
       />
+      <SectionNav section="equipe" role={tenant.role} />
       <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -58,7 +60,7 @@ export default async function PermissionsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -77,9 +79,13 @@ export default async function PermissionsPage() {
                       {capability.label}
                     </TableCell>
                     {roles.map((item) => (
-                      <TableCell key={item.role} className="text-center">
+                      <TableCell
+                        key={item.role}
+                        data-label={item.label}
+                        className="text-center"
+                      >
                         {can(item.role, capability.permission) ? (
-                          <Check className="mx-auto size-4 text-emerald-600" />
+                          <Check className="text-success mx-auto size-4" />
                         ) : (
                           <Minus className="text-muted-foreground/40 mx-auto size-4" />
                         )}

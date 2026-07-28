@@ -274,7 +274,7 @@ export default async function AgendaPage({
             name="dia"
             defaultValue={validDay ?? todayInTz}
             aria-label="Escolher dia"
-            className="border-input bg-background h-9 rounded-lg border px-2 text-sm"
+            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
           />
           <input
             type="search"
@@ -282,7 +282,7 @@ export default async function AgendaPage({
             defaultValue={search}
             placeholder="Buscar cliente…"
             aria-label="Buscar cliente por nome ou telefone"
-            className="border-input bg-background h-9 w-40 rounded-lg border px-3 text-sm sm:w-56"
+            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-40 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 sm:w-56 md:h-11"
           />
           <Button size="sm" variant="outline" type="submit">
             <Search className="size-3.5" />
@@ -291,7 +291,7 @@ export default async function AgendaPage({
         </form>
       </div>
 
-      {/* Status */}
+      {/* Situação */}
       <div className="mb-4 flex flex-wrap gap-2">
         {STATUS_FILTERS.map((item) => (
           <Button
@@ -447,7 +447,7 @@ export default async function AgendaPage({
                               asChild
                               size="sm"
                               variant="outline"
-                              className="text-emerald-700 dark:text-emerald-400"
+                              className="text-success"
                             >
                               <a
                                 href={reminderHref}

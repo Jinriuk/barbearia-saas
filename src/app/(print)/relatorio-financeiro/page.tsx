@@ -285,7 +285,7 @@ export default async function FinancialReportPage({
         {grandTotal > 0 ? (
           <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
             <li>
-              Ticket médio por atendimento: {formatBRL(ticketMedio)} ({attended}{" "}
+              Gasto médio por atendimento: {formatBRL(ticketMedio)} ({attended}{" "}
               atendimento{attended === 1 ? "" : "s"}).
             </li>
             <li>

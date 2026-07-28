@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { saveService } from "@/modules/services/actions";
 import type { ActionState } from "@/types/domain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,7 @@ export function ServiceFormSheet({
     },
     { success: false, message: "" } satisfies ActionState,
   );
+  useActionToast(state);
   const editing = Boolean(service);
   const assigned = new Set(service?.professionalIds ?? []);
 
@@ -241,7 +243,7 @@ export function ServiceFormSheet({
               id="service-audience"
               name="audience"
               defaultValue={service?.audience ?? "public"}
-              className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
             >
               {AUDIENCES.map((item) => (
                 <option key={item.value} value={item.value}>

@@ -27,6 +27,7 @@ import {
   revertPayment,
 } from "@/modules/financial/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AppointmentStatusBadge } from "@/components/dashboard/appointment-status-badge";
 import {
@@ -430,6 +431,7 @@ export default async function FinanceiroPage() {
           </div>
         }
       />
+      <SectionNav section="financeiro" role={tenant.role} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {summary.map((metric) => {
@@ -472,10 +474,7 @@ export default async function FinanceiroPage() {
       </div>
 
       {receivables.length ? (
-        <Card
-          className="mt-6 scroll-mt-20 border-amber-300 dark:border-amber-900"
-          id="a-receber"
-        >
+        <Card className="border-warning/40 mt-6 scroll-mt-20" id="a-receber">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <HandCoins className="size-4" /> A receber ({receivableCount})
@@ -515,7 +514,7 @@ export default async function FinanceiroPage() {
                     name="paymentMethod"
                     defaultValue="pix"
                     aria-label={`Forma de pagamento de ${item.description}`}
-                    className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                    className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                   >
                     {PAYMENT_METHODS.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -634,7 +633,7 @@ export default async function FinanceiroPage() {
                         · Produtos {formatBRL(item.product)}
                       </p>
                       <p className="text-muted-foreground mt-0.5 text-xs">
-                        Ticket médio{" "}
+                        Gasto médio{" "}
                         {formatBRL(item.count ? item.total / item.count : 0)}
                       </p>
                     </div>
@@ -650,7 +649,7 @@ export default async function FinanceiroPage() {
                         <TableHead className="text-right">Produtos</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead className="text-right">
-                          Ticket médio
+                          Gasto médio
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -803,9 +802,7 @@ export default async function FinanceiroPage() {
                     <div className="mt-3 border-t pt-3">
                       {item.paid ? (
                         <div className="flex items-center justify-between gap-2">
-                          <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                            Recebido
-                          </Badge>
+                          <Badge variant="success">Recebido</Badge>
                           <form action={revertPayment}>
                             <input
                               type="hidden"
@@ -831,7 +828,7 @@ export default async function FinanceiroPage() {
                             name="paymentMethod"
                             defaultValue="pix"
                             aria-label="Forma de pagamento"
-                            className="border-input bg-background h-10 min-w-0 flex-1 rounded-lg border px-2 text-sm"
+                            className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 min-w-0 flex-1 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                           >
                             {PAYMENT_METHODS.map((method) => (
                               <option key={method.value} value={method.value}>
@@ -839,7 +836,7 @@ export default async function FinanceiroPage() {
                               </option>
                             ))}
                           </select>
-                          <Button size="sm" className="h-10 shrink-0">
+                          <Button size="sm" className="shrink-0">
                             Confirmar
                           </Button>
                         </form>
@@ -882,9 +879,7 @@ export default async function FinanceiroPage() {
                         <TableCell>
                           {item.paid ? (
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge className="border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                Recebido
-                              </Badge>
+                              <Badge variant="success">Recebido</Badge>
                               <form action={revertPayment}>
                                 <input
                                   type="hidden"
@@ -910,7 +905,7 @@ export default async function FinanceiroPage() {
                                 name="paymentMethod"
                                 defaultValue="pix"
                                 aria-label="Forma de pagamento"
-                                className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
+                                className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
                               >
                                 {PAYMENT_METHODS.map((method) => (
                                   <option

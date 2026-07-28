@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -38,9 +39,9 @@ export function ContactSettingsForm({
         <form action={formAction} className="grid gap-5 sm:grid-cols-2">
           {state.message ? (
             <div className="sm:col-span-2">
-              <Alert variant={state.success ? "default" : "destructive"}>
+              <Alert variant={state.success ? "success" : "destructive"}>
                 {state.success ? (
-                  <CheckCircle2 className="size-4 text-emerald-600" />
+                  <CheckCircle2 className="text-success size-4" />
                 ) : null}
                 <AlertDescription>{state.message}</AlertDescription>
               </Alert>
@@ -48,11 +49,12 @@ export function ContactSettingsForm({
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="whatsappNumber">WhatsApp</Label>
-            <Input
+            <MaskedInput
+              mask="phone"
               id="whatsappNumber"
               name="whatsappNumber"
+              placeholder="(11) 98765-4321"
               defaultValue={initial.whatsappNumber}
-              inputMode="tel"
             />
           </div>
           <div className="space-y-2">

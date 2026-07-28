@@ -43,11 +43,11 @@ export function InviteMemberForm() {
         >
           {state.message ? (
             <Alert
-              variant={state.success ? "default" : "destructive"}
+              variant={state.success ? "success" : "destructive"}
               className="sm:col-span-3"
             >
               {state.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>

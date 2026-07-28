@@ -501,10 +501,10 @@ export default async function DashboardPage({
       </Card>
 
       {reminders.length ? (
-        <Card className="mt-6 border-emerald-300 dark:border-emerald-900">
+        <Card className="border-success/40 mt-6">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <MessageCircle className="text-success size-4" />
               Lembretes de amanhã
             </CardTitle>
             <span className="text-muted-foreground text-xs">
@@ -535,7 +535,7 @@ export default async function DashboardPage({
                     asChild
                     size="sm"
                     variant="outline"
-                    className="text-emerald-700 dark:text-emerald-400"
+                    className="text-success"
                   >
                     <a
                       href={item.whatsappHref}

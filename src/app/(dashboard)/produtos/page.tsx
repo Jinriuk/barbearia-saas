@@ -21,6 +21,7 @@ import {
   toggleProductVisible,
 } from "@/modules/products/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { DeleteEntityButton } from "@/components/dashboard/delete-entity-button";
 import { ProductFormSheet } from "@/components/dashboard/product-form-sheet";
@@ -170,12 +171,13 @@ export default async function ProductsPage() {
           ) : undefined
         }
       />
+      <SectionNav section="catalogo" role={tenant.role} />
 
       {!plus ? (
         <Alert className="mb-6">
           <Sparkles className="size-4" />
           <AlertDescription>
-            O upsell de produtos no checkout é exclusivo do plano{" "}
+            Oferecer produtos ao cliente no agendamento é exclusivo do plano{" "}
             <strong>Plus</strong>. No Padrão você ainda gerencia o catálogo e o
             estoque, mas ele não aparece no agendamento do cliente.
           </AlertDescription>
@@ -199,7 +201,7 @@ export default async function ProductsPage() {
       </div>
 
       {reservations.length ? (
-        <Card className="mb-6 border-amber-300 dark:border-amber-900">
+        <Card className="border-warning/40 mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ShoppingBag className="size-4" /> Reservas de produtos pendentes
@@ -215,7 +217,7 @@ export default async function ProductsPage() {
             ) : null}
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -241,16 +243,25 @@ export default async function ProductsPage() {
                         <TableCell className="font-medium">
                           {clientName}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-label="Produto">
                           {first(reservation.product)?.name ?? "Produto"}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Qtd."
+                          className="text-right font-mono"
+                        >
                           {reservation.quantity}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell
+                          data-label="Total"
+                          className="text-right font-mono"
+                        >
                           {formatBRL(total)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell
+                          data-label="Profissional"
+                          className="text-muted-foreground"
+                        >
                           {professionalName}
                         </TableCell>
                         <TableCell className="text-right">
@@ -273,7 +284,7 @@ export default async function ProductsPage() {
       {!products.length ? (
         <EmptyState
           title="Nenhum produto ainda"
-          description="Cadastre produtos para vender no balcão e no checkout do agendamento."
+          description="Cadastre produtos para vender no balcão e oferecer ao cliente no agendamento."
         />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -282,7 +293,7 @@ export default async function ProductsPage() {
               <CardTitle className="text-base">Catálogo e saldo</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -291,7 +302,7 @@ export default async function ProductsPage() {
                       <TableHead className="text-right">Estoque</TableHead>
                       <TableHead className="text-right">Reservado</TableHead>
                       <TableHead className="text-right">Disponível</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Situação</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -310,31 +321,43 @@ export default async function ProductsPage() {
                               {product.description || "Sem descrição"}
                             </p>
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Preço"
+                            className="text-right font-mono"
+                          >
                             {formatBRL(Number(product.sale_price))}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            <span className={low ? "text-amber-600" : ""}>
+                          <TableCell
+                            data-label="Estoque"
+                            className="text-right font-mono"
+                          >
+                            <span className={low ? "text-warning" : ""}>
                               {stock.toLocaleString("pt-BR")}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right font-mono">
+                          <TableCell
+                            data-label="Reservado"
+                            className="text-muted-foreground text-right font-mono"
+                          >
                             {reserved.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
+                          <TableCell
+                            data-label="Disponível"
+                            className="text-right font-mono"
+                          >
                             {available.toLocaleString("pt-BR")}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Situação">
                             <div className="flex flex-wrap gap-1">
                               <Badge
-                                variant={
-                                  product.active ? "default" : "secondary"
-                                }
+                                variant={product.active ? "success" : "neutral"}
                               >
                                 {product.active ? "Ativo" : "Oculto"}
                               </Badge>
                               {product.public_visible ? (
-                                <Badge variant="outline">Checkout</Badge>
+                                <Badge variant="outline">
+                                  Oferecido no agendamento
+                                </Badge>
                               ) : null}
                             </div>
                           </TableCell>
@@ -363,10 +386,10 @@ export default async function ProductsPage() {
                                     }
                                     title={
                                       product.public_visible
-                                        ? "Tirar do checkout do agendamento"
-                                        : "Oferecer no checkout do agendamento"
+                                        ? "Parar de oferecer no agendamento"
+                                        : "Oferecer ao cliente no agendamento"
                                     }
-                                    aria-label="Alternar checkout"
+                                    aria-label="Alternar oferta no agendamento"
                                   >
                                     <ShoppingBag className="size-4" />
                                   </Button>
@@ -431,9 +454,9 @@ export default async function ProductsPage() {
                 }))}
               />
               {lowStock.length ? (
-                <Card className="border-amber-300 dark:border-amber-900">
+                <Card className="border-warning/40">
                   <CardContent className="flex items-center gap-3 pt-6 text-sm">
-                    <AlertTriangle className="size-4 shrink-0 text-amber-600" />
+                    <AlertTriangle className="text-warning size-4 shrink-0" />
                     <span>
                       <strong>{lowStock.length}</strong> produto(s) abaixo do
                       estoque mínimo:{" "}
@@ -459,7 +482,7 @@ export default async function ProductsPage() {
                             className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm"
                           >
                             <span
-                              className={`font-mono ${isIn ? "text-emerald-600" : "text-rose-600"}`}
+                              className={`font-mono ${isIn ? "text-success" : "text-destructive"}`}
                             >
                               {isIn ? "+" : "−"}
                               {Number(movement.quantity).toLocaleString(
@@ -492,7 +515,7 @@ export default async function ProductsPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground py-6 text-center text-sm">
-                      Nenhuma movimentação registrada ainda.
+                      Nenhuma entrada ou saída registrada ainda.
                     </p>
                   )}
                 </CardContent>

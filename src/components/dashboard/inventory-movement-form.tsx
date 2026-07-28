@@ -27,15 +27,15 @@ export function InventoryMovementForm({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <PackagePlus className="size-4" /> Registrar movimentação
+          <PackagePlus className="size-4" /> Registrar entrada ou saída
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
           {state.message ? (
-            <Alert variant={state.success ? "default" : "destructive"}>
+            <Alert variant={state.success ? "success" : "destructive"}>
               {state.success ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-success size-4" />
               ) : null}
               <AlertDescription>{state.message}</AlertDescription>
             </Alert>
@@ -46,7 +46,7 @@ export function InventoryMovementForm({
               id="mov-product"
               name="productId"
               required
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
               defaultValue=""
             >
               <option value="" disabled>
@@ -64,7 +64,7 @@ export function InventoryMovementForm({
             <select
               id="mov-type"
               name="type"
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              className="border-border-control bg-field focus-visible:border-focus-ring focus-visible:ring-focus-ring/45 h-12 w-full rounded-lg border px-3 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:h-11"
               defaultValue="purchase"
             >
               {MOVEMENT_TYPES.map((type) => (

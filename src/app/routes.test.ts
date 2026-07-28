@@ -36,6 +36,7 @@ function staticHrefs(file: string): string[] {
 
 const SOURCES = [
   join(__dirname, "..", "components", "layout", "dashboard-shell.tsx"),
+  join(__dirname, "..", "lib", "navigation.ts"),
   join(__dirname, "..", "components", "layout", "user-menu.tsx"),
   join(DASHBOARD_DIR, "dashboard", "page.tsx"),
   join(DASHBOARD_DIR, "financeiro", "page.tsx"),
@@ -71,21 +72,55 @@ describe("integridade dos links do painel", () => {
     });
   }
 
-  it("menu principal cobre as rotas essenciais", () => {
-    const shell = readFileSync(SOURCES[0], "utf8");
-    for (const essential of [
+  // Desde a Fase 1.14 o menu lateral tem exatamente os 7 destinos do §9.1;
+  // as demais telas vivem na navegação de seção (src/lib/navigation.ts).
+  const SHELL = join(
+    __dirname,
+    "..",
+    "components",
+    "layout",
+    "dashboard-shell.tsx",
+  );
+  const SECTION_NAV = join(__dirname, "..", "lib", "navigation.ts");
+
+  it("menu lateral tem exatamente os 7 destinos do §9.1", async () => {
+    const { MAIN_NAV } = await import("@/lib/navigation");
+    expect(MAIN_NAV.map((item) => item.href)).toEqual([
       "/dashboard",
       "/agenda",
-      "/financeiro",
       "/clientes",
+      "/financeiro",
       "/servicos",
-      "/produtos",
       "/profissionais",
       "/configuracoes",
+    ]);
+    // O ícone de cada destino precisa existir no shell, senão o item cai no
+    // ícone genérico sem ninguém perceber.
+    const shell = readFileSync(SHELL, "utf8");
+    for (const item of MAIN_NAV) {
+      expect(
+        shell.includes(`"${item.href}":`),
+        `sem ícone no menu: ${item.href}`,
+      ).toBe(true);
+    }
+  });
+
+  it("as telas que saíram do menu continuam alcançáveis por seção", () => {
+    const section = readFileSync(SECTION_NAV, "utf8");
+    for (const essential of [
+      "/contas-a-pagar",
+      "/contas-a-receber",
+      "/comissoes",
+      "/relatorios",
+      "/planos",
+      "/produtos",
+      "/equipe/horarios",
+      "/permissoes",
     ]) {
-      expect(shell.includes(`"${essential}"`), `faltando no menu: ${essential}`).toBe(
-        true,
-      );
+      expect(
+        section.includes(`"${essential}"`),
+        `rota órfã: ${essential}`,
+      ).toBe(true);
     }
   });
 });
