@@ -254,11 +254,29 @@ async function handlePreapproval(
           : "billing.payment_failed",
       auditMetadata: { provider: "mercadopago", notificationId, preapprovalId },
     });
-    await supabase
-      .from("billing_checkouts")
-      .update({ status: "canceled", updated_at: new Date().toISOString() })
-      .eq("id", checkout.id);
+    // Só o cancelamento mata o checkout. Assinatura pausada (past_due) volta a
+    // ser autorizada quando o cartão passa — marcar o checkout como cancelado
+    // aqui faria o retorno cair em CHECKOUT_NOT_FOUND e não reativar ninguém.
+    if (action.kind === "cancel") {
+      await supabase
+        .from("billing_checkouts")
+        .update({ status: "canceled", updated_at: new Date().toISOString() })
+        .eq("id", checkout.id);
+    }
     return { status: "processed", action: action.kind };
+  }
+
+  // Idempotência de negócio, não só de notificação. O provedor manda uma
+  // notificação NOVA (id novo, que passa limpo pelo unique de billing_events) a
+  // cada atualização do preapproval, e `authorized` → `pausado` → `authorized`
+  // acontece de verdade quando o cartão do dono falha e depois passa. Sem esta
+  // trava, a segunda notificação compraria mais um ano de graça.
+  //
+  // O preapproval ativa uma vez só, na contratação. Quem estende período dali
+  // em diante é a notificação de `payment` — dinheiro que entrou, não estado
+  // que mudou —, e ela é idempotente pelo id do próprio pagamento.
+  if (checkout.status === "authorized") {
+    return { status: "ignored", action: "activate" };
   }
 
   // O provedor precisa estar cobrando exatamente o que este checkout gravou.
