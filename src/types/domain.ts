@@ -8,6 +8,8 @@ export type SubscriptionInfo = {
   status: SubscriptionStatus;
   plan: string;
   priceCents: number;
+  /** Periodicidade contratada — define se o preço é por mês ou por ano. */
+  billingPeriod: "monthly" | "yearly";
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   /** Cancelamento pedido pelo dono; encerra no fim do período (Fase 0 §0.2). */

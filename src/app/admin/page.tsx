@@ -34,6 +34,7 @@ type ShopRow = {
     status: SubscriptionStatus;
     plan: string;
     price_cents: number;
+    billing_period: "monthly" | "yearly" | null;
     trial_ends_at: string | null;
     current_period_end: string | null;
   }>;
@@ -88,7 +89,7 @@ export default async function AdminPage() {
     supabase
       .from("barbershops")
       .select(
-        "id, name, slug, created_at, subscriptions(status, plan, price_cents, trial_ends_at, current_period_end), memberships(role, profiles(name, auth_user_id))",
+        "id, name, slug, created_at, subscriptions(status, plan, price_cents, billing_period, trial_ends_at, current_period_end), memberships(role, profiles(name, auth_user_id))",
       )
       .order("created_at", { ascending: false }),
     supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
@@ -117,6 +118,7 @@ export default async function AdminPage() {
               status: sub.status,
               plan: sub.plan,
               priceCents: sub.price_cents,
+              billingPeriod: sub.billing_period ?? "monthly",
               trialEndsAt: sub.trial_ends_at,
               currentPeriodEnd: sub.current_period_end,
               // O super-admin lê o estado de acesso, que não depende do

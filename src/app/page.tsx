@@ -2,70 +2,117 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  ArrowUpRight,
-  Banknote,
   CalendarCheck,
   Check,
-  Palette,
+  Package,
+  PiggyBank,
   QrCode,
   Scissors,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
+  UserRoundSearch,
   UsersRound,
 } from "lucide-react";
 import { REAL_PHOTOS, STOCK_PHOTOS } from "@/lib/assets";
 import { formatPriceBRL } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { Diagnostic5G } from "@/components/platform/diagnostic-5g";
 import { LeadCaptureForm } from "@/components/platform/lead-capture-form";
+import { PricingPlans } from "@/components/platform/pricing-plans";
+import { ProfitCalculator } from "@/components/platform/profit-calculator";
+import {
+  AgendaScreen,
+  ClientsScreen,
+  DemoDataNote,
+  FinanceScreen,
+} from "@/components/platform/system-screens";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+/**
+ * O título dizia "o sistema completo para a sua barbearia" — exatamente o que
+ * a apresentação estratégica desaconselha, porque "completo" é o que todo
+ * concorrente diz e não cria posição nenhuma. O nicho no lugar dele é a
+ * posição: 2 a 8 profissionais, dono que ainda atende (Fase 5 §5.6).
+ */
 export const metadata: Metadata = {
-  title: "NexoBarber — o sistema completo para a sua barbearia",
+  title: "NexoBarber — gestão para barbearia de 2 a 8 cadeiras",
   description:
-    "Agenda online, financeiro automático, clientes, estoque e uma página de agendamento com a sua marca. 7 dias grátis, sem cartão.",
+    "Para o dono que ainda atende na cadeira: agenda que o cliente marca sozinho, os clientes que sumiram, e o lucro do mês depois das comissões. 7 dias grátis, sem cartão.",
 };
 
-const features = [
+/**
+ * A dor vem antes do produto (Fase 5 §5.6).
+ *
+ * A página abria com um carrossel de recursos — violação literal da regra "não
+ * abrir com uma lista longa de recursos" da apresentação estratégica. O
+ * carrossel saiu. O que abre agora é o dia do dono que ainda atende: ele não
+ * chega aqui procurando "agenda online", chega porque alguma dessas quatro
+ * frases é a semana dele.
+ */
+const pains = [
   {
+    title: "O WhatsApp não para, e você está com a máquina na mão",
+    body: "Cada horário custa três mensagens. Quando você atende, a conversa esfria — e o cliente vai marcar em outro lugar.",
+  },
+  {
+    title: "Cliente sumiu e você só percebeu meses depois",
+    body: "Ninguém avisa que parou de vir. Ele simplesmente não volta, e a cadeira que era dele fica vazia numa quinta à tarde.",
+  },
+  {
+    title: "Entrou dinheiro, mas você não sabe se sobrou",
+    body: "O caixa fechou bem. Depois vem produto, aluguel e a comissão da equipe — e o que era lucro vira dúvida.",
+  },
+  {
+    title: "O fechamento da comissão é no papel",
+    body: "Todo fim de mês a mesma conta manual, e um profissional que não consegue conferir a própria produção.",
+  },
+];
+
+/**
+ * Os 5 Gs como arquitetura da página (apresentação estratégica).
+ *
+ * Não é a mesma coisa que a grade de recursos que estava aqui: cada G é um
+ * elo de um fluxo que se conecta ao seguinte — a agenda alimenta o cadastro do
+ * cliente, o atendimento vira dinheiro, o dinheiro vira comissão. É essa
+ * ligação que o produto tem e a página não contava.
+ */
+const gs = [
+  {
+    key: "G1",
     icon: CalendarCheck,
-    title: "Agenda sem conflito",
-    description:
-      "Horários duplicados são bloqueados no banco de dados, mesmo com dois clientes reservando ao mesmo tempo.",
+    title: "O cliente marca sozinho",
+    body: "Sua página com link e QR Code, mostrando só os horários realmente livres de cada profissional. Ele escolhe, remarca e cancela sem falar com ninguém.",
+    link: "O horário entra na agenda…",
   },
   {
-    icon: Smartphone,
-    title: "Reserva pelo celular",
-    description:
-      "Seu cliente escolhe serviço, profissional e horário na sua página — sem baixar aplicativo.",
+    key: "G2",
+    icon: UserRoundSearch,
+    title: "…e vira histórico de cliente",
+    body: "O sistema aprende de quanto em quanto tempo cada um costuma voltar e avisa quem passou do prazo. É a lista de quem chamar hoje.",
+    link: "O atendimento concluído…",
   },
   {
-    icon: Banknote,
-    title: "Financeiro integrado",
-    description:
-      "Atendimento concluído e venda confirmada viram receita na hora: dia, semana e mês sempre em dia.",
+    key: "G3",
+    icon: PiggyBank,
+    title: "…vira dinheiro no financeiro",
+    body: "Vendido, recebido e a receber são três números separados. O lucro do mês desconta despesa e comissão — faturamento é o que entra, lucro é o que fica.",
+    link: "O que foi produzido…",
   },
   {
-    icon: Palette,
-    title: "Sua marca, sua página",
-    description:
-      "Logo, cores, fundos, textos, temas prontos e coleção de artes — tudo isso no plano Plus.",
-  },
-  {
+    key: "G4",
     icon: UsersRound,
-    title: "Equipe com papéis",
-    description:
-      "Gerente, secretária e profissional: cada pessoa vê apenas o que precisa para trabalhar.",
+    title: "…fecha a comissão da equipe",
+    body: "Cada profissional vê a própria produção e a própria comissão, com vale e adiantamento descontados. Fechamento sem papel e sem discussão.",
+    link: "E no balcão…",
   },
   {
-    icon: ShieldCheck,
-    title: "Isolamento real",
-    description:
-      "Cada barbearia em seu próprio espaço, com segurança aplicada linha a linha no banco de dados.",
+    key: "G5",
+    icon: Package,
+    title: "…o produto sai com baixa no estoque",
+    body: "Venda de balcão com carrinho, estoque que não fica negativo e aviso quando um produto está acabando.",
+    link: null,
   },
 ];
 
@@ -95,48 +142,8 @@ const themes = [
     ink: "#171717",
     accent: "#b8893e",
   },
-  {
-    name: "Meia-noite",
-    bg: "#101318",
-    ink: "#f4f1ea",
-    accent: "#d9a441",
-  },
-  {
-    name: "Esmeralda",
-    bg: "#f2f7f4",
-    ink: "#10231c",
-    accent: "#2f9e77",
-  },
-];
-
-// Os depoimentos nominais que ficavam aqui eram ficção apresentada como
-// cliente real — publicidade enganosa (CDC art. 37) e violação do código do
-// CONAR. Saíram na Fase 0. No lugar entram afirmações verificáveis sobre o que
-// o produto faz; depoimento só volta quando houver cliente real com
-// autorização por escrito.
-const dailyWins = [
-  {
-    title: "O cliente marca sozinho",
-    body: "Link e QR Code próprios, com a agenda de cada profissional e os horários realmente livres. Sem ida e volta no WhatsApp.",
-  },
-  {
-    title: "O financeiro se preenche",
-    body: "Concluir o atendimento lança a venda. Vendido, recebido e a receber são números separados — não uma soma só.",
-  },
-  {
-    title: "Você vê quem sumiu",
-    body: "O sistema calcula de quanto em quanto tempo cada cliente costuma voltar e mostra quem passou do prazo.",
-  },
-];
-
-const marqueeItems = [
-  "Agenda online",
-  "Financeiro integrado",
-  "Página personalizável",
-  "QR Code no balcão",
-  "Estoque e produtos",
-  "Equipe com papéis",
-  "Relatório em PDF",
+  { name: "Meia-noite", bg: "#101318", ink: "#f4f1ea", accent: "#d9a441" },
+  { name: "Esmeralda", bg: "#f2f7f4", ink: "#10231c", accent: "#2f9e77" },
 ];
 
 export const revalidate = 3600;
@@ -145,6 +152,7 @@ export default async function HomePage() {
   // Preço da fonte de verdade (catálogo no banco — Fase 2B); a página segue
   // estática com revalidação horária.
   const catalog = await loadPlanCatalog();
+
   return (
     <main className="min-h-screen overflow-x-clip bg-[#0c0b09] text-stone-50">
       {/* ===== Header ===== */}
@@ -161,16 +169,16 @@ export default async function HomePage() {
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-stone-400 md:flex">
             <a
-              href="#recursos"
-              className="transition-colors hover:text-stone-100"
-            >
-              Recursos
-            </a>
-            <a
-              href="#como-funciona"
+              href="#os-5gs"
               className="transition-colors hover:text-stone-100"
             >
               Como funciona
+            </a>
+            <a
+              href="#quem-sumiu"
+              className="transition-colors hover:text-stone-100"
+            >
+              Quem sumiu
             </a>
             <a
               href="#planos"
@@ -197,9 +205,8 @@ export default async function HomePage() {
         </div>
       </header>
 
-      {/* ===== Hero ===== */}
+      {/* ===== Hero — abre pela dor, com o nicho explícito ===== */}
       <section className="relative">
-        {/* Glows decorativos */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -218,23 +225,27 @@ export default async function HomePage() {
           />
         </div>
 
-        <div className="relative mx-auto grid max-w-7xl gap-16 px-6 pt-20 pb-24 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pt-28 lg:pb-36">
+        <div className="relative mx-auto grid max-w-7xl gap-16 px-6 pt-20 pb-24 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pt-28 lg:pb-32">
           <div className="max-w-3xl">
             <Badge className="motion-safe:animate-in motion-safe:fade-in mb-7 border-amber-500/30 bg-amber-500/10 text-amber-300 duration-700">
-              <Sparkles className="size-3" />
-              Plataforma completa para barbearias
+              <Scissors className="size-3" />
+              Barbearia de 2 a 8 profissionais
             </Badge>
-            <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-5xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-7xl">
-              Gestão simples para barbearias que querem{" "}
+            <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-4xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-6xl">
+              Você atende o dia inteiro e, no fim do mês, ainda não sabe{" "}
               <span className="animate-gradient-pan bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300 bg-clip-text text-transparent">
-                crescer
+                quanto sobrou
               </span>
               .
             </h1>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-stone-400 delay-150 duration-1000">
-              Da agenda ao lucro, sua barbearia sob controle: organize agenda,
-              equipe e financeiro, saiba quais clientes precisam voltar e tome
-              decisões com clareza. Sem planilha, sem caderninho.
+              <strong className="font-medium text-stone-200">
+                Gestão simples para barbearias que querem crescer.
+              </strong>{" "}
+              Da agenda ao lucro: organize agenda, equipe e financeiro, saiba
+              quais clientes precisam voltar e tome decisões com clareza. Feito
+              para quem ainda atende na cadeira e não tem tempo de virar
+              administrador.
             </p>
             <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
@@ -273,153 +284,192 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Mockup flutuante */}
+          {/* A tela que responde a pergunta do título, já no primeiro olhar. */}
           <div className="relative hidden sm:block">
-            <Parallax speed={0.06}>
-              <div className="animate-float-slow relative aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl shadow-black/60">
-                <SmartImage
-                  src={REAL_PHOTOS.barberCut}
-                  fallbackSrc={STOCK_PHOTOS.barberCut}
-                  alt="Barbeiro finalizando um corte na barbearia"
-                  fill
-                  sizes="(min-width: 1024px) 40vw, 90vw"
-                  className="animate-kenburns object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0b09] via-transparent to-transparent" />
-              </div>
+            <Parallax speed={0.05}>
+              <FinanceScreen />
             </Parallax>
-            <div className="animate-float absolute right-0 -bottom-10 w-[86%] rounded-[2rem] border border-white/10 bg-[#171612]/95 p-6 shadow-2xl backdrop-blur">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-stone-500">Hoje na agenda</p>
-                  <p className="mt-1 text-3xl font-semibold tracking-tight">
-                    12 horários
-                  </p>
-                </div>
-                <CalendarCheck className="size-6 text-amber-400" />
-              </div>
-              <div className="mt-5 space-y-2.5">
-                {[
-                  ["09:00", "Lucas Martins", "Corte assinatura"],
-                  ["10:15", "João Alves", "Corte + barba"],
-                  ["11:30", "André Lima", "Barba clássica"],
-                ].map(([time, client, service]) => (
-                  <div
-                    key={time}
-                    className="flex items-center gap-4 rounded-2xl bg-white/[0.04] p-3.5 transition-colors hover:bg-white/[0.07]"
-                  >
-                    <span className="font-mono text-sm text-amber-300">
-                      {time}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{client}</p>
-                      <p className="text-xs text-stone-500">{service}</p>
-                    </div>
-                    <span className="ml-auto size-2 rounded-full bg-emerald-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="animate-float absolute -top-6 -left-8 rounded-2xl border border-white/10 bg-[#171612]/95 px-5 py-4 shadow-xl backdrop-blur [animation-delay:1.4s]">
-              <p className="text-xs text-stone-500">Recebido no mês</p>
-              <p className="mt-0.5 font-mono text-xl font-semibold text-emerald-400">
-                R$ 8.940
-              </p>
-              {/* Números e nomes destes cartões são simulação de tela, não
-                  resultado de cliente. Sem o rótulo visível, uma cifra ao lado
-                  do CTA lê como promessa de faturamento (Fase 0 §0.1). */}
-              <p className="mt-1 text-[10px] tracking-wide text-stone-600 uppercase">
-                Exemplo ilustrativo
-              </p>
-            </div>
+            <DemoDataNote className="mt-3 text-center" />
           </div>
         </div>
       </section>
 
-      {/* ===== Marquee ===== */}
-      <div className="relative border-y border-white/[.06] bg-white/[.02] py-4">
-        <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
-          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10">
-            {[...marqueeItems, ...marqueeItems].map((item, index) => (
-              <span
-                key={`${item}-${index}`}
-                className="flex shrink-0 items-center gap-3 text-sm font-medium tracking-wide text-stone-400 uppercase"
-              >
-                <Scissors className="size-3.5 text-amber-500/70" />
-                {item}
-              </span>
+      {/* ===== A dor ===== */}
+      <section
+        id="a-dor"
+        className="border-y border-white/[.06] bg-white/[.02] py-24"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+              A semana de quem toca uma barbearia
+            </p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              Se alguma destas frases é a sua, o problema não é falta de
+              trabalho.
+            </h2>
+          </Reveal>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2">
+            {pains.map((pain, index) => (
+              <Reveal key={pain.title} delay={(index % 2) * 90}>
+                <div className="h-full rounded-3xl border border-white/10 bg-[#12110e] p-7">
+                  <h3 className="text-base font-medium text-stone-100">
+                    {pain.title}
+                  </h3>
+                  <p className="mt-2 text-[15px] leading-7 text-stone-400">
+                    {pain.body}
+                  </p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
-      </div>
-
-      {/* ===== Recursos ===== */}
-      <section
-        id="recursos"
-        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
-      >
-        <Reveal>
-          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
-            Recursos
-          </p>
-          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Tudo o que o balcão precisa, nada do que atrapalha.
-          </h2>
-        </Reveal>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <Reveal key={feature.title} delay={(index % 3) * 90}>
-              <div className="group h-full rounded-3xl border border-white/10 bg-white/[.02] p-7 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-white/[.04] hover:shadow-xl hover:shadow-amber-500/[.06]">
-                <span className="grid size-11 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 transition-transform duration-300 group-hover:scale-110">
-                  <feature.icon className="size-5" />
-                </span>
-                <h3 className="mt-5 font-medium">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-500">
-                  {feature.description}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
       </section>
 
-      {/* ===== Como funciona ===== */}
+      {/* ===== Os 5 Gs — o fluxo conectado ===== */}
       <section
-        id="como-funciona"
-        className="mx-auto max-w-7xl scroll-mt-20 px-6 pb-24"
+        id="os-5gs"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
       >
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
             Como funciona
           </p>
-          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Do cadastro à primeira reserva em minutos.
+          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Cinco engrenagens, uma puxando a outra.
           </h2>
+          <p className="mt-4 max-w-2xl text-stone-400">
+            Não é uma lista de recursos soltos: o horário que o cliente marca
+            vira histórico, o histórico vira dinheiro, o dinheiro fecha a
+            comissão. É por isso que preencher uma coisa não significa preencher
+            tudo de novo.
+          </p>
         </Reveal>
-        <div className="relative mt-12 grid gap-4 md:grid-cols-3">
-          <div
-            aria-hidden
-            className="absolute top-14 right-[16%] left-[16%] hidden border-t border-dashed border-white/15 md:block"
-          />
-          {steps.map((item, index) => (
-            <Reveal key={item.step} delay={index * 120}>
-              <div className="relative h-full rounded-3xl border border-white/10 bg-[#12110e] p-7">
-                <span className="font-mono text-5xl font-semibold text-amber-500/25">
-                  {item.step}
+
+        <div className="mt-14 space-y-4">
+          {gs.map((item, index) => (
+            <Reveal key={item.key} delay={index * 70}>
+              <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-white/[.02] p-7 sm:flex-row sm:items-start sm:gap-7">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-400">
+                  <item.icon className="size-6" />
                 </span>
-                <h3 className="mt-4 font-medium">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-500">
-                  {item.description}
-                </p>
+                <div className="min-w-0">
+                  <p className="font-mono text-xs tracking-widest text-amber-400/70">
+                    {item.key}
+                  </p>
+                  <h3 className="mt-1 text-lg font-medium text-stone-100">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-[15px] leading-7 text-stone-400">
+                    {item.body}
+                  </p>
+                </div>
               </div>
+              {item.link ? (
+                <p
+                  aria-hidden
+                  className="py-2 pl-13 text-sm text-stone-600 sm:pl-[3.75rem]"
+                >
+                  ↓ {item.link}
+                </p>
+              ) : null}
             </Reveal>
           ))}
         </div>
       </section>
 
-      {/* ===== Galeria de fotos ===== */}
-      <section className="mx-auto max-w-7xl px-6 pb-24">
+      {/* ===== Telas do sistema ===== */}
+      <section className="border-y border-white/[.06] bg-white/[.02] py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+              Por dentro
+            </p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              É isto que você vai ver quando entrar.
+            </h2>
+            <p className="mt-4 max-w-2xl text-stone-400">
+              Sem menu de 40 itens, sem relatório que ninguém entende. As telas
+              que resolvem o dia:
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-6 lg:grid-cols-2">
+            <Reveal>
+              <AgendaScreen />
+            </Reveal>
+            <Reveal delay={110}>
+              <ClientsScreen />
+            </Reveal>
+          </div>
+          <DemoDataNote className="mt-5" />
+        </div>
+      </section>
+
+      {/* ===== O diferencial: quem sumiu (G2) ===== */}
+      <section
+        id="quem-sumiu"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
+      >
+        <div className="grid gap-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+              O que quase ninguém tem
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+              Quantos clientes sumiram sem você perceber?
+            </h2>
+            <div className="mt-6 space-y-4 text-[15px] leading-7 text-stone-400">
+              <p>
+                Cliente insatisfeito reclama. Cliente que cansou só some — e
+                some em silêncio, uma cadeira vazia por vez, até você olhar o
+                mês e achar que &ldquo;está fraco&rdquo;.
+              </p>
+              <p>
+                O sistema calcula de quanto em quanto tempo{" "}
+                <strong className="font-medium text-stone-200">
+                  cada cliente seu
+                </strong>{" "}
+                costuma voltar. Quando alguém passa do próprio prazo, ele
+                aparece numa lista com o telefone do lado e a mensagem pronta
+                para o WhatsApp.
+              </p>
+              <p>
+                É a parte mais bem construída do produto, e é a que devolve
+                dinheiro que já era seu: cliente antigo voltando custa uma
+                mensagem, não um anúncio.
+              </p>
+            </div>
+            <Button
+              asChild
+              size="lg"
+              className="btn-shine mt-8 h-13 rounded-full bg-amber-500 px-8 text-[15px] text-stone-950 hover:bg-amber-400"
+            >
+              <Link href="/cadastro">
+                Ver quem sumiu da minha base <ArrowRight />
+              </Link>
+            </Button>
+          </Reveal>
+          <Reveal delay={120}>
+            <ClientsScreen />
+            <DemoDataNote className="mt-3" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===== Iscas: a conta e o diagnóstico ===== */}
+      <section className="border-y border-white/[.06] bg-white/[.02] py-24">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-2">
+          <Reveal>
+            <ProfitCalculator planCents={catalog.starter.monthlyCents} />
+          </Reveal>
+          <Reveal delay={120}>
+            <Diagnostic5G />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===== Fotos ===== */}
+      <section className="mx-auto max-w-7xl px-6 py-24">
         <div className="grid gap-4 sm:grid-cols-3">
           {[
             {
@@ -461,7 +511,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ===== Showcase white-label ===== */}
+      {/* ===== Página do cliente ===== */}
       <section className="relative overflow-hidden border-y border-white/[.06] bg-white/[.02] py-24">
         <div
           aria-hidden
@@ -558,6 +608,37 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ===== Como começa ===== */}
+      <section className="mx-auto max-w-7xl px-6 py-24">
+        <Reveal>
+          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
+            Como começa
+          </p>
+          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+            Do cadastro à primeira reserva em minutos.
+          </h2>
+        </Reveal>
+        <div className="relative mt-12 grid gap-4 md:grid-cols-3">
+          <div
+            aria-hidden
+            className="absolute top-14 right-[16%] left-[16%] hidden border-t border-dashed border-white/15 md:block"
+          />
+          {steps.map((item, index) => (
+            <Reveal key={item.step} delay={index * 120}>
+              <div className="relative h-full rounded-3xl border border-white/10 bg-[#12110e] p-7">
+                <span className="font-mono text-5xl font-semibold text-amber-500/25">
+                  {item.step}
+                </span>
+                <h3 className="mt-4 font-medium">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-500">
+                  {item.description}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
       {/* ===== Planos ===== */}
       <section
         id="planos"
@@ -575,118 +656,57 @@ export default async function HomePage() {
             do período de teste.
           </p>
         </Reveal>
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          <Reveal>
-            <div className="h-full rounded-[2rem] border border-white/10 bg-white/[.02] p-8">
-              <h3 className="text-lg font-semibold">Padrão</h3>
-              <p className="mt-1 text-sm text-stone-500">
-                Para colocar a agenda no ar hoje.
-              </p>
-              <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(catalog.starter.monthlyCents)}
-                <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
-                  /mês
-                </span>
-              </p>
-              <p className="mt-1 text-xs font-medium text-amber-400">
-                7 dias grátis para testar
-              </p>
-              <ul className="mt-7 space-y-3 text-sm text-stone-400">
-                {[
-                  "Agenda online sem conflito",
-                  "Página pública com QR Code",
-                  "Clientes, serviços e equipe",
-                  "Financeiro com receitas automáticas",
-                  "Relatório financeiro em PDF",
-                  "Produtos e controle de estoque",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 size-4 shrink-0 text-amber-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                variant="outline"
-                className="mt-8 w-full rounded-full border-white/15 bg-white/5 hover:bg-white/10"
-              >
-                <Link href="/cadastro?plano=starter">
-                  Começar 7 dias grátis
-                </Link>
-              </Button>
-            </div>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="relative h-full rounded-[2rem] border border-amber-500/40 bg-gradient-to-b from-amber-500/[.1] to-transparent p-8 shadow-2xl shadow-amber-500/10">
-              <Badge className="absolute -top-3 left-8 border-transparent bg-amber-500 text-stone-950">
-                <Sparkles className="size-3" /> Mais completo
-              </Badge>
-              <h3 className="text-lg font-semibold">Plus</h3>
-              <p className="mt-1 text-sm text-stone-500">
-                Para marcas que querem impressionar.
-              </p>
-              <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(catalog.plus.monthlyCents)}
-                <span className="ml-1.5 align-middle text-sm font-normal text-stone-500">
-                  /mês
-                </span>
-              </p>
-              <p className="mt-1 text-xs font-medium text-amber-400">
-                7 dias grátis para testar
-              </p>
-              <ul className="mt-7 space-y-3 text-sm text-stone-300">
-                {[
-                  "Tudo do Padrão",
-                  "White label completo: logo, cores e fundos",
-                  "Coleção de artes e temas prontos",
-                  "Upsell de produtos no agendamento",
-                  "Reservas de produtos com baixa de estoque",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 size-4 shrink-0 text-amber-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                className="btn-shine mt-8 w-full rounded-full bg-amber-500 text-stone-950 hover:bg-amber-400"
-              >
-                <Link href="/cadastro?plano=plus">
-                  Testar o Plus grátis <ArrowUpRight />
-                </Link>
-              </Button>
-            </div>
-          </Reveal>
-        </div>
+        <PricingPlans
+          plans={[
+            {
+              key: "starter",
+              name: "Padrão",
+              pitch: "Para colocar a agenda no ar hoje.",
+              monthlyCents: catalog.starter.monthlyCents,
+              yearlyCents: catalog.starter.yearlyCents,
+              features: [
+                "Agenda online sem conflito",
+                "Página pública com QR Code",
+                "Clientes, serviços e equipe",
+                "Financeiro com receitas automáticas",
+                "Relatório financeiro em PDF",
+                "Produtos e controle de estoque",
+              ],
+            },
+            {
+              key: "plus",
+              name: "Plus",
+              pitch: "Para marcas que querem impressionar.",
+              monthlyCents: catalog.plus.monthlyCents,
+              yearlyCents: catalog.plus.yearlyCents,
+              highlighted: true,
+              features: [
+                "Tudo do Padrão",
+                "Página personalizada: logo, cores, fundos e textos",
+                "Coleção de artes e temas prontos",
+                "Venda de produtos no agendamento do cliente",
+                "Reservas de produtos com baixa de estoque",
+              ],
+            },
+          ]}
+        />
       </section>
 
-      {/* ===== O dia a dia no balcão ===== */}
+      {/* ===== Lead — antes do fim da página (§5.5) ===== */}
       <section className="mx-auto max-w-7xl px-6 pb-24">
         <Reveal>
-          <p className="text-xs font-semibold tracking-[0.22em] text-amber-400 uppercase">
-            No dia a dia
-          </p>
-          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Feito para o dia a dia real do balcão.
-          </h2>
+          <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Ainda em dúvida? A gente te mostra.
+            </h2>
+            <p className="mt-2 mb-6 text-sm text-stone-400">
+              Deixe seu contato e mostramos o NexoBarber rodando com a sua
+              realidade — seus serviços, sua equipe, seus horários. Sem
+              compromisso e sem cartão.
+            </p>
+            <LeadCaptureForm vertical="barber" />
+          </div>
         </Reveal>
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {dailyWins.map((item, index) => (
-            <Reveal key={item.title} delay={index * 100}>
-              <div className="h-full rounded-3xl border border-white/10 bg-white/[.02] p-7">
-                <Check className="size-5 text-amber-500/60" />
-                <h3 className="mt-4 text-base font-medium text-stone-200">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-[15px] leading-7 text-stone-400">
-                  {item.body}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
       </section>
 
       {/* ===== CTA final ===== */}
@@ -724,22 +744,6 @@ export default async function HomePage() {
         </Reveal>
       </section>
 
-      {/* ===== Lead: prefere que a gente chame? ===== */}
-      <section className="mx-auto max-w-7xl px-6 pb-24">
-        <Reveal>
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-white/[.03] p-8 text-center">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Prefere que a gente fale com você?
-            </h2>
-            <p className="mt-2 mb-6 text-sm text-stone-400">
-              Deixe seu contato e te mostramos o NexoBarber funcionando na sua
-              realidade. Sem compromisso.
-            </p>
-            <LeadCaptureForm vertical="barber" />
-          </div>
-        </Reveal>
-      </section>
-
       {/* ===== Footer ===== */}
       <footer className="border-t border-white/10 px-6 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-stone-500 sm:flex-row">
@@ -749,7 +753,7 @@ export default async function HomePage() {
             </span>
             NexoBarber © {new Date().getFullYear()}
           </span>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-6">
             <Link
               href="/login"
               className="transition-colors hover:text-stone-300"

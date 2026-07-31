@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
+import { markLeadConverted } from "@/lib/leads/conversion";
 import {
   barbershopSchema,
   loginSchema,
@@ -84,6 +85,12 @@ export async function signUp(formData: FormData) {
           value(formData, "plano") === "plus" ? "plus" : "starter",
         preferred_vertical:
           value(formData, "vertical") === "salon" ? "salon" : "barber",
+        // A periodicidade escolhida nos planos da landing (Fase 5 §5.2):
+        // quem clicou no anual já cai com o anual selecionado na hora de
+        // pagar, em vez de ter que escolher duas vezes.
+        preferred_period:
+          value(formData, "periodo") === "yearly" ? "yearly" : "monthly",
+        preferred_coupon: value(formData, "cupom").trim().slice(0, 40),
       },
       emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
     },
@@ -134,13 +141,45 @@ export async function createBarbershop(formData: FormData) {
   const slug = await resolveAvailableSlug(base);
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("create_barbershop", {
-    p_name: parsed.data.name,
-    p_slug: slug,
-    p_plan: plan,
-    p_vertical: vertical,
-  });
+  const { data: barbershopId, error } = await supabase.rpc(
+    "create_barbershop",
+    {
+      p_name: parsed.data.name,
+      p_slug: slug,
+      p_plan: plan,
+      p_vertical: vertical,
+    },
+  );
   if (error) redirect("/onboarding?error=Esse+endereço+não+está+disponível");
+
+  // Quem chegou por lead sai da régua de recuperação aqui (Fase 5 §5.4):
+  // ninguém deve receber "vem conhecer" depois de já ter criado a conta.
+  const { data: created } = await supabase.auth.getUser();
+  if (created.user?.email && typeof barbershopId === "string") {
+    await markLeadConverted({
+      email: created.user.email,
+      barbershopId,
+    });
+  }
+
+  // A periodicidade escolhida na landing acompanha a assinatura de teste, para
+  // a tela de pagamento já abrir no que a pessoa clicou (Fase 5 §5.2).
+  // Pelo cliente de serviço: a RLS de subscriptions dá ao dono leitura, não
+  // escrita — cobrança nunca é editável por quem é cobrado.
+  if (
+    typeof barbershopId === "string" &&
+    created.user?.user_metadata?.preferred_period === "yearly"
+  ) {
+    try {
+      await createSupabaseAdminClient()
+        .from("subscriptions")
+        .update({ billing_period: "yearly" })
+        .eq("barbershop_id", barbershopId);
+    } catch {
+      // Sem service role configurada isto simplesmente não acontece: a
+      // periodicidade volta a ser escolhida na tela de pagamento.
+    }
+  }
   // bemvindo=1 marca a chegada pós-cadastro: o dashboard dispara a conversão
   // (Meta Pixel CompleteRegistration) uma única vez e limpa o parâmetro.
   redirect("/dashboard?bemvindo=1");

@@ -10,6 +10,7 @@ function sub(partial: Partial<SubscriptionInfo>): SubscriptionInfo {
     status: "active",
     plan: "starter",
     priceCents: 4990,
+    billingPeriod: "monthly",
     trialEndsAt: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
