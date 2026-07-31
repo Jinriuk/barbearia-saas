@@ -28,6 +28,21 @@ export default async function SignupPage({
           name="vertical"
           value={params.vertical === "salon" ? "salon" : "barber"}
         />
+        <input
+          type="hidden"
+          name="periodo"
+          value={params.periodo === "yearly" ? "yearly" : "monthly"}
+        />
+        {/* O cupom da régua de lead chega por aqui (Fase 5 §5.4): o e-mail de
+            72h manda /cadastro?cupom=..., e o código reaparece preenchido na
+            tela de pagamento em vez de a pessoa ter que lembrar dele. */}
+        <input
+          type="hidden"
+          name="cupom"
+          value={
+            typeof params.cupom === "string" ? params.cupom.slice(0, 40) : ""
+          }
+        />
         <div className="space-y-2">
           <Label htmlFor="name">Seu nome</Label>
           <Input id="name" name="name" autoComplete="name" required />

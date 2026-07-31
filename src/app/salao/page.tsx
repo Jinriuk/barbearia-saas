@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import {
   ArrowRight,
-  ArrowUpRight,
   Banknote,
   CalendarCheck,
   Check,
@@ -18,6 +17,7 @@ import { SALON_PHOTOS, SALON_STOCK } from "@/lib/assets";
 import { formatPriceBRL } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
 import { LeadCaptureForm } from "@/components/platform/lead-capture-form";
+import { PricingPlans } from "@/components/platform/pricing-plans";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
@@ -525,91 +525,42 @@ export default async function SalonLandingPage() {
             do período de teste.
           </p>
         </Reveal>
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          <Reveal>
-            <div className="h-full rounded-[2rem] border border-[#33202b]/[.08] bg-white p-8 shadow-sm">
-              <h3 className="text-lg font-semibold">Padrão</h3>
-              <p className="mt-1 text-sm text-[#33202b]/50">
-                Para colocar a agenda no ar hoje.
-              </p>
-              <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(catalog.starter.monthlyCents)}
-                <span className="ml-1.5 align-middle text-sm font-normal text-[#33202b]/45">
-                  /mês
-                </span>
-              </p>
-              <p className="mt-1 text-xs font-medium text-[#c2497c]">
-                7 dias grátis para testar
-              </p>
-              <ul className="mt-7 space-y-3 text-sm text-[#33202b]/60">
-                {[
-                  "Agenda online sem choque de horários",
-                  "Página pública com QR Code",
-                  "Clientes, serviços e equipe",
-                  "Financeiro com receitas automáticas",
-                  "Relatório financeiro em PDF",
-                  "Produtos e controle de estoque",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 size-4 shrink-0 text-[#c2497c]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                variant="outline"
-                className="mt-8 w-full rounded-full border-[#33202b]/15 hover:bg-[#33202b]/[.04]"
-              >
-                <Link href="/cadastro?plano=starter&vertical=salon">
-                  Começar 7 dias grátis
-                </Link>
-              </Button>
-            </div>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="relative h-full rounded-[2rem] border border-[#c2497c]/35 bg-gradient-to-b from-[#c2497c]/[.07] to-white p-8 shadow-2xl shadow-[#c2497c]/10">
-              <Badge className="absolute -top-3 left-8 border-transparent bg-[#c2497c] text-white">
-                <Sparkles className="size-3" /> Mais completo
-              </Badge>
-              <h3 className="text-lg font-semibold">Plus</h3>
-              <p className="mt-1 text-sm text-[#33202b]/50">
-                Para marcas que querem encantar.
-              </p>
-              <p className="mt-5 text-4xl font-semibold tracking-tight">
-                {formatPriceBRL(catalog.plus.monthlyCents)}
-                <span className="ml-1.5 align-middle text-sm font-normal text-[#33202b]/45">
-                  /mês
-                </span>
-              </p>
-              <p className="mt-1 text-xs font-medium text-[#c2497c]">
-                7 dias grátis para testar
-              </p>
-              <ul className="mt-7 space-y-3 text-sm text-[#33202b]/70">
-                {[
-                  "Tudo do Padrão",
-                  "Página personalizada: logo, cores e fundos",
-                  "Temas prontos e coleção de artes",
-                  "Venda de produtos no agendamento",
-                  "Estoque com baixa automática",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 size-4 shrink-0 text-[#c2497c]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                className="btn-shine mt-8 w-full rounded-full bg-[#c2497c] text-white hover:bg-[#a93a69]"
-              >
-                <Link href="/cadastro?plano=plus&vertical=salon">
-                  Testar o Plus grátis <ArrowUpRight />
-                </Link>
-              </Button>
-            </div>
-          </Reveal>
-        </div>
+        <PricingPlans
+          tone="light"
+          vertical="salon"
+          plans={[
+            {
+              key: "starter",
+              name: "Padrão",
+              pitch: "Para colocar a agenda no ar hoje.",
+              monthlyCents: catalog.starter.monthlyCents,
+              yearlyCents: catalog.starter.yearlyCents,
+              features: [
+                "Agenda online sem choque de horários",
+                "Página pública com QR Code",
+                "Clientes, serviços e equipe",
+                "Financeiro com receitas automáticas",
+                "Relatório financeiro em PDF",
+                "Produtos e controle de estoque",
+              ],
+            },
+            {
+              key: "plus",
+              name: "Plus",
+              pitch: "Para marcas que querem encantar.",
+              monthlyCents: catalog.plus.monthlyCents,
+              yearlyCents: catalog.plus.yearlyCents,
+              highlighted: true,
+              features: [
+                "Tudo do Padrão",
+                "Página personalizada: logo, cores e fundos",
+                "Temas prontos e coleção de artes",
+                "Venda de produtos no agendamento",
+                "Estoque com baixa automática",
+              ],
+            },
+          ]}
+        />
       </section>
 
       {/* ===== O dia a dia no salão ===== */}
@@ -636,6 +587,26 @@ export default async function SalonLandingPage() {
               </div>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      {/* ===== Lead — antes do CTA final (Fase 5 §5.5) =====
+          Estava na última seção da página, depois do fechamento: quem
+          desistia no meio nunca chegava nele, e o pedido era justamente
+          capturar quem NÃO compra na hora. */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        {/* Card e texto claros sobre fundo claro deixavam o bloco quase
+            invisível (item 5.9 do plano). */}
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-[#33202b]/[.07] bg-white p-8 text-center shadow-sm">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Ainda em dúvida? A gente te mostra.
+          </h2>
+          <p className="mt-2 mb-6 text-sm text-[#33202b]/60">
+            Deixe seu contato e mostramos o NexoBeleza funcionando na sua
+            realidade — seus serviços, sua equipe, seus horários. Sem
+            compromisso.
+          </p>
+          <LeadCaptureForm vertical="salon" />
         </div>
       </section>
 
@@ -672,22 +643,6 @@ export default async function SalonLandingPage() {
             </div>
           </div>
         </Reveal>
-      </section>
-
-      {/* ===== Lead: prefere que a gente chame? ===== */}
-      <section className="mx-auto max-w-7xl px-6 pb-24">
-        {/* A seção foi copiada da landing escura: card e texto claros sobre
-            fundo claro deixavam o bloco quase invisível (item 5.9 do plano). */}
-        <div className="mx-auto max-w-xl rounded-[2rem] border border-[#33202b]/[.07] bg-white p-8 text-center shadow-sm">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Prefere que a gente fale com você?
-          </h2>
-          <p className="mt-2 mb-6 text-sm text-[#33202b]/60">
-            Deixe seu contato e mostramos o NexoBeleza funcionando na sua
-            realidade. Sem compromisso.
-          </p>
-          <LeadCaptureForm vertical="salon" />
-        </div>
       </section>
 
       {/* ===== Footer ===== */}

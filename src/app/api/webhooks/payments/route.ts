@@ -1,9 +1,6 @@
 import { z } from "zod";
-import {
-  mapBillingEvent,
-  periodDays,
-  verifyWebhookSignature,
-} from "@/lib/billing/webhook";
+import { mapBillingEvent, verifyWebhookSignature } from "@/lib/billing/webhook";
+import { applySubscriptionAction } from "@/lib/billing/apply";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { errorMessage, logError, logInfo } from "@/lib/log";
 
@@ -129,13 +126,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const nowIso = new Date().toISOString();
-  let update: Record<string, unknown> | null = null;
-  let auditAction = "";
+  let plan: string | undefined;
+  let period: "monthly" | "yearly" | undefined;
+  let priceCents: number | undefined;
+  let auditAction = "billing.canceled";
 
   if (action.kind === "activate") {
-    const plan = event.plan ?? (subscription.plan as "starter" | "plus");
-    const period = event.period ?? "monthly";
+    plan = event.plan ?? (subscription.plan as "starter" | "plus");
+    period = event.period ?? "monthly";
     // Valor precisa bater com o catálogo vigente do banco.
     const { data: catalog } = await supabase.rpc("get_plan_catalog");
     const price = (catalog ?? []).find(
@@ -153,47 +151,34 @@ export async function POST(request: Request) {
       await finish("failed", "AMOUNT_MISMATCH");
       return Response.json({ error: "Valor divergente." }, { status: 422 });
     }
-    // Renovação soma ao período vigente; regularização parte de agora.
-    const base = subscription.current_period_end
-      ? Math.max(Date.parse(subscription.current_period_end), Date.now())
-      : Date.now();
-    update = {
-      status: "active",
-      plan,
-      price_cents: price.price_cents,
-      current_period_end: new Date(
-        base + periodDays(period) * 86_400_000,
-      ).toISOString(),
-      canceled_at: null,
-    };
+    priceCents = price.price_cents;
     auditAction = "billing.payment_approved";
   } else if (action.kind === "past_due") {
-    update = { status: "past_due" };
     auditAction = "billing.payment_failed";
   } else if (action.kind === "suspend") {
-    update = { status: "suspended" };
     auditAction = "billing.chargeback";
-  } else {
-    update = { status: "canceled", canceled_at: nowIso };
-    auditAction = "billing.canceled";
   }
 
-  const { error: updateError } = await supabase
-    .from("subscriptions")
-    .update(update)
-    .eq("barbershop_id", event.barbershop_id);
-  if (updateError) {
-    await finish("failed", errorMessage(updateError));
+  // A transição de estado é a mesma do webhook do gateway (Fase 5 §5.1):
+  // mora em lib/billing/apply para não haver duas verdades sobre o que um
+  // pagamento aprovado faz com a assinatura.
+  const applied = await applySubscriptionAction(supabase, {
+    barbershopId: event.barbershop_id,
+    action: action.kind,
+    plan,
+    period,
+    priceCents,
+    auditAction,
+    auditMetadata: {
+      event_type: event.type,
+      provider_event_id: event.id,
+      provider: event.provider,
+    },
+  });
+  if (!applied.ok) {
+    await finish("failed", applied.reason);
     return Response.json({ error: "Falha ao aplicar." }, { status: 500 });
   }
-
-  await supabase.from("audit_logs").insert({
-    barbershop_id: event.barbershop_id,
-    action: auditAction,
-    entity_type: "subscription",
-    entity_id: subscription.id,
-    metadata: { event_type: event.type, provider_event_id: event.id },
-  });
 
   await finish("processed");
   logInfo("webhook.payments.processed", {

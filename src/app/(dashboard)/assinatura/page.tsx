@@ -2,11 +2,10 @@ import {
   BadgeCheck,
   CalendarClock,
   CircleAlert,
-  CreditCard,
   Lock,
   Sparkles,
 } from "lucide-react";
-import { requireTenant } from "@/lib/auth/dal";
+import { requireTenant, requireUser } from "@/lib/auth/dal";
 import { currentEpochMs } from "@/lib/dates";
 import {
   accessState,
@@ -15,8 +14,10 @@ import {
   planConfig,
 } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { mercadoPagoConfigured } from "@/lib/billing/mercadopago";
 import { brandName } from "@/lib/leads/consent";
 import { CancelSubscriptionCard } from "@/components/dashboard/cancel-subscription-card";
+import { SubscriptionCheckoutCard } from "@/components/dashboard/subscription-checkout-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,12 @@ function formatDate(iso: string | null) {
 
 export default async function SubscriptionPage() {
   const tenant = await requireTenant({ allowLocked: true });
+  const user = await requireUser();
+  // Cupom que veio da régua de lead pelo link do e-mail (Fase 5 §5.4).
+  const suggestedCoupon =
+    typeof user.user_metadata?.preferred_coupon === "string"
+      ? user.user_metadata.preferred_coupon.slice(0, 40)
+      : "";
   const sub = tenant.subscription;
   const state = accessState(sub);
   const plan = planConfig(sub?.plan ?? tenant.plan);
@@ -74,7 +81,6 @@ export default async function SubscriptionPage() {
   const planKey = (sub?.plan ?? tenant.plan) === "plus" ? "plus" : "starter";
   const monthlyCents = catalog[planKey].monthlyCents;
   const yearlyCents = catalog[planKey].yearlyCents;
-  const yearlySavingsCents = monthlyCents * 12 - yearlyCents;
 
   return (
     <>
@@ -159,7 +165,7 @@ export default async function SubscriptionPage() {
             <p className="font-mono text-lg font-semibold">
               {formatPriceBRL(sub?.priceCents ?? monthlyCents)}
               <span className="text-muted-foreground text-xs font-normal">
-                /mês
+                {sub?.billingPeriod === "yearly" ? "/ano" : "/mês"}
               </span>
             </p>
           </CardHeader>
@@ -183,53 +189,17 @@ export default async function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="size-4" /> Periodicidade e pagamento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border p-4">
-                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  Mensal
-                </p>
-                <p className="mt-1 font-mono text-xl font-semibold">
-                  {formatPriceBRL(monthlyCents)}
-                  <span className="text-muted-foreground text-xs font-normal">
-                    /mês
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Renova todo mês, cancele quando quiser.
-                </p>
-              </div>
-              <div className="border-primary/40 rounded-xl border p-4">
-                <p className="text-primary text-xs font-medium tracking-wide uppercase">
-                  Anual à vista
-                </p>
-                <p className="mt-1 font-mono text-xl font-semibold">
-                  {formatPriceBRL(yearlyCents)}
-                  <span className="text-muted-foreground text-xs font-normal">
-                    /ano
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Equivale a 10 mensalidades — economia de{" "}
-                  {formatPriceBRL(yearlySavingsCents)} por ano. Renovação anual.
-                </p>
-              </div>
-            </div>
-            <p className="text-muted-foreground text-sm leading-6">
-              O pagamento online (cartão e Pix) ainda não está disponível —
-              estamos finalizando a integração com o provedor. Para assinar,
-              renovar ou regularizar agora, fale com o suporte do {brand}; os
-              preços cobrados são exatamente os desta tela. O cancelamento você
-              faz por aqui mesmo, sem falar com ninguém.
-            </p>
-          </CardContent>
-        </Card>
+        <SubscriptionCheckoutCard
+          plan={(plan.key as "starter" | "plus") ?? "starter"}
+          planLabel={plan.label}
+          monthlyCents={monthlyCents}
+          yearlyCents={yearlyCents}
+          configured={mercadoPagoConfigured()}
+          isOwner={isOwner}
+          brand={brand}
+          suggestedCoupon={suggestedCoupon}
+          supportNote={`O pagamento online ainda não está ligado nesta instalação. Para assinar, renovar ou regularizar agora, fale com o suporte do ${brand}; os preços cobrados são exatamente os desta tela. O cancelamento você faz por aqui mesmo, sem falar com ninguém.`}
+        />
 
         {/* "Cancele quando quiser" era prometido em cinco lugares e não
             existia caminho de saída no produto (Fase 0 §0.2). */}

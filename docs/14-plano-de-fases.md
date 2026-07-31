@@ -61,7 +61,16 @@ que o produto não faz.
 
 ---
 
-## Fase 1 — Fundação visual
+## Fase 1 — Fundação visual ✅ entregue
+
+> **Entregue em 28/07/2026** (commit `3163783`, PR #35) — o plano não registrava
+> isso. Sem migração: a fase é fundação visual e a única preferência que ela
+> persiste vive num cookie. Verificado no código e na produção: `--border-control`
+> separado de `--border` (1,47:1 → 3,17:1), foco `#2563eb`, `panel-theme.tsx`
+> gravando `data-theme` e o cookie do tema, `ui/toast.tsx`, `lib/masks`,
+> `ui/masked-input.tsx`, variantes de Alert com os fundos tonais, menu nos 7
+> destinos do §9.1, e "Ticket médio"/"Checkout"/"Ver página pública" com zero
+> ocorrências.
 
 **Por quê agora:** todas as fases seguintes tocam componentes. Consertar botão, campo e selo
 depois significa refazer as telas duas vezes. É a Etapa 1 do §13 do guia.
@@ -167,7 +176,7 @@ de reposição do G5 inerte**.
 
 ---
 
-## Fase 3 — Gestão
+## Fase 3 — Gestão ✅ entregue
 
 > **Entregue.** Os 12 itens abaixo foram implementados — relatório em
 > [`entregas/fase-3-gestao.md`](entregas/fase-3-gestao.md), banco em
@@ -264,7 +273,20 @@ O "Ver todos" dos produtos deixou de devolver o visitante para os mesmos 6 itens
 
 ---
 
-## Fase 5 — A camada comercial
+## Fase 5 — A camada comercial ✅ entregue
+
+> **Entregue em 31/07/2026** — relatório em
+> [`entregas/plano-14-fase-5.md`](entregas/plano-14-fase-5.md), banco em
+> `202607310038_fase5_camada_comercial.sql` (já aplicada em produção).
+>
+> Duas decisões de negócio foram tomadas pelo sócio antes de começar: o gateway
+> é o **Mercado Pago**, e o mensal encareceu (Padrão R$ 59,90, Plus R$ 119,90)
+> com o anual mantido em R$ 499 e R$ 999 — o que finalmente dá ao anual um
+> desconto real de 31%. Quem já assina não foi retarifado.
+>
+> Gateway e e-mail transacional estão **prontos e desligados** por ausência de
+> credencial (`.env.example` documenta quais). O item 5.9 já havia sido
+> corrigido pela Fase 0, que mexeu no mesmo componente pelo §0.5.
 
 **Por quê por último:** depende de decisão de negócio (gateway, preço, nome) e de o produto já
 sustentar a promessa. Vender antes de as fases 0–2 fecharem multiplica cancelamento.
@@ -331,12 +353,16 @@ itens de maior impacto antes de mover a Fase 2.
 | Fase | Foco                                         | Depende de                 |
 | ---- | -------------------------------------------- | -------------------------- |
 | 0 ✅ | Correção de risco e de número errado         | —                          |
-| 1    | Fundação visual e de componentes             | — (pode correr junto da 0) |
+| 1 ✅ | Fundação visual e de componentes             | — (pode correr junto da 0) |
 | 2 ✅ | Agenda, Início, perfil do cliente, venda     | Fase 1                     |
-| 3    | Financeiro, comissões, equipe, configurações | Fase 1 — **entregue**      |
+| 3 ✅ | Financeiro, comissões, equipe, configurações | Fase 1                     |
 | 4 ✅ | Página pública e fluxo de agendamento        | Fase 1                     |
-| 5    | Gateway, plano anual, régua de lead, landing | Fases 0 e 2                |
+| 5 ✅ | Gateway, plano anual, régua de lead, landing | Fases 0 e 2                |
 
 As fases 2, 3 e 4 são independentes entre si e podem ser paralelizadas. A fase 5 é a única que
 exige as anteriores fechadas — não por dependência técnica, mas porque é ela que traz gente nova
 para dentro do produto.
+
+**Todas as seis fases foram entregues e estão em produção.** O que continua em
+aberto não é fase: são as duas decisões acima (o nome e a homologação em tela) e
+as credenciais do gateway e do e-mail, que deixam a Fase 5 ligada.

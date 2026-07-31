@@ -57,7 +57,7 @@ export const getTenantContext = cache(
     const { data: sub } = await supabase
       .from("subscriptions")
       .select(
-        "status, plan, price_cents, trial_ends_at, current_period_end, cancel_at_period_end, cancellation_effective_at",
+        "status, plan, price_cents, billing_period, trial_ends_at, current_period_end, cancel_at_period_end, cancellation_effective_at",
       )
       .eq("barbershop_id", barbershop.id)
       .maybeSingle();
@@ -66,6 +66,9 @@ export const getTenantContext = cache(
         status: sub.status as SubscriptionStatus,
         plan: sub.plan,
         priceCents: sub.price_cents,
+        // Periodicidade contratada (Fase 5 §5.2). Defensivo: base sem a
+        // coluna é mensal, que é o único regime que existia antes dela.
+        billingPeriod: sub.billing_period === "yearly" ? "yearly" : "monthly",
         trialEndsAt: sub.trial_ends_at,
         currentPeriodEnd: sub.current_period_end,
         // Cancelamento pedido pelo dono, com efeito no fim do período pago
