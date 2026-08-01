@@ -75,6 +75,7 @@ export function LeadCaptureForm({
           channel,
           consent: data.get("consent") === "on",
           planInterest: data.get("plan") || undefined,
+          periodInterest: data.get("period") || undefined,
           vertical,
           utm,
           sourcePage: window.location.pathname,
@@ -167,16 +168,32 @@ export function LeadCaptureForm({
           className={fieldClass}
         />
       </div>
-      <select
-        name="plan"
-        defaultValue=""
-        aria-label="Plano de interesse"
-        className={selectClass}
-      >
-        <option value="">Plano de interesse (opcional)</option>
-        <option value="starter">Padrão</option>
-        <option value="plus">Plus</option>
-      </select>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select
+          name="plan"
+          defaultValue=""
+          aria-label="Plano de interesse"
+          className={selectClass}
+        >
+          <option value="">Plano de interesse (opcional)</option>
+          <option value="starter">Padrão</option>
+          <option value="plus">Plus</option>
+        </select>
+        {/* saas_leads.period_interest existe desde a Fase 2B e nunca era
+            preenchido — o formulário não perguntava. Sem ele, o time não sabe
+            se o lead veio olhando o mensal ou o anual, que é justamente o que
+            a régua de recuperação precisa saber para escolher a oferta. */}
+        <select
+          name="period"
+          defaultValue=""
+          aria-label="Periodicidade de interesse"
+          className={selectClass}
+        >
+          <option value="">Mensal ou anual? (opcional)</option>
+          <option value="monthly">Mensal</option>
+          <option value="yearly">Anual</option>
+        </select>
+      </div>
       <label className={consentClass}>
         <input
           type="checkbox"

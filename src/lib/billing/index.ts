@@ -17,7 +17,12 @@ export const PLANS = {
   starter: {
     key: "starter",
     label: "Padrão",
-    priceCents: 4990,
+    // Preços da versão 2 do catálogo (Fase 5 §5.2). A fonte de verdade é
+    // plan_prices no banco; estas constantes são o fallback de
+    // indisponibilidade e precisam segui-la — quando divergiram, a landing
+    // anunciava um preço e create_barbershop gravava outro.
+    priceCents: 5990,
+    yearlyPriceCents: 49900,
     description: "Tudo para operar a barbearia no dia a dia.",
     features: [
       "Agenda completa e agendamento online",
@@ -39,7 +44,8 @@ export const PLANS = {
   plus: {
     key: "plus",
     label: "Plus",
-    priceCents: 9990,
+    priceCents: 11990,
+    yearlyPriceCents: 99900,
     description: "Para faturar mais e ter a página com a sua cara.",
     features: [
       "Tudo do Padrão",

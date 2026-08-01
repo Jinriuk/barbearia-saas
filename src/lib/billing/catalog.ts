@@ -9,16 +9,24 @@ export type PlanCatalog = Record<
   { monthlyCents: number; yearlyCents: number }
 >;
 
-/** Fallback (mesma hipótese comercial): anual = 10 mensalidades. */
+/**
+ * Fallback de indisponibilidade do banco.
+ *
+ * O anual era calculado como 10 mensalidades. Isso deixou de valer na Fase 5,
+ * quando o mensal subiu e o anual ficou: a conta daria R$ 599 e R$ 1.199, e o
+ * visitante que pegasse a landing durante uma falha do banco veria um preço
+ * anual 20% maior que o cobrado. Os dois preços agora são explícitos e
+ * espelham a versão 2 do catálogo.
+ */
 function fallbackCatalog(): PlanCatalog {
   return {
     starter: {
       monthlyCents: PLANS.starter.priceCents,
-      yearlyCents: PLANS.starter.priceCents * 10,
+      yearlyCents: PLANS.starter.yearlyPriceCents,
     },
     plus: {
       monthlyCents: PLANS.plus.priceCents,
-      yearlyCents: PLANS.plus.priceCents * 10,
+      yearlyCents: PLANS.plus.yearlyPriceCents,
     },
   };
 }
