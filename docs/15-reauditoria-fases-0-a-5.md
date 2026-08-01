@@ -4,38 +4,70 @@ Verificação item a item das entregas das **Fases 0 a 5** do [plano](14-plano-d
 sobre os mesmos requisitos da [auditoria de 28/07](13-auditoria-julho-2026.md) mais os 88
 itens que os verificadores da rodada 1 apontaram como não cobertos.
 
-Método idêntico ao da rodada 1: relatórios de entrega tratados como alegação, prova só em
-`arquivo:linha` do código atual (uma dimensão validou também contra o banco vivo via MCP).
-A camada adversarial desta rodada rodou em 1 das 11 dimensões (limite de sessão); os itens
-de maior impacto das demais foram verificados por checagem direta independente.
+Método idêntico ao da rodada 1: 11 dimensões reavaliadas em paralelo, relatórios de entrega
+tratados como alegação e prova só em `arquivo:linha` do código atual (duas validações também
+contra o banco vivo). **A camada adversarial rodou completa nas 11 dimensões** e fez 5
+correções (a rodada 1 tinha levado 59) — todas já aplicadas nos itens abaixo, marcadas no
+texto. Nenhuma dimensão foi julgada NAO_CONFIAVEL.
 
-## Placar geral
+## Placar geral (pós-verificação)
 
 | Situação | Rodada 1 (380 itens) | Agora (467 itens) |
 |---|---:|---:|
-| Atendido | 96 (25%) | **293 (62%)** |
-| Parcial | 138 (36%) | 134 (28%) |
+| Atendido | 96 (25%) | **289 (61%)** |
+| Parcial | 138 (36%) | 138 (29%) |
 | Não atendido | 145 (38%) | 33 (7%) |
 | Não aplicável | 1 | 7 |
 
 Dos 467 itens: **192 melhoraram**, 185 ficaram iguais, 2 pioraram e 88 são novos nesta rodada.
 Saúde da base: `typecheck` e `lint` limpos, **135 testes passando** (eram 54).
 
+## Os cinco achados novos da camada adversarial
+
+Além das 5 correções de status, os refutadores encontraram fachadas e defeitos que os
+reauditores não tinham visto. Os que mudam decisão:
+
+1. **Preços v1 fossilizados fora do catálogo** — a migration 0038 criou os preços v2
+   (R$ 59,90/119,90), mas `create_barbershop` ainda grava toda assinatura de teste com
+   4990/9990 (`202607090019:146-151`), o `changePlan` do super-admin grava `PLANS.priceCents`
+   v1 (`src/modules/platform/actions.ts:89` + `src/lib/billing/index.ts:19,41`) e o
+   `fallbackCatalog()` (`src/lib/billing/catalog.ts:13-24`) anuncia 49,90/99,90 se a RPC
+   falhar. Todo dono novo entra com preço defasado no banco — **corrigir antes de cadastrar
+   a credencial do Mercado Pago**, ou a primeira cobrança real sai errada.
+2. **Pagamento de comissão não pode ser datado** — `registerEmployeePayment` cai no default
+   `paid_at now()` (`payroll/actions.ts:118-125`), e o abatimento do fechamento recorta por
+   `paid_at` dentro da janela: pagar hoje a quinzena passada faz o valor abater no período
+   errado e permite sugestão de pagamento em dobro. O vale retroativo tem o mesmo defeito na
+   despesa (`payroll/actions.ts:191-202`).
+3. **A trava de estoque só cobre INSERT** — o trigger da migration 0030 é `BEFORE INSERT`, e a
+   política RLS de `inventory_movements` permite UPDATE: editar uma movimentação antiga pode
+   negativar o saldo sem passar pela trava.
+4. **Convite a e-mail que já tem conta entra na hora** (`modules/team/invites.ts:136-153`), sem
+   clicar em link — a prova de posse da caixa de entrada só vale para conta nova.
+5. **Visão Semana empilha atendimentos simultâneos** — sem raias nem indicador de "+N"
+   (`agenda-board.tsx:336-383`), dois profissionais no mesmo horário se sobrepõem.
+
+Menores, registrados nas seções: o botão "Desfazer" do toast é código morto (nenhum chamador
+passa `action`); perfil do cliente engole erro de RPC e vira 404 falso; "Planos vencendo" soma
+`due_soon+past_due` mas linka para um segmento que só mostra `past_due`; e-mail de 72h promete
+checkout que não renderiza se só a credencial de e-mail estiver configurada; e
+`reactivateSubscription` ignora `billing_period` (30 dias para assinante anual).
+
 ## Antes × depois por dimensão
 
-| Dimensão | Antes A/P/N | Agora A/P/N |
-|---|---|---|
-| Fundação visual — cores, tipografia, tokens (§3, §4, §11) | 10 / 10 / 9 | **18** / 12 / 4 |
-| Padrão de componentes (§5) | 12 / 16 / 12 | **22** / 22 / 4 |
-| Linguagem e navegação (§8, §9) | 8 / 15 / 11 | **19** / 15 / 6 |
-| Telas Início e Agenda (§7.1, §7.2) | 8 / 9 / 17 | **36** / 5 / 0 |
-| Telas Clientes e Planos (§7.3, §7.4) + pilar G2 | 5 / 8 / 5 | **22** / 3 / 1 |
-| Tela Financeiro (§7.5) + pilar G3 | 6 / 14 / 16 | **23** / 15 / 5 |
-| Serviços, produtos e estoque (§7.6) + pilar G5 | 2 / 10 / 9 | **10** / 14 / 6 |
-| Equipe, Configurações e Minha conta (§7.7–§7.9) + pilar G4 | 17 / 15 / 22 | **38** / 19 / 4 |
-| Página pública e fluxo de agendamento (§7.10, §7.11) + pilar G1 | 11 / 16 / 15 | **44** / 3 / 1 |
-| Mobile, acessibilidade e gráficos (§6, §10, §12) | 11 / 16 / 14 | **32** / 17 / 2 |
-| Camada comercial — landing, preços e leads | 6 / 9 / 15 | **29** / 9 / 0 |
+| Dimensão | Antes A/P/N | Agora A/P/N | Veredito adversarial |
+|---|---|---|---|
+| Fundação visual — cores, tipografia, tokens (§3, §4, §11) | 10 / 10 / 9 | **18** / 12 / 4 | confiavel |
+| Padrão de componentes (§5) | 12 / 16 / 12 | **21** / 23 / 4 | confiavel com ressalvas |
+| Linguagem e navegação (§8, §9) | 8 / 15 / 11 | **19** / 15 / 6 | confiavel |
+| Telas Início e Agenda (§7.1, §7.2) | 8 / 9 / 17 | **36** / 5 / 0 | confiavel com ressalvas |
+| Telas Clientes e Planos (§7.3, §7.4) + pilar G2 | 5 / 8 / 5 | **22** / 3 / 1 | confiavel com ressalvas |
+| Tela Financeiro (§7.5) + pilar G3 | 6 / 14 / 16 | **22** / 16 / 5 | confiavel com ressalvas |
+| Serviços, produtos e estoque (§7.6) + pilar G5 | 2 / 10 / 9 | **10** / 14 / 6 | confiavel |
+| Equipe, Configurações e Minha conta (§7.7–§7.9) + pilar G4 | 17 / 15 / 22 | **38** / 19 / 4 | confiavel com ressalvas |
+| Página pública e fluxo de agendamento (§7.10, §7.11) + pilar G1 | 11 / 16 / 15 | **44** / 3 / 1 | confiavel |
+| Mobile, acessibilidade e gráficos (§6, §10, §12) | 11 / 16 / 14 | **31** / 18 / 2 | confiavel com ressalvas |
+| Camada comercial — landing, preços e leads | 6 / 9 / 15 | **28** / 10 / 0 | confiavel com ressalvas |
 
 ---
 
@@ -141,11 +173,11 @@ A fundação visual foi de fato reescrita: o globals.css agora tem os dois temas
 - **[novo — meta] Precisão das citações da rodada 1 (linhas deslocadas em 1-2 nos apontamentos de globals.css, button.tsx, page-header.tsx e alert-dialog.tsx)** •novo
   - Evidência: Item de processo sobre o relatório da rodada 1, não requisito de produto. Ficou sem objeto: os 221 arquivos alterados deslocaram todas as linhas, e esta rodada rebaixou cada evidência para o código de hoje (ex.: --card agora é globals.css:159, o <h1> do PageHeader segue em page-header.tsx:20, AlertDialogContent em alert-dialog.tsx:61).
 
-### Verificação adversarial: CONFIAVEL
+### Verificação adversarial: confiavel
 
-- Fachada adicional: Além do --chart-commission que o reauditor flagrou, os tokens --chart-expense, --chart-receivable e --chart-previous também são fachada completa: declarados nos dois temas (globals.css:126-136 e :188-198) e expostos no @theme inline (:63-68), mas `rg 'chart-expense|chart-receivable|chart-previous' src` fora do globals.css retorna 0 — e o cash-flow-chart.tsx, exatamente o gráfico de despesas/recebíveis para o qual esses tokens existem, hardcoda hex próprios num <style> local (linhas 67-76). Dos 6 tokens de gráfico por significado do §6.1, só 2 (--chart-billed/--chart-received) são consumidos de verdade.
-- Fachada adicional: Detalhe que o reauditor afirmou errado (sem mudar status): no gap do item novo §6.1 ele diz que 'no escuro os valores coincidem com os tokens' — não é verdade para o cash-flow-chart: --out:#fb8072 (linha 73) não é o --chart-expense escuro #f87171, e --ink:#4a5561/--muted:#77828e no claro (linha 70) não correspondem a nenhum token do :root (--muted-foreground é #475569, --foreground-subtle é #606f85). A paleta foi copiada à mão E com valores levemente divergentes nos dois temas. O status PARCIAL dele permanece correto.
-- Fachada adicional: --font-heading declarado no @theme (globals.css:12-13) tem apenas 3 usos em todo o src — é um alias quase morto de --font-sans (aponta para a mesma Inter), mais um resíduo do sistema de fontes que o reauditor já criticou no item da Geist Mono.
+- **Achado adicional** — Além do --chart-commission que o reauditor flagrou, os tokens --chart-expense, --chart-receivable e --chart-previous também são fachada completa: declarados nos dois temas (globals.css:126-136 e :188-198) e expostos no @theme inline (:63-68), mas `rg 'chart-expense|chart-receivable|chart-previous' src` fora do globals.css retorna 0 — e o cash-flow-chart.tsx, exatamente o gráfico de despesas/recebíveis para o qual esses tokens existem, hardcoda hex próprios num <style> local (linhas 67-76). Dos 6 tokens de gráfico por significado do §6.1, só 2 (--chart-billed/--chart-received) são consumidos de verdade.
+- **Achado adicional** — Detalhe que o reauditor afirmou errado (sem mudar status): no gap do item novo §6.1 ele diz que 'no escuro os valores coincidem com os tokens' — não é verdade para o cash-flow-chart: --out:#fb8072 (linha 73) não é o --chart-expense escuro #f87171, e --ink:#4a5561/--muted:#77828e no claro (linha 70) não correspondem a nenhum token do :root (--muted-foreground é #475569, --foreground-subtle é #606f85). A paleta foi copiada à mão E com valores levemente divergentes nos dois temas. O status PARCIAL dele permanece correto.
+- **Achado adicional** — --font-heading declarado no @theme (globals.css:12-13) tem apenas 3 usos em todo o src — é um alias quase morto de --font-sans (aponta para a mesma Inter), mais um resíduo do sistema de fontes que o reauditor já criticou no item da Geist Mono.
 
 ---
 
@@ -153,7 +185,7 @@ A fundação visual foi de fato reescrita: o globals.css agora tem os dois temas
 
 A dimensão de componentes foi a que mais mudou de verdade: os primitivos foram reescritos na escala do guia (botão h-12/md:h-11, input h-12/md:h-11, select h-12, alvo mínimo 44×44 com utilitário touch-target), nasceu uma camada de toast real (toast.tsx montada no layout do painel e usada por 8+ componentes via useActionToast), o Alert ganhou os 5 tons, o Badge ganhou tons semânticos e o selo de agendamento foi corrigido (cancelado=vermelho, não compareceu=cinza, novo estado roxo 'Em atendimento', todos com ícone). A tabela agora vira lista de cartões no mobile por padrão e o sheet vira tela cheia. As fachadas que restam: as máscaras de moeda/hora/percentual existem em lib/masks mas nenhum campo as usa (29 type=number continuam nus — só a máscara de telefone entrou em 4 campos + booking); o 'Desfazer' temporizado do toast (ToastAction/UNDO_DURATION) nunca é chamado por ninguém; ui/select.tsx, field.tsx, checkbox.tsx e tooltip.tsx seguem como código morto. Persistem intactos os piores hábitos de risco: cancelar agendamento continua cinza e sem confirmação, cancelar plano 'definitivo', anular venda, estornar e excluir contas/recebíveis seguem a um toque. Com meio ponto para PARCIAL a dimensão fica em ~69%; plenamente atendidos são 22 de 48 itens avaliáveis (45,8%).
 
-### Atendido (22)
+### Atendido (21)
 
 - **§5.1 Botão principal: fundo #F2B84B e texto #16120A**
   - Evidência: src/app/globals.css:163-164 (--primary: #f2b84b; --primary-foreground: #16120a no escopo dark) + src/components/ui/button.tsx:22 (bg-primary text-primary-foreground)
@@ -167,9 +199,6 @@ A dimensão de componentes foi a que mais mudou de verdade: os primitivos foram 
   - Evidência: Mensagens específicas seguem nas actions; agora com useActionToast (toast.tsx:203-223) em 8 componentes a confirmação sobrevive ao fechamento do sheet — resolvendo a mensagem descartada da rodada 1
 - **§5.2 Rótulo sempre acima do campo; placeholder não substitui rótulo**
   - Evidência: Padrão Label+Input mantido nos formulários novos: expense-form.tsx:74, counter-sale-form.tsx:291-345, client-form.tsx:64-101
-- **§5.2 Altura mínima dos campos: 44px desktop / 48px celular** ⬆
-  - Evidência: src/components/ui/input.tsx:17 (h-12 md:h-11); select.tsx:47 (data-[size=default]:h-12 ... md:h-11); selects manuais do painel seguem h-12 md:h-11 (appointment-detail-sheet.tsx:281, membership-actions.tsx:88, caixa.tsx:138)
-  - O que falta: Duas exceções pontuais: receivables-list.tsx:116 (select h-8) e period-filter.tsx:76/91 (inputs de data h-9). O primitivo e a quase totalidade das telas estão na régua.
 - **§5.2 Mensagem de erro precisa dizer como corrigir**
   - Evidência: src/modules/appointments/actions.ts:49 (SLOT_TAKEN: 'Esse horário acabou de ser ocupado. Escolha outro.') e :21; padrão mantido nas actions novas
 - **§5.3 Painel lateral para criação e edição curta, sem tirar o usuário da lista**
@@ -206,7 +235,7 @@ A dimensão de componentes foi a que mais mudou de verdade: os primitivos foram 
 - **[NOVO] §5.3 Página completa para perfil do cliente e ficha do profissional** •novo
   - Evidência: src/app/(dashboard)/clientes/[id]/page.tsx e src/app/(dashboard)/profissionais/[id]/page.tsx existem (Fases 2-3), com client-profile-tabs.tsx e professional-tabs.tsx; listas e agenda linkam para elas (clientes/page.tsx:353, profissionais/page.tsx:149, appointment-detail-sheet.tsx:179)
 
-### Parcial (22)
+### Parcial (23)
 
 - **§5.1 Alvos clicáveis importantes com no mínimo 44×44px** ⬆
   - Evidência: src/components/ui/button.tsx:37 (sm agora h-11=44px) e :42-43 (icon-sm size-11); globals.css:235-248 (.touch-target). Os ícones de excluir/ocultar/arquivar em linha (servicos/page.tsx:143, delete-entity-button.tsx:41) agora são 44×44
@@ -223,6 +252,9 @@ A dimensão de componentes foi a que mais mudou de verdade: os primitivos foram 
 - **§5.1 Não usar botões genéricos (OK, Enviar, Confirmar) quando puder dizer o que acontecerá**
   - Evidência: Ótimos novos: counter-sale-form.tsx:382-384 ('Receber R$X' / 'Lançar R$X a receber'), expense-form.tsx:129 ('Lançar despesa'). Genéricos restantes: reservation-actions.tsx:56 ('Confirmar'), caixa.tsx:220 ('Confirmar' no mobile; :299 tem 'Confirmar pagamento'), appointment-actions.tsx:20 ('Confirmar'), bill-form.tsx:68 ('Adicionar')
   - O que falta: Restam 4 rótulos genéricos, dois deles exatamente nos pontos citados na rodada 1 (confirmar venda em reservation-actions).
+- **§5.2 Altura mínima dos campos: 44px desktop / 48px celular** ⬆
+  - Evidência: src/components/ui/input.tsx:17 (h-12 md:h-11); select.tsx:47 (data-[size=default]:h-12 ... md:h-11); selects manuais do painel seguem h-12 md:h-11 (appointment-detail-sheet.tsx:281, membership-actions.tsx:88, caixa.tsx:138)
+  - O que falta: Duas exceções pontuais: receivables-list.tsx:116 (select h-8) e period-filter.tsx:76/91 (inputs de data h-9). O primitivo e a quase totalidade das telas estão na régua. [Rebaixado pelo verificador adversarial — ver seção de verificação.]
 - **§5.2 Máscara automática para telefone, moeda, data, hora e percentual** ⬆
   - Evidência: lib/masks/index.ts (4 máscaras puras) + ui/masked-input.tsx. Telefone aplicado de verdade em 4 campos (client-form.tsx:75, manual-appointment-sheet.tsx:339, professional-form.tsx:72, account-forms.tsx:49) + booking-form.tsx:32 usa formatPhone. Porém busca por mask="currency|percent|time": zero ocorrências; 29 campos type="number" de preço/custo/percentual seguem sem máscara (product-form-sheet.tsx:105-129, service-form-sheet.tsx:133-176, membership-plan-sheet.tsx:121, commission-closing-card.tsx:172-398 etc.)
   - O que falta: FACHADA parcial: as máscaras de moeda, hora e percentual (MASKS.currency/time/percent, parseCurrency/parsePercent e o ramo de campo escondido do MaskedInput) são código morto — existem, têm comentário elogioso, e nenhum campo do app as usa. Só a máscara de telefone entrou em produção.
@@ -296,6 +328,14 @@ A dimensão de componentes foi a que mais mudou de verdade: os primitivos foram 
   - Evidência: Item meta, sem requisito de produto. Hoje o campo é MaskedInput com placeholder de exemplo (client-form.tsx:75-82), o que torna a correção obsoleta: a máscara de telefone existe e o placeholder também
 - **[NOVO] Correção de contagem da rodada 1: eram 8 sheets de conteúdo, não 9** •novo
   - Evidência: Item meta, sem requisito de produto. mobile-tab-bar.tsx:94 segue sendo navegação (w-80), não criação/edição; os sheets de conteúdo aumentaram com appointment-detail-sheet e client-form-sheet
+
+### Verificação adversarial: confiavel com ressalvas
+
+- **Correção** — §5.2 Altura mínima dos campos: 44px desktop / 48px celular: ATENDIDO → PARCIAL. O gap alega 'duas exceções pontuais', mas há pelo menos 6 campos abaixo do mínimo, todos em telas financeiras de uso diário: receivables-list.tsx:116 (select h-8=32px), period-filter.tsx:76 e :91 (inputs de data h-9=36px, usados no Financeiro E em profissionais/[id]), financeiro/_sections/a-receber.tsx:171 (select h-9) e :175 (input de data h-9), expense-form.tsx:97 (select de categoria h-10=40px SEM variante md — fica 40px também no celular, onde o guia pede 48). Além disso a evidência cita select.tsx:47 como prova, mas ui/select.tsx é componente morto: grep por import de '@/components/ui/select' retorna zero — todos os ~34 selects do app são <select> nativos com classes manuais. O primitivo Input (input.tsx:17 h-12 md:h-11) e a maioria dos selects nativos (selectClass h-12 md:h-11 em caixa.tsx:41, counter-sale-form.tsx:34, bills-view.tsx:134, reservation-actions.tsx:37 etc.) estão na régua, então MELHOROU — mas requisito de altura MÍNIMA com 6 violações em 5 arquivos do fluxo de dinheiro é PARCIAL, pelo mesmo critério que o próprio reauditor aplicou ao item de alvos 44×44 (mantido PARCIAL com resíduos equivalentes).
+- **Achado adicional** — ui/select.tsx (Radix Select): reescrito na régua do guia (data-[size=default]:h-12 md:h-11) mas nunca importado por nenhum arquivo do app (grep por from "@/components/ui/select": zero) — e ainda assim foi usado como EVIDÊNCIA da promoção do item de altura de campos. O reauditor listou o arquivo como código morto no resumo, mas não percebeu que sua própria prova apontava para ele; os selects reais são todos <select> nativos.
+- **Achado adicional** — 'Desfazer' inexistente exatamente para a ação mais arriscada: appointment-actions.tsx:103-112 só tem 'Desfazer' para in_progress/completed/no_show — actionsByStatus não tem chave 'canceled', então cancelar agendamento é um toque (ghost cinza), sem confirmação E irreversível pela UI. O argumento que salvou o §5.7-Desfazer como PARCIAL ('o desfazer persistente cumpre o espírito por outro desenho') não cobre o cancelamento, que é a perda mais grave.
+- **Achado adicional** — Evidência do item §5.6 [NOVO] repete um erro do comentário do código: appointment-status-badge.tsx:29 afirma que 'Em atendimento não está na tabela do guia — é estado novo', mas GUIA_VISUAL.md:340 lista 'Em atendimento | Roxo | Tesoura'. O status ATENDIDO se sustenta (roxo correto, ícone é apenas 'sugerido' — usa PlayCircle em vez de tesoura), mas a justificativa está factualmente errada.
+- **Achado adicional** — Resíduos de alvo <44px não citados em nenhum item: NavLink (nav-link.tsx:29, h-9=36px default e h-8=32px na variante sm) é a navegação lateral inteira do painel; pílulas de seleção de profissional em equipe/horarios/page.tsx:142 (h-9). Não mudam nenhum status (o item de alvos 44×44 já é PARCIAL), mas o inventário de resíduos do reauditor está incompleto.
 
 ---
 
@@ -413,6 +453,9 @@ A navegação (§9) foi genuinamente refeita: o menu lateral agora tem exatament
   - Evidência: src/lib/billing/index.ts:35 — feature "Página pública da barbearia" segue no catálogo de planos, exibida em /assinatura (pricing) e nas landings
   - O que falta: String intocada desde a rodada 1; deveria virar "Página de agendamento da barbearia".
 
+### Verificação adversarial: confiavel
+
+
 ---
 
 ## Telas Início e Agenda (§7.1, §7.2)
@@ -512,6 +555,10 @@ Esta dimensão teve a maior virada real do repositório: o achado principal da r
   - Evidência: src/components/dashboard/agenda-board.tsx:344-358 (cartão-botão) e :408-416 (AppointmentDetailSheet); visão Lista sem clique em agenda/page.tsx:844-923
   - O que falta: Nas visões Dia/Semana (padrão) o cartão inteiro é um botão que abre o AppointmentDetailSheet com todas as ações. Na visão Lista a linha continua uma div sem clique (agenda/page.tsx:846-850) — só o nome do cliente linka (ao perfil, não ao atendimento) e o detail sheet não é alcançável dali; as ações ficam inline como antes.
 
+### Verificação adversarial: confiavel com ressalvas
+
+- **Achado adicional** — Visão Semana da agenda sem filtro de profissional: atendimentos de profissionais diferentes no MESMO horário são desenhados um em cima do outro (agenda-board.tsx:336-383 — posicionamento absoluto por top/height com inset-x-1, sem divisão em raias/lanes e sem indicador de '+N'); o cartão renderizado por último cobre e torna inclicável o de baixo, então uma equipe de 3 com dois cortes às 09:00 vê só um deles na Semana. A visão Dia não sofre disso (colunas por profissional + exclusion constraint impedem sobreposição). Limitação real não registrada pelo reauditor — não derruba o status do alternador Dia/Semana/Mês/Lista, mas merece registro.
+
 ---
 
 ## Telas Clientes e Planos (§7.3, §7.4) + pilar G2
@@ -583,13 +630,18 @@ A dimensão foi a que mais avançou de verdade: o perfil do cliente (/clientes/[
   - Evidência: supabase/migrations/202607280034_fase2_operacao_diaria.sql:1241 + src/app/(dashboard)/planos/page.tsx:93-97 e 173-258
   - O que falta: Nada mudou: get_membership_overview segue com limit 500 fixo (202607280034:1241) e /planos renderiza tudo que vier sem busca, filtro, paginação ou aviso de corte (planos/page.tsx:173-258). O mesmo padrão vale para o select de clientes do sheet de venda (.limit(500) em planos/page.tsx:92). Impacto baixo no porte atual do produto, mas o corte continua invisível
 
+### Verificação adversarial: confiavel com ressalvas
+
+- **Achado adicional** — Caminho de erro do perfil do cliente engole falha de RPC: src/app/(dashboard)/clientes/[id]/page.tsx:133-138 não checa error de nenhuma das 4 RPCs — erro em get_client_insights vira notFound() (404 para um cliente que existe) e erro em get_client_history/get_client_payments/get_membership_overview renderiza empty states honestos-na-aparência ('Nenhum atendimento ainda', 'Nada recebido ainda') para um cliente com histórico. É o mesmo padrão §0.16 corrigido em /clientes (page.tsx:171-178) e repetido na tela nova. Não derruba o status do item (as abas têm conteúdo real e as RPCs são chamadas de verdade), mas é caminho feliz pronto com caminho de erro mentiroso.
+- **Achado adicional** — Número que não bate com a tela de destino: o indicador 'Planos vencendo' em /clientes (clientes/page.tsx:212-216) e o alerta 'Planos vencendo ou vencidos' do dashboard (dashboard/page.tsx:208-213) somam due_soon + past_due, mas ambos linkam para /clientes?segmento=inadimplentes, que só filtra past_due (202607280034:1013). Com N planos a vencer e 0 vencidos, o card mostra N e o clique abre lista vazia ('Ninguém neste grupo agora'). O hint do card em /clientes até detalha a composição, o que atenua, mas o CTA 'Cobrar assinantes' do dashboard promete uma lista que pode vir vazia.
+
 ---
 
 ## Tela Financeiro (§7.5) + pilar G3
 
 O Financeiro foi genuinamente reconstruído: a página de 904 linhas virou 6 seções internas reais (finance-nav + _sections/), com filtro de período com intervalo livre (lib/dates/period.ts) que sobrevive à troca de seção, e as rotas antigas (/comissoes, /contas-a-pagar, /contas-a-receber, /relatorios) redirecionam. O gráfico do §7.5 existe de verdade (cash-flow-chart: recebido verde, despesas coral, período anterior tracejado, alimentado pela RPC cash_flow_series), o mapa de calor foi entregue com alternativa textual, e o fechamento de comissões ganhou total produzido, vale/adiantamento, valor a pagar calculado no banco (commission_summary) e lucro que provisiona comissão (profit_after_commissions sem dupla contagem de salário pago). Os quatro buracos críticos da rodada 1 foram fechados no banco: fiado agora gera receita pendente via trigger + backfill, receivable_period respeita a janela, a lista A receber é paginada com contagem exata, e /relatorios soma via RPC em vez de varrer 1000 linhas. Continuam pendentes: tooltip no gráfico, top de clientes que mais gastam, pagamento parcial de recebível, CSV, PDF real (ainda é window.print só do mês corrente) e a unificação de rótulos (Receber pagamento/Marcar como pago/Registrar pagamento continuam trocados entre módulos). A venda de balcão existe e é sólida (carrinho, desconto, cliente, estoque e financeiro numa transação), mas só vende produtos — sem serviços nem acréscimo — e não é linkada da seção Caixa. Fachadas: nenhuma grave; o resquício é employee-pay-card.tsx, que ficou órfão (ninguém importa) após o commission-closing-card assumir, e o fiado aparece duplicado nas duas listas da mesma seção A receber. Percentual calculado como itens plenamente ATENDIDOS sobre 43 aplicáveis (23/43); com PARCIAL valendo meio ponto seria ~71%.
 
-### Atendido (23)
+### Atendido (22)
 
 - **§7.5 Navegação interna: abas Resumo / Caixa e vendas / Despesas / A receber / Comissões / Relatórios dentro do Financeiro** ⬆
   - Evidência: src/components/dashboard/finance-nav.tsx:4-11 (as 6 seções) e src/app/(dashboard)/financeiro/page.tsx:80-137 (render por seção); rotas antigas redirecionam (src/app/(dashboard)/comissoes/page.tsx:11, contas-a-pagar, contas-a-receber, relatorios); menu lateral com item único /financeiro (src/lib/navigation.ts:19)
@@ -619,8 +671,6 @@ O Financeiro foi genuinamente reconstruído: a página de 904 linhas virou 6 se�
   - Evidência: Regra de precedência preservada e agora CONGELADA na conclusão (freeze_appointment_commission, 202607280030_fase0_correcoes.sql:125-175: taxa do serviço quando > 0, senão a do profissional; NULL cai na vigente); cálculo no banco em commission_summary (202607280035:245-266) em vez de laço com .limit(3000) no cliente
 - **§7.5 Comissões: adiantamentos** ⬆
   - Evidência: Tabela employee_advances (202607280035_fase3_gestao.sql:51-70); registerEmployeeAdvance cria a despesa paga na hora e desfaz se o vale falhar (payroll/actions.ts:162-234); abatido do to_pay no banco (202607280035:346-353,380-389); UI 'Dar vale' no fechamento (commission-closing-card.tsx:244-319) e tabela 'Vales do período' (comissoes.tsx:256-299)
-- **§7.5 Comissões: valor a pagar** ⬆
-  - Evidência: to_pay calculado no banco: (salário/comissão conforme modelo) − vales − já pago no período, nunca negativo (202607280035:377-389); exibido como TEXTO com a conta aberta (commission-closing-card.tsx:143-152), não mais como default de input editável — pagar valor diferente exige abrir 'Pagar valor diferente do calculado' (:218-226). O desconto do 'já pago' elimina o risco de pagar duas vezes no mesmo período
 - **VERDADE FINANCEIRA (G3): o sistema distingue Total vendido (competência) de Dinheiro recebido (caixa)**
   - Evidência: income_summary: sold por created_at, received por paid_at (202607280035_fase3_gestao.sql:431-444); agora com card didático 'Como ler estes números' explicando a diferença em língua simples (resumo.tsx:213-234)
 - **VERDADE FINANCEIRA (G3): o lucro desconta despesas E comissões** ⬆
@@ -638,7 +688,7 @@ O Financeiro foi genuinamente reconstruído: a página de 904 linhas virou 6 se�
 - **[NOVO] Comissão apurada sobre atendimento cuja receita pode nunca ter entrado (competência vs caixa sem aviso)** •novo
   - Evidência: O regime continua competência, mas agora é DECISÃO EXPLÍCITA e visível: a tela declara 'A comissão é apurada por competência... tenha o cliente pago ou não' (comissoes.tsx:187-192); commission_summary devolve received_produced/received_commission (202607280035:246-251) e o card mostra 'R$ X já entrou em caixa' por profissional (commission-closing-card.tsx:120,127); o Resumo provisiona a comissão apurada no 'Lucro depois da comissão' — o dono vê a diferença antes de pagar
 
-### Parcial (15)
+### Parcial (16)
 
 - **§7.5 Resumo: quatro indicadores — Total vendido, Dinheiro recebido, Despesas, Lucro do período**
   - Evidência: src/app/(dashboard)/financeiro/_sections/resumo.tsx:101-152
@@ -667,6 +717,9 @@ O Financeiro foi genuinamente reconstruído: a página de 904 linhas virou 6 se�
 - **§7.5 A receber: botão "Registrar pagamento"**
   - Evidência: src/components/dashboard/receivables-list.tsx:129 e src/app/(dashboard)/financeiro/_sections/a-receber.tsx:183 — o rótulo agora é 'Recebi' nos dois lugares (era 'Receber'); forma de pagamento continua obrigatória
   - O que falta: O rótulo pedido pelo guia ('Registrar pagamento') continua ausente no A receber — curiosamente é o rótulo usado em Comissões. Ponto positivo: os dois pontos do A receber agora usam o MESMO rótulo entre si.
+- **§7.5 Comissões: valor a pagar** ⬆
+  - Evidência: to_pay calculado no banco: (salário/comissão conforme modelo) − vales − já pago no período, nunca negativo (202607280035:377-389); exibido como TEXTO com a conta aberta (commission-closing-card.tsx:143-152), não mais como default de input editável — pagar valor diferente exige abrir 'Pagar valor diferente do calculado' (:218-226). O desconto do 'já pago' elimina o risco de pagar duas vezes no mesmo período
+  - O que falta:  [Rebaixado pelo verificador adversarial — ver seção de verificação.]
 - **§7.5 Comissões: coluna de situação** ⬆
   - Evidência: A substância existe: 'Já pago no período' por profissional (commission-closing-card.tsx:137-140), card agregado 'Falta pagar' (comissoes.tsx:158-163) e mensagem 'Nada a pagar neste período' quando quitado (:211-216)
   - O que falta: Não há o badge de situação Pendente/Parcial/Pago com cor + texto que o §7.4 prescreve — o dono precisa ler os números para deduzir o estado de cada profissional em vez de bater o olho.
@@ -708,6 +761,12 @@ O Financeiro foi genuinamente reconstruído: a página de 904 linhas virou 6 se�
 
 - **[NOVO] Relatório da rodada 1 chegou truncado, sem itens de Relatórios e sem percentual recalculável** •novo
   - Evidência: Item sobre o artefato da auditoria anterior, não sobre o produto; esta rodada reclassificou todos os itens, incluindo os de Relatórios e o de verdade financeira, com evidência linha a linha
+
+### Verificação adversarial: confiavel com ressalvas
+
+- **Correção** — §7.5 Comissões: valor a pagar: ATENDIDO → PARCIAL. O cálculo no banco existe (202607280035_fase3_gestao.sql:377-389), mas o desconto de 'já pago' recorta employee_payments por paid_at dentro da janela (202607280035:355-361) e registerEmployeePayment não permite datar o pagamento — o insert (src/modules/payroll/actions.ts:118-125) cai no default paid_at now() (202607080008_employee_payments.sql:25). Pagar um período já fechado (quinzena encerrada, 'Mês passado') grava o pagamento fora da janela: ao reabrir o mesmo período, 'Já pago no período' segue '—' (commission-closing-card.tsx:137-140), o 'Valor a pagar' volta inteiro com o botão 'Registrar pagamento' habilitado, e a tabela 'Pagamentos do período' (comissoes.tsx:76-83) não exibe o pagamento recém-feito. A alegação 'elimina o risco de pagar duas vezes no mesmo período' só é verdadeira quando o dono paga DENTRO da janela ainda corrente — no fluxo normal de fechamento (pagar depois que o período acaba) a proteção não funciona e a tela induz o pagamento em dobro. O vale não sofre disso porque usa reference_date retroagível (advanceSchema, payroll/actions.ts:32; corte por reference_date em 202607280035:346-353).
+- **Achado adicional** — Proteção contra pagamento em dobro que não protege no fluxo real: o fechamento de comissões parece 'congelar' o período depois de pago, mas como employee_payments.paid_at é sempre now() (202607080008:25; payroll/actions.ts:118-125) e o abatimento recorta por paid_at na janela (202607280035:355-361), pagar uma quinzena/mês já encerrado devolve mensagem de sucesso ('Pagamento registrado') e o mesmo período continua exibindo o valor cheio a pagar — cara de quitado, comportamento de não-quitado. Não há vínculo estruturado pagamento→período (só o texto livre 'Referência' pré-preenchido com period.label, commission-closing-card.tsx:192-198).
+- **Achado adicional** — Vale retroagido com despesa na data errada: o formulário 'Dar vale' aceita data passada (reference_date), e o fechamento abate no período certo (202607280035:346-353), mas a despesa de caixa correspondente é sempre gravada com paid_at now() (payroll/actions.ts:191-202) — um vale lançado hoje com data da semana passada aparece abatido na quinzena anterior e, ao mesmo tempo, como saída de caixa de hoje no gráfico (cash_flow_series corta por paid_at) e no corte 'Para onde foi o dinheiro'. Inconsistência menor, mas é o mesmo padrão de número que não bate entre duas telas.
 
 ---
 
@@ -808,6 +867,11 @@ A dimensão mudou de verdade desde a rodada 1: a tela /vendas existe com carrinh
 
 - **[novo] Precedente de venda de balcão no repositório (sell-membership-sheet) vs alegação "venda de balcão é impossível"** •novo
   - Evidência: A observação foi superada pelos fatos: venda de balcão de produtos agora existe (counter_sales, migration 0034:332-375; /vendas); sell-membership-sheet segue em planos/page.tsx
+
+### Verificação adversarial: confiavel
+
+- **Correção** — §7.6 Abas — área única com Serviços | Produtos | Estoque | Vendas: PARCIAL (mudanca: MELHOROU) → PARCIAL (mudanca: IGUAL). Pela regra do protocolo, MELHOROU significa subida de status, e o item permaneceu PARCIAL nas duas rodadas. O conteúdo da evidência confere: src/lib/navigation.ts:48-64 tem a SECTION_NAV 'catalogo' com /vendas, section-nav.tsx:27-31 renderiza a faixa, e a leitura integral de src/app/(dashboard)/vendas/page.tsx confirma que ela NÃO renderiza SectionNav — só o rótulo de mudança está errado, não o status.
+- **Achado adicional** — Alegação 'estoque negativo impossível' é mais forte que o código: o trigger trg_enforce_inventory_balance (migration 0030:104-107) é só BEFORE INSERT, e a política RLS 'administrators manage inventory' em inventory_movements (polcmd='*', verificada no banco vivo via pg_policy) permite a owner/manager fazer UPDATE/DELETE de movimentações direto pela API do Supabase — apagar uma movimentação de entrada deixa o saldo negativo sem passar por trava alguma. Nenhuma tela do app expõe esse caminho (grep por update/delete de inventory_movements em src/modules: zero), então o ATENDIDO se sustenta para o uso pelo produto, mas o furo fica registrado para o dono.
 
 ---
 
@@ -969,6 +1033,11 @@ Esta dimensão foi a que mais mudou de verdade: a regra crítica do §7.7 foi re
   - Evidência: src/lib/financial/index.ts:1 — PAYMENT_METHODS segue constante fixa consumida em 10+ telas (caixa, vendas, a-receber etc.); settings-workspace.tsx:33-40 não tem seção 'Pagamentos'
   - O que falta: O conceito existe mas não é configurável: o dono não escolhe quais formas aceita nem elas aparecem em Configurações
 
+### Verificação adversarial: confiavel com ressalvas
+
+- **Achado adicional** — settings-workspace.tsx: as seções inativas são escondidas por CSS (linha 147) mantendo campos required no DOM (businessName :206, heroTitle :495, heroSubtitle :507). Se o dono apagar um desses campos, trocar de seção e clicar em 'Salvar alterações', a validação nativa do navegador bloqueia o submit num campo não-focável ('not focusable') e NADA acontece na tela — sem mensagem, sem erro visível. Caso de borda real que o reauditor não registrou; não derruba o ATENDIDO do salvar único (funciona no uso normal), mas é um botão que pode 'não fazer nada' silenciosamente.
+- **Achado adicional** — modules/team/invites.ts:136-153: quando o e-mail convidado JÁ tem conta no sistema, o acesso é liberado na hora (applyPendingInvites direto), sem a pessoa clicar em link nenhum — o 'convite por e-mail com prova da caixa de entrada' vale só para contas novas. O texto do formulário ('A pessoa recebe um e-mail... e entra') promete um fluxo que nesse caminho não ocorre. Não viola a regra crítica (o dono continua sem criar senha), mas é uma nuance de consentimento/segurança que o relatório não menciona.
+
 ---
 
 ## Página pública e fluxo de agendamento (§7.10, §7.11) + pilar G1
@@ -1087,18 +1156,19 @@ A Fase 4 foi entregue de verdade nesta dimensão: quase tudo que era NAO_ATENDID
   - Evidência: A RPC nova continua entregando 'sections' (migrations/202607280037:157-165) e o tipo declara (src/types/domain.ts:125), mas grep por '.sections' em src/**/*.tsx devolve zero componentes — nenhuma renderização
   - O que falta: FACHADA: é o único resquício de fachada da dimensão — um CMS de seções cujo dado atravessa banco→RPC→tipo e morre sem nunca chegar à tela. Ou renderizar, ou remover da RPC e do tipo
 
+### Verificação adversarial: confiavel
+
+
 ---
 
 ## Mobile, acessibilidade e gráficos (§6, §10, §12)
 
 Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido na raiz (sheet vira tela cheia no mobile, botão default h-12/md:h-11, Input/Select h-12/md:h-11, borda de controle #5B6B7D/#64748B com 3,2-4,8:1, anel de foco azul dedicado), a tabela agora empilha em cartões por padrão via CSS (globals.css) com data-label nas telas de catálogo, e nasceram de fato o toast global com Desfazer, o mapa de calor com alternativa textual, o gráfico de fluxo com período anterior tracejado e os tokens semânticos de cor por significado nos dois temas. Não encontrei fachadas nesta dimensão: todos os componentes novos estão importados e em uso real. O que resta é residual: 6 controles crus abaixo de 44px em filtros do financeiro, cash-flow-chart sem tooltip e com hexes próprios fora dos tokens, heatmap em escala verde (não grafite→dourado) e sem legenda de intensidade, EmptyState continua sem CTA, nenhum teste de viewport 360px foi criado, e os gráficos de barras ainda desenham o eixo vazio atrás da mensagem de sem-dados. Dos 41 itens originais, 15 subiram de status; 2 continuam NAO_ATENDIDO (teste 360px e estado vazio com ação).
 
-### Atendido (32)
+### Atendido (31)
 
 - **§10 — Formulários em tela inteira no mobile (sheets viram full-screen)** ⬆
   - Evidência: src/components/ui/sheet.tsx:70 — classe base agora usa data-[side=right]:w-full + data-[side=right]:sm:max-w-md; 9 callers usam className="w-full gap-0 ... sm:max-w-md" (ex.: manual-appointment-sheet.tsx:262, appointment-detail-sheet.tsx:146). Única exceção é o drawer de Menu (mobile-tab-bar.tsx:94, w-80), que é navegação, não formulário.
-- **§10/§5.1/§12 — Botões principais com 48px de altura no mobile e mínimo 44×44px** ⬆
-  - Evidência: src/components/ui/button.tsx:34-44 — default h-12 md:h-11, sm h-11, lg h-12, icon size-12 md:size-11, icon-sm size-11; xs/icon-xs (36px visuais) recebem .touch-target que amplia o alvo para 44×44 via ::after (src/app/globals.css:235-248).
 - **§10 — Margem lateral de 16px no mobile**
   - Evidência: src/components/layout/dashboard-shell.tsx:190 — <main className="mx-auto max-w-[1500px] p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8">; header com px-4 (:161).
 - **§10 — Não colocar dois botões principais lado a lado**
@@ -1160,8 +1230,11 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
 - **[novo] §6.1 — Paleta de gráfico no TEMA CLARO (na rodada 1 era escala de cinza oklch)** •novo
   - Evidência: src/app/globals.css:126-136 — o tema claro agora define paleta semântica real (--chart-1 #b45309 ... --chart-billed #b45309, --chart-received #047857, --chart-expense #b91c1c, --chart-receivable #1d4ed8, --chart-commission #6d28d9, --chart-previous #64748b), escurecida deliberadamente para manter contraste sobre fundo claro; a escala de cinza neutra do shadcn sumiu.
 
-### Parcial (17)
+### Parcial (18)
 
+- **§10/§5.1/§12 — Botões principais com 48px de altura no mobile e mínimo 44×44px** ⬆
+  - Evidência: src/components/ui/button.tsx:34-44 — default h-12 md:h-11, sm h-11, lg h-12, icon size-12 md:size-11, icon-sm size-11; xs/icon-xs (36px visuais) recebem .touch-target que amplia o alvo para 44×44 via ::after (src/app/globals.css:235-248).
+  - O que falta:  [Rebaixado pelo verificador adversarial — ver seção de verificação.]
 - **§10/§5.2/§12 — Campos com 48px de altura no mobile (mínimo 44px no desktop)**
   - Evidência: Base corrigida: src/components/ui/input.tsx:17 (h-12 md:h-11), select.tsx:47 (data-[size=default]:h-12 ... md:h-11) e selectClass compartilhado h-12 md:h-11 (caixa.tsx:41-42, counter-sale-form.tsx:35).
   - O que falta: Restam controles crus abaixo do mínimo em telas usadas no celular: receivables-list.tsx:112 (select h-8=32px), period-filter.tsx:71 e :86 (inputs de data h-9=36px), a-receber.tsx:171 (select h-9), expense-form.tsx:97 e receivable-form.tsx:63 (selects h-10=40px). O núcleo do gap anterior (elevar a base do DS) foi resolvido; sobraram esses 6 pontos.
@@ -1230,13 +1303,18 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
 - **[novo] Desvios de linha nas citações do relatório da rodada 1** •novo
   - Evidência: Meta-observação sobre a qualidade do relatório anterior; sem efeito no produto. Todas as evidências desta rodada foram relidas do código atual com arquivo:linha verificados.
 
+### Verificação adversarial: confiavel com ressalvas
+
+- **Correção** — §10/§5.1/§12 — Botões principais com 48px de altura no mobile e mínimo 44×44px: ATENDIDO → PARCIAL. A base do DS está correta (button.tsx:34-44, default h-12 md:h-11; .touch-target em globals.css:235-248), mas overrides explícitos reintroduzem botões abaixo do mínimo em fluxos mobile do painel: src/components/dashboard/period-filter.tsx:94 — <Button size="sm" className="h-9"> 'Aplicar' = 36px sem .touch-target (submit do filtro de período de todo o financeiro); src/components/dashboard/commission-closing-card.tsx:203 — submit principal 'Registrar pagamento' com className="h-10" = 40px; src/components/dashboard/appointment-detail-sheet.tsx:303 — 'Voltar' com className="h-9 w-full" = 36px de altura. É o mesmo tipo de resíduo que o próprio reauditor penalizou como PARCIAL no item de campos (selects h-8/h-9/h-10), mas deixou passar nos botões.
+- **Achado adicional** — Botão 'Desfazer' do toast é código morto: src/components/ui/toast.tsx implementa ToastAction, UNDO_DURATION=6000 (:34-35) e trava de duplo clique (:121-144), mas NENHUM chamador passa `action` — useActionToast (toast.tsx:203-222) só envia description/variant, e o único consumidor direto de useToast (notifications-bell.tsx:43,61) também não; grep de onAction em todo o src só encontra o próprio toast.tsx. O 'Desfazer com janela de 6s' citado como entregue na evidência de dois itens (confirmação pós-salvar e idempotência de cliques) é inalcançável no app — os status desses itens se sustentam por outros mecanismos reais (toast de confirmação simples + confirmPayment idempotente em src/modules/financial/actions.ts:58-59 + disabled durante pending), mas a capacidade de desfazer prometida pelo §5.7 não existe na prática.
+
 ---
 
 ## Camada comercial — landing, preços e leads
 
 É a dimensão que mais mudou desde 28/07, e a mudança é real, não relatório: a landing de barbearia foi reescrita de ponta a ponta — abre pela dor, declara o nicho (badge "Barbearia de 2 a 8 profissionais"), usa os 5 Gs como arquitetura em fluxo conectado, mostra telas do sistema (desenhadas em HTML e rotuladas como demonstração), tem seção dedicada ao "quem sumiu" e duas iscas funcionais (calculadora de lucro e diagnóstico 5G com captura embutida). Os seis depoimentos fictícios saíram das duas landings. A camada comercial deixou de ser fachada: preços v2 encarecem o mensal (59,90/119,90) mantendo o anual (499/999), o alternador mensal/anual nasce no anual, subscriptions ganhou billing_period (migration 0038), e o fluxo Mercado Pago é completo e defensivo (checkout gravado antes do gateway, webhook com assinatura HMAC + anti-replay, idempotência dupla, validação de valor, cupom resgatado só na confirmação) — hoje aguarda credencial e degrada com honestidade ("pagamento online ainda não está ligado... o cancelamento você faz por aqui mesmo"). "Cancele quando quiser" virou verdade: cancelamento self-service com RPC, reversão e execução pelo cron. A régua de lead existe de fato: cron diário em vercel.json, e-mails 24h/72h com cupom VOLTA20, parada por conversão/descadastro, funnel_stage finalmente escrito, /admin/leads com wa.me/mailto e /descadastro com token + prova LGPD (IP, user-agent, versão do termo). Fachadas remanescentes são poucas e pequenas: o formulário de lead continua nunca enviando period_interest (a coluna e a tela do admin exibem um campo que nasce sempre NULL), a arte OG ainda diz "o sistema completo para a sua barbearia", e a landing do salão só recebeu metade da reforma (preços/form/depoimentos sim; dor, 5Gs, telas, iscas e posicionamento não).
 
-### Atendido (29)
+### Atendido (28)
 
 - **Pedido (a) do sócio: falar com o nicho de barbearias em crescimento que precisam se organizar para crescer mais** ⬆
   - Evidência: src/app/page.tsx:230-233 (badge 'Barbearia de 2 a 8 profissionais'), :241-249 ('Feito para quem ainda atende na cadeira e não tem tempo de virar administrador'), :39-43 (metadata 'gestão para barbearia de 2 a 8 cadeiras' + 'dono que ainda atende na cadeira')
@@ -1276,8 +1354,6 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
   - Evidência: Duas das quatro iscas sugeridas foram construídas e estão na landing barber (page.tsx:459-469): ProfitCalculator (sliders de base e tíquete, resultado em R$/mês com premissa declarada) e Diagnostic5G (5 perguntas sim/não, resultado nomeia o G mais fraco e SÓ ENTÃO oferece a captura — diagnostic-5g.tsx:93-99). Calculadora de comissão e checklist não existem, e a landing do salão ficou sem isca — mas o requisito ('pelo menos uma ferramenta pública de valor imediato') está cumprido
 - **Apresentação §6 — o que evitar: divulgar como pronta uma função que ainda está no planejamento** ⬆
   - Evidência: 'Cancele quando quiser' agora é função real (cancel-subscription-card.tsx + RPCs request/revoke_subscription_cancellation em 0030:1175-1253, executadas pelo cron de billing :100-114). O pagamento indisponível é descrito sem promessa: checkout.ts:123-129 e o supportNote da assinatura (page.tsx:201) dizem explicitamente que o online não está ligado e que o cancelamento é self-service. E-mail da régua evita até urgência falsa (nurture.ts:170-174 recusa 'vale 30 dias' que não seria cumprido por destinatário)
-- **Consistência de preço: a landing deve exibir exatamente o preço que a cobrança usará**
-  - Evidência: As duas landings (page.tsx:154, salao:137), o onboarding e o checkout leem loadPlanCatalog() (catalog.ts:36-61, RPC get_plan_catalog versão vigente); o startCheckout recalcula do catálogo no servidor (checkout.ts:147-151) e o webhook rejeita ativação com valor divergente do checkout gravado (route.ts:283-285, AMOUNT_MISMATCH)
 - **Consistência de benefícios entre a landing e a página de assinatura** ⬆
   - Evidência: src/lib/billing/index.ts:22-37: 'Relatório financeiro em PDF' e 'Produtos e controle de estoque' agora estão nas features do Padrão (com comentário explicando que o gate nunca existiu no código), alinhado ao que a landing vende (page.tsx:667-674) e ao que a tela de assinatura renderiza (assinatura/page.tsx:173-180 usa PLANS[].features)
 - **Formulário de captura de lead funcional e legível nas duas landings** ⬆
@@ -1297,7 +1373,7 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
 - **[novo] Rastreamento de conversão da camada comercial (Meta Pixel com gate de LGPD) — creditado no resumo da rodada 1 sem checagem** •novo
   - Evidência: Checado agora: meta-pixel.tsx:24 só injeta o script com NEXT_PUBLIC_META_PIXEL_ID definido E consentimento 'granted'; consent-banner e MetaPixel no layout raiz (layout.tsx:51-52); welcome-conversion.tsx:22-29 dispara CompleteRegistration uma única vez em /dashboard?bemvindo=1 com regate explícito de consentimento e limpa o parâmetro; lead_submitted rastreado sem PII (lead-capture-form.tsx:91)
 
-### Parcial (9)
+### Parcial (10)
 
 - **Pedido (d) do sócio: capturar o interesse pelo pacote anual no lead**
   - Evidência: src/components/platform/lead-capture-form.tsx:72-83 (sem periodInterest no payload) vs src/app/api/public/leads/route.ts:15,67 (rota e coluna prontas)
@@ -1317,6 +1393,9 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
 - **Apresentação §6: provar simplicidade com telas reais do sistema e vídeo curto no celular** ⬆
   - Evidência: src/components/platform/system-screens.tsx (AgendaScreen, ClientsScreen, FinanceScreen, DemoDataNote) importado e usado em src/app/page.tsx:21-26, 288-293, 396-404
   - O que falta: As telas existem e aparecem três vezes (FinanceScreen no hero :288-293, AgendaScreen+ClientsScreen na seção 'Por dentro' :396-404, ClientsScreen no diferencial :452-454), com rótulo honesto de dados de demonstração. Duas ressalvas: são recriações em HTML fiéis, não capturas reais (decisão documentada em system-screens.tsx:8-15 — defensável, mas não é literalmente 'tela real'); e o vídeo de 30-90s no celular previsto na §7 continua inexistente. A landing do salão não mostra tela nenhuma
+- **Consistência de preço: a landing deve exibir exatamente o preço que a cobrança usará**
+  - Evidência: As duas landings (page.tsx:154, salao:137), o onboarding e o checkout leem loadPlanCatalog() (catalog.ts:36-61, RPC get_plan_catalog versão vigente); o startCheckout recalcula do catálogo no servidor (checkout.ts:147-151) e o webhook rejeita ativação com valor divergente do checkout gravado (route.ts:283-285, AMOUNT_MISMATCH)
+  - O que falta:  [Rebaixado pelo verificador adversarial — ver seção de verificação.]
 - **[novo] Violação do §3: vender-se como 'sistema completo' no title e no badge** •novo
   - Evidência: src/app/opengraph-image.tsx:59; src/app/salao/page.tsx:28,214
   - O que falta: Corrigido na landing barber (title virou 'gestão para barbearia de 2 a 8 cadeiras', page.tsx:39-43, com o comentário :33-37 explicando o porquê; badge virou o nicho, :230-233). MAS a arte de compartilhamento continua violando: opengraph-image.tsx:3 e :59 ainda dizem 'O sistema completo para a sua barbearia' — é o texto que aparece quando o link é compartilhado no WhatsApp, o canal principal do nicho. E a vertical salão mantém title 'o sistema completo' (salao:28) e badge 'Plataforma completa' (salao:214)
@@ -1326,6 +1405,14 @@ Esta dimensão foi a que mais avançou de verdade: o design system foi corrigido
 - **[novo] Landing do salão (salao/page.tsx) auditada por inteiro contra a arquitetura de comunicação** •novo
   - Evidência: src/app/salao/page.tsx:28, 214, 216-227, 322-337, 339-371, 528-563, 593-611
   - O que falta: Recebeu só metade da reforma. Sim: PricingPlans com alternador e tone claro (:528-563), formulário legível e reposicionado antes do CTA final (:593-611), depoimentos fictícios removidos (:98-113), número de mockup rotulado 'Exemplo ilustrativo' (:286-288). Não: abre por promessa e lista de recursos, não pela dor (h1 :216-222 'Seu salão cheio, sua agenda leve' + grade de 6 features :339-371 + marquee :322-337); mantém 'o sistema completo' no title (:28) e 'Plataforma completa' no badge (:214); sem telas do sistema, sem iscas (não importa Diagnostic5G nem ProfitCalculator), sem FAQ, dois botões de peso igual no hero (:228-246). Não é fachada — é reforma inacabada e o time sabe (comentários citam só §5.5/§5.9 para o salão)
+
+### Verificação adversarial: confiavel com ressalvas
+
+- **Correção** — Consistência de preço: a landing deve exibir exatamente o preço que a cobrança usará: ATENDIDO → PARCIAL. A migration 0038 criou os preços v2 (starter mensal 5990, plus 11990), mas três pontos seguem com os preços v1 hardcoded: (1) create_barbershop cria toda assinatura de teste com price_cents 4990/9990 (supabase/migrations/202607090019_public_vertical_and_salon_theme.sql:146-151; nenhuma migração posterior redefine a função — grep 'create or replace function public.create_barbershop' para em 0019); (2) PLANS.starter.priceCents=4990 e plus=9990 em src/lib/billing/index.ts:19 e :41; (3) o changePlan do console super-admin grava PLANS[plan].priceCents na assinatura (src/modules/platform/actions.ts:84-90) — e, sem credencial do Mercado Pago, o console admin é hoje o único caminho ativo de troca de plano. Resultado na tela: um trial criado hoje mostra 'R$ 49,90/mês' no cartão do plano (src/app/(dashboard)/assinatura/page.tsx:166 exibe sub.priceCents, que veio do 4990 do create_barbershop) ao lado do SubscriptionCheckoutCard que oferece 'Mensal R$ 59,90/mês' na mesma página — dois preços na mesma tela. O caminho de cobrança online em si é consistente (checkout.ts:147-151 recalcula do catálogo; webhook AMOUNT_MISMATCH), por isso PARCIAL e não NAO_ATENDIDO.
+- **Achado adicional** — Preços v1 fossilizados fora do catálogo: create_barbershop (migration 0019:146-151) ainda grava price_cents 4990/9990 no trial e o changePlan do super-admin (src/modules/platform/actions.ts:89) grava PLANS.priceCents (src/lib/billing/index.ts:19,41 — também 4990/9990). Todo dono em teste vê 'R$ 49,90/mês' no cartão 'Plano Padrão' da /assinatura enquanto o checkout na mesma tela cobra R$ 59,90/mês — o número antigo errado numa tela reformada; e a ativação manual pelo admin (único caminho enquanto o MP não tem credencial) trava o preço antigo para sempre.
+- **Achado adicional** — fallbackCatalog() (src/lib/billing/catalog.ts:13-24) usa os mesmos PLANS.priceCents v1: se a RPC get_plan_catalog falhar, a landing e o onboarding voltam a anunciar 49,90/99,90 (com anual = 10x, ou seja, 499/999 por acaso corretos no anual mas errados no mensal) — degradação silenciosa para preço desatualizado, não para erro.
+- **Achado adicional** — Combinação de credenciais parciais na régua: se o dono configurar RESEND_API_KEY/EMAIL_FROM mas NÃO o Mercado Pago, o e-mail de 72h sai prometendo 'Assinar com o cupom VOLTA20' (nurture.ts:177-180), mas quem clica cai num fluxo onde o formulário de checkout nem é renderizado (subscription-checkout-card.tsx:113 e 203-209) — o cupom não tem onde ser usado. Cada credencial degrada com honestidade sozinha, mas o par e-mail-sem-MP promete oferta inutilizável; vale um gate no cron (pular a etapa 72h quando mercadoPagoConfigured() é falso) ou nota na entrega.
+- **Achado adicional** — reactivateSubscription do super-admin (src/modules/platform/actions.ts:43-49) reativa qualquer assinatura com current_period_end = agora + 30 dias fixos, ignorando billing_period — um assinante anual reativado manualmente ganharia 30 dias em vez de 365 (menor: caminho admin, mas é o caminho ativo enquanto não há credencial).
 
 ---
 
