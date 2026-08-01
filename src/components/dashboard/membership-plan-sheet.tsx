@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -115,12 +116,10 @@ export function MembershipPlanSheet({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="plan-price">Preço por período</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="plan-price"
                 name="price"
-                type="number"
-                min="1"
-                step="0.01"
                 defaultValue={plan?.price}
                 required
               />

@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -127,12 +128,10 @@ export function ServiceFormSheet({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="service-price">Preço</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="service-price"
                 name="price"
-                type="number"
-                min="0"
-                step="0.01"
                 defaultValue={service?.price}
                 required
               />
@@ -152,13 +151,10 @@ export function ServiceFormSheet({
           </div>
           <div className="space-y-2">
             <Label htmlFor="service-commission">Comissão do serviço (%)</Label>
-            <Input
+            <MaskedInput
+              mask="percent"
               id="service-commission"
               name="commissionRate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
               defaultValue={service?.commission_rate ?? 0}
             />
             <p className="text-muted-foreground text-xs">

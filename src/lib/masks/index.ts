@@ -77,6 +77,12 @@ export function parseCurrency(value: string): number | null {
 /**
  * Hora do dia em HH:MM. Aceita a digitação corrida ("930" → "09:30") e
  * limita a 23:59 — o campo é de expediente, não de duração.
+ *
+ * Sem consumidor no painel de propósito: os campos de horário usam
+ * `<input type="time">`, que abre o seletor nativo do sistema. No celular —
+ * onde o barbeiro mexe na agenda — o seletor nativo é melhor que digitar, e
+ * trocá-lo por esta máscara seria um retrocesso. Fica aqui, testada, para
+ * quando aparecer um campo de hora que não possa ser nativo.
  */
 export function formatTime(value: string): string {
   const digits = onlyDigits(value).slice(0, 4);

@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -50,12 +51,10 @@ export function BillForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="bill-amount">Valor (R$)</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="bill-amount"
                 name="amount"
-                type="number"
-                min="0.01"
-                step="0.01"
                 required
               />
             </div>

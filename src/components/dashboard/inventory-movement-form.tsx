@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -88,13 +89,7 @@ export function InventoryMovementForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="mov-cost">Custo unit. (R$)</Label>
-              <Input
-                id="mov-cost"
-                name="unitCost"
-                type="number"
-                min="0"
-                step="0.01"
-              />
+              <MaskedInput mask="currency" id="mov-cost" name="unitCost" />
             </div>
           </div>
           <div className="space-y-2">
