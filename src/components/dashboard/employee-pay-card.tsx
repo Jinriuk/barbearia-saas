@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -98,12 +99,10 @@ export function EmployeePayCard({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`salary-${professionalId}`}>Salário (R$)</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id={`salary-${professionalId}`}
                 name="baseSalary"
-                type="number"
-                min="0"
-                step="0.01"
                 defaultValue={settings?.base_salary ?? 0}
               />
             </div>
@@ -123,13 +122,10 @@ export function EmployeePayCard({
               <Label htmlFor={`commission-${professionalId}`}>
                 Comissão padrão (%)
               </Label>
-              <Input
+              <MaskedInput
+                mask="percent"
                 id={`commission-${professionalId}`}
                 name="commissionRate"
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
                 defaultValue={settings?.commission_rate ?? 0}
               />
               <p className="text-muted-foreground text-xs">
@@ -174,12 +170,10 @@ export function EmployeePayCard({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor={`amount-${professionalId}`}>Valor (R$)</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id={`amount-${professionalId}`}
                 name="amount"
-                type="number"
-                min="0.01"
-                step="0.01"
                 defaultValue={
                   monthCommission > 0 ? monthCommission.toFixed(2) : ""
                 }

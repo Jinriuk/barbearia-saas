@@ -97,24 +97,19 @@ export function ProfessionalForm({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="commissionRate">Comissão (%)</Label>
-                  <Input
+                  <MaskedInput
+                    mask="percent"
                     id="commissionRate"
                     name="commissionRate"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
                     defaultValue="0"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="baseSalary">Salário fixo (R$)</Label>
-                  <Input
+                  <MaskedInput
+                    mask="currency"
                     id="baseSalary"
                     name="baseSalary"
-                    type="number"
-                    min="0"
-                    step="0.01"
                     defaultValue="0"
                   />
                 </div>

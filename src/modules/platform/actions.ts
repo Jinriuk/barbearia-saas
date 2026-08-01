@@ -5,6 +5,8 @@ import { z } from "zod";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PLANS, type PlanKey } from "@/lib/billing";
+import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { periodDays } from "@/lib/billing/webhook";
 
 /**
  * Ações do super-admin sobre assinaturas. Todas exigem sessão de admin da
@@ -41,10 +43,23 @@ export async function suspendSubscription(formData: FormData) {
 }
 
 export async function reactivateSubscription(formData: FormData) {
-  // Reativa com um novo período de 30 dias a partir de agora.
+  await requirePlatformAdmin();
+  const parsed = idSchema.safeParse(formData.get("barbershopId"));
+  if (!parsed.success) return;
+  const supabase = createSupabaseAdminClient();
+  // O período reativado é o CONTRATADO. Reativar um anual com 30 dias tirava
+  // do ar, um mês depois, quem tinha pago o ano inteiro.
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("billing_period")
+    .eq("barbershop_id", parsed.data)
+    .maybeSingle();
+  const days = periodDays(
+    sub?.billing_period === "yearly" ? "yearly" : "monthly",
+  );
   await updateSubscription(formData.get("barbershopId"), {
     status: "active",
-    current_period_end: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    current_period_end: new Date(Date.now() + days * 86_400_000).toISOString(),
     canceled_at: null,
   });
 }
@@ -81,11 +96,37 @@ export async function extendTrial(formData: FormData) {
   revalidate();
 }
 
+/**
+ * Troca o plano de uma barbearia pelo console do super-admin.
+ *
+ * O preço vinha da constante do frontend, que ficou para trás quando a Fase 5
+ * subiu o mensal: trocar o plano de alguém regravava a assinatura no preço
+ * antigo, e era esse número que a cobrança usaria. Passa a vir do catálogo do
+ * banco, respeitando a periodicidade contratada.
+ */
 export async function changePlan(formData: FormData) {
+  await requirePlatformAdmin();
   const plan = String(formData.get("plan") ?? "");
   if (!(plan in PLANS)) return;
+  const parsed = idSchema.safeParse(formData.get("barbershopId"));
+  if (!parsed.success) return;
+
+  const supabase = createSupabaseAdminClient();
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("billing_period")
+    .eq("barbershop_id", parsed.data)
+    .maybeSingle();
+  const period = sub?.billing_period === "yearly" ? "yearly" : "monthly";
+
+  const catalog = await loadPlanCatalog();
+  const priceCents =
+    period === "yearly"
+      ? catalog[plan as PlanKey].yearlyCents
+      : catalog[plan as PlanKey].monthlyCents;
+
   await updateSubscription(formData.get("barbershopId"), {
     plan,
-    price_cents: PLANS[plan as PlanKey].priceCents,
+    price_cents: priceCents,
   });
 }

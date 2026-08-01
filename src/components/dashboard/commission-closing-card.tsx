@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { success: false, message: "" };
@@ -166,13 +167,10 @@ export function CommissionClosingCard({
                 <Label htmlFor={`amount-${closing.professionalId}`}>
                   Valor a registrar (R$)
                 </Label>
-                <Input
+                <MaskedInput
+                  mask="currency"
                   id={`amount-${closing.professionalId}`}
                   name="amount"
-                  type="number"
-                  inputMode="decimal"
-                  min="0.01"
-                  step="0.01"
                   defaultValue={closing.toPay.toFixed(2)}
                   className="w-36"
                   required
@@ -263,13 +261,10 @@ export function CommissionClosingCard({
                   <Label htmlFor={`advance-${closing.professionalId}`}>
                     Valor (R$)
                   </Label>
-                  <Input
+                  <MaskedInput
+                    mask="currency"
                     id={`advance-${closing.professionalId}`}
                     name="amount"
-                    type="number"
-                    inputMode="decimal"
-                    min="0.01"
-                    step="0.01"
                     required
                   />
                 </div>
@@ -364,13 +359,10 @@ export function CommissionClosingCard({
                   <Label htmlFor={`salary-${closing.professionalId}`}>
                     Salário (R$)
                   </Label>
-                  <Input
+                  <MaskedInput
+                    mask="currency"
                     id={`salary-${closing.professionalId}`}
                     name="baseSalary"
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
                     defaultValue={settings?.base_salary ?? 0}
                   />
                 </div>
@@ -392,13 +384,10 @@ export function CommissionClosingCard({
                   <Label htmlFor={`commission-${closing.professionalId}`}>
                     Comissão padrão (%)
                   </Label>
-                  <Input
+                  <MaskedInput
+                    mask="percent"
                     id={`commission-${closing.professionalId}`}
                     name="commissionRate"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
                     defaultValue={settings?.commission_rate ?? 0}
                   />
                   <p className="text-muted-foreground text-xs">

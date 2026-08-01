@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -68,13 +69,10 @@ export function ExpenseForm() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="expense-amount">Valor (R$)</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="expense-amount"
                 name="amount"
-                type="number"
-                inputMode="decimal"
-                min="0.01"
-                step="0.01"
                 required
               />
             </div>

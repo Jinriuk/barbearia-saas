@@ -7,65 +7,95 @@ import {
   Check,
   Flower2,
   Heart,
-  Palette,
   QrCode,
-  Smartphone,
   Sparkles,
   UsersRound,
 } from "lucide-react";
 import { SALON_PHOTOS, SALON_STOCK } from "@/lib/assets";
 import { formatPriceBRL } from "@/lib/billing";
 import { loadPlanCatalog } from "@/lib/billing/catalog";
+import { Diagnostic5G } from "@/components/platform/diagnostic-5g";
 import { LeadCaptureForm } from "@/components/platform/lead-capture-form";
 import { PricingPlans } from "@/components/platform/pricing-plans";
+import { ProfitCalculator } from "@/components/platform/profit-calculator";
+import {
+  AgendaScreen,
+  ClientsScreen,
+  DemoDataNote,
+} from "@/components/platform/system-screens";
 import { Reveal } from "@/components/public-site/reveal";
 import { Parallax } from "@/components/public-site/parallax";
 import { SmartImage } from "@/components/public-site/smart-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+/**
+ * O título dizia "o sistema completo", exatamente o que a apresentação
+ * estratégica desaconselha: é o que todo concorrente diz e não cria posição.
+ * O nicho no lugar dele é a posição (mesma correção da landing de barbearia).
+ */
 export const metadata: Metadata = {
-  title: "NexoBeleza — o sistema completo para o seu salão de beleza",
+  title: "NexoBeleza — gestão para salão de 2 a 8 profissionais",
   description:
-    "Agenda online, financeiro automático, clientes, estoque e uma página de agendamento linda com a sua marca. 7 dias grátis.",
+    "Para a dona que ainda atende na cadeira: agenda que a cliente marca sozinha, as clientes que sumiram, e o lucro do mês depois das comissões. 7 dias grátis, sem cartão.",
 };
 
-const features = [
+/** A dor vem antes do produto — a página abria com um carrossel de recursos. */
+const pains = [
   {
+    title: "O WhatsApp não para, e você está com a mão na cabeça da cliente",
+    body: "Cada horário custa três mensagens. Quando você atende, a conversa esfria — e ela vai marcar em outro lugar.",
+  },
+  {
+    title: "Cliente sumiu e você só percebeu meses depois",
+    body: "Ninguém avisa que parou de vir. Ela simplesmente não volta, e a cadeira que era dela fica vazia numa quinta à tarde.",
+  },
+  {
+    title: "Entrou dinheiro, mas você não sabe se sobrou",
+    body: "O caixa fechou bem. Depois vem produto, aluguel e a comissão da equipe — e o que era lucro vira dúvida.",
+  },
+  {
+    title: "O fechamento da comissão é no papel",
+    body: "Todo fim de mês a mesma conta manual, e uma profissional que não consegue conferir a própria produção.",
+  },
+];
+
+/** Os 5 Gs como arquitetura: cada elo puxa o seguinte. */
+const gs = [
+  {
+    key: "G1",
     icon: CalendarCheck,
-    title: "Agenda sempre cheia, nunca bagunçada",
-    description:
-      "Horários duplicados são bloqueados na raiz. Escova, coloração e manicure convivem na mesma agenda, sem choque.",
+    title: "A cliente marca sozinha",
+    body: "Sua página com link e QR Code, mostrando só os horários realmente livres de cada profissional. Ela escolhe, remarca e cancela sem falar com ninguém.",
+    link: "O horário entra na agenda…",
   },
   {
-    icon: Smartphone,
-    title: "Sua cliente agenda sozinha",
-    description:
-      "Ela escolhe o serviço, a profissional e o horário na sua página — do celular, a qualquer hora, sem baixar nada.",
-  },
-  {
-    icon: Banknote,
-    title: "Financeiro que se preenche sozinho",
-    description:
-      "Atendimento concluído vira receita na hora. Dia, semana e mês fechados sem caderninho e sem planilha.",
-  },
-  {
+    key: "G2",
     icon: Heart,
-    title: "Clientes que voltam sempre",
-    description:
-      "Histórico completo de cada cliente: serviços, preferências e observações para um atendimento que encanta.",
+    title: "…e vira histórico da cliente",
+    body: "O sistema aprende de quanto em quanto tempo cada uma costuma voltar e avisa quem passou do prazo. É a lista de quem chamar hoje.",
+    link: "O atendimento concluído…",
   },
   {
+    key: "G3",
+    icon: Banknote,
+    title: "…vira dinheiro no financeiro",
+    body: "Vendido, recebido e a receber são três números separados. O lucro do mês desconta despesa e comissão — faturamento é o que entra, lucro é o que fica.",
+    link: "O que foi produzido…",
+  },
+  {
+    key: "G4",
     icon: UsersRound,
-    title: "Equipe organizada, cada uma no seu",
-    description:
-      "Recepção, gerente e profissionais: cada pessoa vê só o que precisa. Comissões calculadas automaticamente.",
+    title: "…fecha a comissão da equipe",
+    body: "Cada profissional vê a própria produção e a própria comissão, com vale e adiantamento descontados. Fechamento sem papel e sem discussão.",
+    link: "E na recepção…",
   },
   {
-    icon: Palette,
-    title: "Uma página com a sua cara",
-    description:
-      "Logo, cores, fotos e temas prontos no plano Plus. Sua página de agendamento fica tão linda quanto o seu trabalho.",
+    key: "G5",
+    icon: Sparkles,
+    title: "…o produto sai com baixa no estoque",
+    body: "Venda de balcão com carrinho, estoque que não fica negativo e aviso quando um produto está acabando.",
+    link: null,
   },
 ];
 
@@ -110,17 +140,6 @@ const dailyWins = [
     title: "Você vê quem sumiu",
     body: "O sistema calcula de quanto em quanto tempo cada cliente costuma voltar e mostra quem passou do prazo.",
   },
-];
-
-const marqueeItems = [
-  "Coloração",
-  "Escova e penteados",
-  "Manicure e pedicure",
-  "Maquiagem",
-  "Cílios e sobrancelhas",
-  "Depilação",
-  "Tratamentos capilares",
-  "Estética facial",
 ];
 
 const agendaPreview = [
@@ -211,19 +230,23 @@ export default async function SalonLandingPage() {
           <div className="max-w-3xl">
             <Badge className="motion-safe:animate-in motion-safe:fade-in mb-7 border-[#c2497c]/25 bg-[#c2497c]/10 text-[#a93a69] duration-700">
               <Sparkles className="size-3" />
-              Plataforma completa para salões de beleza
+              Salão de 2 a 8 profissionais de beleza
             </Badge>
             <h1 className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 text-5xl font-semibold tracking-[-0.045em] text-balance duration-700 sm:text-7xl">
-              Seu salão cheio,{" "}
+              Você atende o dia inteiro e, no fim do mês, ainda não sabe{" "}
               <span className="animate-gradient-pan bg-gradient-to-r from-[#c2497c] via-[#d9832f] to-[#c2497c] bg-clip-text font-serif text-transparent italic">
-                sua agenda leve
+                quanto sobrou
               </span>
               .
             </h1>
             <p className="motion-safe:animate-in motion-safe:fade-in mt-7 max-w-2xl text-lg leading-8 text-[#33202b]/60 delay-150 duration-1000">
-              O sistema que cuida do seu negócio inteiro: agenda sem choque de
-              horários, financeiro que se preenche sozinho, clientes, equipe,
-              estoque — e uma página de agendamento linda, com a sua marca.
+              <strong className="font-medium text-[#33202b]">
+                Seu salão cheio, sua agenda leve.
+              </strong>{" "}
+              Da agenda ao lucro: agenda sem choque de horários, financeiro que
+              se preenche sozinho, clientes, equipe e estoque — e uma página de
+              agendamento linda, com a sua marca. Feito para quem ainda atende
+              na cadeira e não tem tempo de virar administradora.
             </p>
             <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 mt-10 flex flex-col gap-3 delay-200 duration-1000 sm:flex-row sm:flex-wrap">
               <Button
@@ -319,54 +342,183 @@ export default async function SalonLandingPage() {
         </div>
       </section>
 
-      {/* ===== Marquee de serviços ===== */}
-      <div className="border-y border-[#33202b]/[.06] bg-white/50 py-4">
-        <div className="flex overflow-hidden">
-          <div className="animate-marquee flex shrink-0 items-center gap-10 pr-10">
-            {[...marqueeItems, ...marqueeItems].map((item, index) => (
-              <span
-                key={`${item}-${index}`}
-                className="flex items-center gap-3 text-sm font-medium tracking-wide text-[#33202b]/45 uppercase"
-              >
-                <Flower2 className="size-3.5 text-[#c2497c]/70" />
-                {item}
-              </span>
+      {/* ===== A dor ===== */}
+      <section
+        id="a-dor"
+        className="border-y border-[#33202b]/[.07] bg-white/60 py-24"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
+              A semana de quem toca um salão
+            </p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              Se alguma destas frases é a sua, o problema não é falta de
+              trabalho.
+            </h2>
+          </Reveal>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2">
+            {pains.map((pain, index) => (
+              <Reveal key={pain.title} delay={(index % 2) * 90}>
+                <div className="h-full rounded-3xl border border-[#33202b]/[.08] bg-white p-7 shadow-sm">
+                  <h3 className="text-base font-medium">{pain.title}</h3>
+                  <p className="mt-2 text-[15px] leading-7 text-[#33202b]/60">
+                    {pain.body}
+                  </p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ===== Recursos ===== */}
+      {/* ===== Os 5 Gs — o fluxo conectado ===== */}
       <section
-        id="recursos"
+        id="os-5gs"
         className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
       >
         <Reveal>
           <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
-            Recursos
+            Como funciona
           </p>
           <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Tudo o que o seu salão precisa,{" "}
-            <span className="font-serif text-[#c2497c] italic">
-              em um lugar só
-            </span>
-            .
+            Cinco engrenagens, uma puxando a outra.
           </h2>
+          <p className="mt-4 max-w-2xl text-[#33202b]/60">
+            Não é uma lista de recursos soltos: o horário que a cliente marca
+            vira histórico, o histórico vira dinheiro, o dinheiro fecha a
+            comissão. É por isso que preencher uma coisa não significa preencher
+            tudo de novo.
+          </p>
         </Reveal>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <Reveal key={feature.title} delay={index * 70}>
-              <div className="group h-full rounded-3xl border border-[#33202b]/[.07] bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:border-[#c2497c]/30 hover:shadow-xl hover:shadow-[#c2497c]/10">
-                <span className="grid size-11 place-items-center rounded-2xl bg-[#c2497c]/10 text-[#c2497c] transition-colors group-hover:bg-[#c2497c] group-hover:text-white">
-                  <feature.icon className="size-5" />
+
+        <div className="mt-14 space-y-4">
+          {gs.map((item, index) => (
+            <Reveal key={item.key} delay={index * 70}>
+              <div className="flex flex-col gap-5 rounded-3xl border border-[#33202b]/[.08] bg-white p-7 shadow-sm sm:flex-row sm:items-start sm:gap-7">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#c2497c]/10 text-[#c2497c]">
+                  <item.icon className="size-6" />
                 </span>
-                <h3 className="mt-5 font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#33202b]/55">
-                  {feature.description}
-                </p>
+                <div className="min-w-0">
+                  <p className="font-mono text-xs tracking-widest text-[#c2497c]/70">
+                    {item.key}
+                  </p>
+                  <h3 className="mt-1 text-lg font-medium">{item.title}</h3>
+                  <p className="mt-2 max-w-2xl text-[15px] leading-7 text-[#33202b]/60">
+                    {item.body}
+                  </p>
+                </div>
               </div>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      {/* ===== Telas do sistema ===== */}
+      <section className="border-y border-[#33202b]/[.07] bg-white/60 py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
+              Por dentro
+            </p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              É isto que você vai ver quando entrar.
+            </h2>
+            <p className="mt-4 max-w-2xl text-[#33202b]/60">
+              Sem menu de 40 itens, sem relatório que ninguém entende. As telas
+              que resolvem o dia:
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-6 lg:grid-cols-2">
+            <Reveal>
+              <AgendaScreen
+                tone="light"
+                columns={["Você", "Bia", "Carla"]}
+                grid={[
+                  ["09:00", ["Escova · Ana", null, "Manicure · Rita"]],
+                  ["10:00", [null, "Coloração · Paula", null]],
+                  ["11:00", ["Corte · Duda", "Almoço", null]],
+                  ["12:00", ["Almoço", "Almoço", "Escova · Lu"]],
+                ]}
+              />
+            </Reveal>
+            <Reveal delay={110}>
+              <ClientsScreen
+                tone="light"
+                names={["Marcela A.", "Renata P.", "Tainá M.", "Vitória C."]}
+              />
+            </Reveal>
+          </div>
+          <DemoDataNote tone="light" className="mt-5" />
+        </div>
+      </section>
+
+      {/* ===== O diferencial: quem sumiu (G2) ===== */}
+      <section
+        id="quem-sumiu"
+        className="mx-auto max-w-7xl scroll-mt-20 px-6 py-24"
+      >
+        <div className="grid gap-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+          <Reveal>
+            <p className="text-xs font-semibold tracking-[0.22em] text-[#c2497c] uppercase">
+              O que quase ninguém tem
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+              Quantas clientes sumiram sem você perceber?
+            </h2>
+            <div className="mt-6 space-y-4 text-[15px] leading-7 text-[#33202b]/65">
+              <p>
+                Cliente insatisfeita reclama. Cliente que cansou só some — e
+                some em silêncio, uma cadeira vazia por vez, até você olhar o
+                mês e achar que &ldquo;está fraco&rdquo;.
+              </p>
+              <p>
+                O sistema calcula de quanto em quanto tempo{" "}
+                <strong className="font-medium text-[#33202b]">
+                  cada cliente sua
+                </strong>{" "}
+                costuma voltar. Quando alguém passa do próprio prazo, ela
+                aparece numa lista com o telefone do lado e a mensagem pronta
+                para o WhatsApp.
+              </p>
+              <p>
+                É a parte mais bem construída do produto, e é a que devolve
+                dinheiro que já era seu: cliente antiga voltando custa uma
+                mensagem, não um anúncio.
+              </p>
+            </div>
+            <Button
+              asChild
+              size="lg"
+              className="btn-shine mt-8 h-13 rounded-full bg-[#c2497c] px-8 text-[15px] text-white hover:bg-[#a93a69]"
+            >
+              <Link href="/cadastro?vertical=salon">
+                Ver quem sumiu da minha base <ArrowRight />
+              </Link>
+            </Button>
+          </Reveal>
+          <Reveal delay={120}>
+            <ClientsScreen
+              tone="light"
+              names={["Marcela A.", "Renata P.", "Tainá M.", "Vitória C."]}
+            />
+            <DemoDataNote tone="light" className="mt-3" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ===== Iscas: a conta e o diagnóstico ===== */}
+      <section className="border-y border-[#33202b]/[.07] bg-white/60 py-24">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-2">
+          <Reveal>
+            <ProfitCalculator
+              tone="light"
+              planCents={catalog.starter.monthlyCents}
+            />
+          </Reveal>
+          <Reveal delay={120}>
+            <Diagnostic5G tone="light" vertical="salon" />
+          </Reveal>
         </div>
       </section>
 

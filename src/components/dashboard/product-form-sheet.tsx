@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useActionToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -99,24 +100,20 @@ export function ProductFormSheet({ product }: { product?: ProductInput }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="product-price">Preço de venda</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="product-price"
                 name="salePrice"
-                type="number"
-                min="0"
-                step="0.01"
                 defaultValue={product?.sale_price}
                 required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="product-cost">Custo (opcional)</Label>
-              <Input
+              <MaskedInput
+                mask="currency"
                 id="product-cost"
                 name="costPrice"
-                type="number"
-                min="0"
-                step="0.01"
                 defaultValue={product?.cost_price ?? undefined}
               />
             </div>
